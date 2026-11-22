@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1
 
 Forked from [dinky](https://github.com/mikker/Dinky) 0.30 and renamed scuttle.
 
