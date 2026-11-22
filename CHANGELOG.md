@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3
 
 - Columns that fit on the display start at the left edge instead of being centered, so the first column stays in place when a width change makes the strip fit.
 
