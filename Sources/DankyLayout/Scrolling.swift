@@ -149,11 +149,11 @@ extension Workspace {
         return path.count > 1 && moveInTree(direction)
     }
 
-    /// `join-with` in the strip: left and right put the window into the neighbouring column, at that column's
-    /// width; up and down work as in any tree, within the column.
+    /// `join-with` in the strip: left and right put the window into the neighbouring column, at that
+    /// column's width. Columns only stack top to bottom, so up and down do nothing.
     mutating func joinInStrip(_ direction: Direction) -> Bool {
         guard direction.orientation == .horizontal, let focused, let column = root.path(of: focused)?.first else {
-            return joinInTree(direction)
+            return false
         }
         let neighbour = column + (direction.isForward ? 1 : -1)
         guard root.children.indices.contains(neighbour) else { return false }

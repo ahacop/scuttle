@@ -38,7 +38,7 @@ extension Command {
             description: "Move the focused window in a direction: left and right swap columns or take a window out "
                 + "of its column into a new one, up and down move it within its column."),
         Doc(syntax: "join-with <left|down|up|right>",
-            description: "Put the focused window into the neighbouring column, left or right, or join it with its neighbour within its column."),
+            description: "Put the focused window into the neighbouring column, left or right. Up and down do nothing."),
         Doc(syntax: "resize <smart|width|height> <+N|-N>",
             description: "Grow or shrink the focused window by N points: smart and width change its column's width, height its share of the column."),
         Doc(syntax: "switch-preset-column-width",
@@ -47,14 +47,11 @@ extension Command {
         Doc(syntax: "maximize-column",
             description: "Widen the focused column to the whole screen, or give a maximized column back its width. "
                 + "The column stays in the strip."),
-        Doc(syntax: "layout <tiles|accordion|horizontal|vertical|auto|h_tiles|v_tiles|h_accordion|v_accordion|floating|tiling>... [--window-id <id>]",
-            description: "Set the layout of the focused window's container, or float or tile the window. "
+        Doc(syntax: "layout <tiles|accordion|floating|tiling>... [--window-id <id>]",
+            description: "Stack the focused window's column as tiles or as an accordion, or float or tile the window. "
                 + "--window-id selects a managed window from list-windows --all instead, without focusing it. "
-                + "tiles and accordion set the mode, horizontal, vertical and auto (follow the container's longer side) "
-                + "the orientation, h_accordion and the like both. The container is the window's column. "
                 + "With several, apply the one after the last that describes the window now, so 'layout floating tiling' "
-                + "and 'layout tiles accordion' toggle. "
-                + "An auto container counts as the orientation it follows now."),
+                + "and 'layout tiles accordion' toggle."),
         Doc(syntax: "fullscreen",
             description: "Toggle the focused window filling the workspace, over the strip. The strip is kept."),
         Doc(syntax: "flatten-workspace-tree",

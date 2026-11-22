@@ -24,6 +24,8 @@ final class Animator: NSObject {
     private var watchdog: Timer?
     private var spring = Spring(response: 0.15, damping: 0.9)
     private var timeout = 1.0
+    /// Whether sizes go to their targets at once, only positions gliding. See `FrameAnimation.snapsSize`.
+    private var snapsSize = true
     /// Where windows came to rest the last time they were written unanimated, by the frame they were asked for.
     /// An app that snaps to a grid (Terminal) or keeps a minimum size never reaches its tile exactly, and
     /// must not be sent gliding towards it on every pass.
@@ -46,6 +48,9 @@ final class Animator: NSObject {
         timeout = max(1, 4 * response)
     }
 
+    /// Whether sizes glide too, or jump to the target while positions glide.
+    func setResize(glides: Bool) { snapsSize = !glides }
+
     /// Whether danky is moving the window right now, so its frame changes are not the user's.
     func isAnimating(_ id: WindowID) -> Bool { entries[id] != nil }
 
@@ -62,7 +67,7 @@ final class Animator: NSObject {
                 entries[id]!.animation.retarget(target)
                 entries[id]!.key = key
             } else if let start = starts[id], let pid = pids[id], !isResting(id, at: start, for: target) {
-                entries[id] = Entry(animation: FrameAnimation(from: start, to: target), pid: pid, key: key)
+                entries[id] = Entry(animation: FrameAnimation(from: start, to: target, snapsSize: snapsSize), pid: pid, key: key)
             }
         }
         finishes[key] = finish

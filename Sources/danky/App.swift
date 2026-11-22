@@ -172,22 +172,22 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         menu.addItem(submenu("Focus", directions("focus")))
         menu.addItem(submenu("Move Window", directions("move")))
-        menu.addItem(submenu("Join With", directions("join-with")))
-        menu.addItem(submenu("Resize", items([
-            ("Grow", "resize smart +50"), ("Shrink", "resize smart -50"),
+        menu.addItem(submenu("Join Column", items([
+            ("Left", "join-with left"), ("Right", "join-with right"),
+        ])))
+        menu.addItem(submenu("Column Width", items([
+            ("Next Preset", "switch-preset-column-width"), ("Maximize", "maximize-column"), nil,
             ("Wider", "resize width +50"), ("Narrower", "resize width -50"),
-            ("Taller", "resize height +50"), ("Shorter", "resize height -50"), nil,
-            ("Next Preset Width", "switch-preset-column-width"), ("Maximize Column", "maximize-column"),
         ])))
-        menu.addItem(submenu("Layout", items([
-            ("Tiles", "layout tiles"), ("Accordion", "layout accordion"), nil,
-            ("Horizontal", "layout horizontal"), ("Vertical", "layout vertical"),
-            ("Follow Longer Side", "layout auto"), nil,
-            ("Toggle Floating", "layout floating tiling"),
+        menu.addItem(submenu("Window Height", items([
+            ("Taller", "resize height +50"), ("Shorter", "resize height -50"),
         ])))
+        menu.addItem(submenu("Column Layout", items([
+            ("Tiles", "layout tiles"), ("Accordion", "layout accordion"),
+        ])))
+        menu.addItem(item("Toggle Floating", "layout floating tiling"))
         menu.addItem(item("Fullscreen", "fullscreen"))
-        menu.addItem(item("Balance Sizes", "balance-sizes"))
-        menu.addItem(item("Flatten Workspace Tree", "flatten-workspace-tree"))
+        menu.addItem(item("Reset Sizes", "balance-sizes"))
         menu.addItem(.separator())
 
         menu.addItem(submenu("Display", items([

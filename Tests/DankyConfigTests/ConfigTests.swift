@@ -23,7 +23,6 @@ struct ConfigTests {
         #expect(config.followAppActivation == FollowAppActivation())
         #expect(config.floatWindowsWithoutFullscreen)
         #expect(config.accordion.padding == 30)
-        #expect(config.accordion.orientation == .auto)
         #expect(config.gaps == Gaps())
         #expect(config.displays == [])
         #expect(config.borders.enabled)
@@ -46,7 +45,8 @@ struct ConfigTests {
         #expect(try main[KeyCombo("alt-shift-f")]?.commands == ["fullscreen"])
         #expect(main.count == 39)
         #expect(try config.modes["service"]!.bindings[KeyCombo("esc")]?.commands == ["reload-config", "mode main"])
-        #expect(try config.modes["service"]!.bindings[KeyCombo("alt-shift-j")]?.commands == ["join-with down", "mode main"])
+        #expect(try config.modes["service"]!.bindings[KeyCombo("alt-shift-l")]?.commands == ["join-with right", "mode main"])
+        #expect(config.blockNativeFullscreen)
     }
 
     @Test func `Shipped file is the defaults plus rules and bindings`() throws {
@@ -292,7 +292,7 @@ struct ConfigTests {
         assertError("[gaps]\ninner = 'wide'\n", path: "gaps.inner", line: 2, contains: "expected an integer")
         assertError("workspaces = true\n", path: "workspaces", line: 1, contains: "expected an integer")
         assertError("gaps = 8\n", path: "gaps", line: 1, contains: "expected a table")
-        assertError("[accordion]\norientation = 'sideways'\n", path: "accordion.orientation", line: 2, contains: "'auto', 'keep'")
+        assertError("block-native-fullscreen = 'yes'\n", path: "block-native-fullscreen", line: 1, contains: "true or false")
     }
 
     @Test func `Negative sizes load as written, with warnings`() throws {
@@ -351,9 +351,9 @@ struct ConfigTests {
     }
 
     @Test func accordion() throws {
-        let accordion = try Config.parse("[accordion]\npadding = 12\norientation = 'keep'\n").accordion
+        let accordion = try Config.parse("[accordion]\npadding = 12\n").accordion
         #expect(accordion.padding == 12)
-        #expect(accordion.orientation == .keep)
+        assertError("[accordion]\norientation = 'keep'\n", path: "accordion.orientation", line: 2, contains: "unknown key")
     }
 
     @Test func scrolling() throws {
@@ -607,13 +607,17 @@ struct ConfigTests {
         [animations]
         enabled = false
         duration-ms = 300
+        resize = 'glide'
         [drag]
         placeholders = false
         """)
         #expect(!config.animations.enabled)
         #expect(config.animations.durationMs == 300)
+        #expect(config.animations.resize == .glide)
+        #expect(Animations().resize == .instant, "sizes jump by default, only positions glide")
         #expect(!config.drag.placeholders)
         assertError("[drag]\nsplit-trigger = 'alt'\n", path: "drag.split-trigger", line: 2, contains: "unknown key")
+        assertError("[animations]\nresize = 'slow'\n", path: "animations.resize", line: 2, contains: "'instant', 'glide'")
         assertError("[animations]\nduration-ms = -1\n", path: "animations.duration-ms", line: 2, contains: "0 to 1000")
         assertError("[drag]\nghost = true\n", path: "drag.ghost", line: 2, contains: "unknown key")
     }

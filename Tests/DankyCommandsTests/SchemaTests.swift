@@ -52,6 +52,7 @@ struct SchemaTests {
         follow-space-order = true
         default-tiling = true
         float-windows-without-fullscreen = false
+        block-native-fullscreen = false
         fullscreen-width = 0.8
         lone-window-width = 0.75
 
@@ -75,7 +76,6 @@ struct SchemaTests {
 
         [accordion]
         padding = 20
-        orientation = 'keep'
 
         [scrolling]
         column-width = 0.5
@@ -136,6 +136,7 @@ struct SchemaTests {
         [animations]
         enabled = true
         duration-ms = 100
+        resize = 'glide'
 
         [drag]
         placeholders = false

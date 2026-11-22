@@ -14,6 +14,7 @@ extension Config {
     default-tiling = true           # false leaves workspaces untiled unless overridden
     follow-app-activation = true    # Cmd-Tab and Dock clicks switch Spaces the fast way
     float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like float
+    block-native-fullscreen = true  # macOS full screen becomes danky's fullscreen on the window's workspace
     fullscreen-width = 1.0          # share of the width a fullscreen window, or a window alone, takes, centred
     # lone-window-width = 0.75      # lone windows only; omitted uses the resolved fullscreen-width
 
@@ -35,7 +36,6 @@ extension Config {
 
     [accordion]                     # a column switched to `layout accordion`
     padding = 30                    # maximum points the neighbours peek out by
-    orientation = 'auto'            # auto: run along the container's longer side | keep
 
     [gaps]
     inner = 8                       # or { horizontal = 8, vertical = 8 }
@@ -80,7 +80,8 @@ extension Config {
 
     [animations]
     enabled = true                  # windows glide to their tiles; off while Reduce Motion is on
-    duration-ms = 150               # roughly how long a window takes to arrive
+    duration-ms = 200               # roughly how long a window takes to arrive
+    resize = 'instant'              # instant: sizes jump, positions glide (smooth everywhere) | glide: sizes glide too
 
     [drag]
     placeholders = true             # outline where a dragged tile came from and the tile it will swap with
@@ -153,8 +154,6 @@ extension Config {
     esc = ['reload-config', 'mode main']
     r = ['flatten-workspace-tree', 'mode main']
     alt-shift-h = ['join-with left', 'mode main']
-    alt-shift-j = ['join-with down', 'mode main']
-    alt-shift-k = ['join-with up', 'mode main']
     alt-shift-l = ['join-with right', 'mode main']
     """
 }

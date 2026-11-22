@@ -73,6 +73,11 @@
         }
       ]
     },
+    "block-native-fullscreen": {
+      "type": "boolean",
+      "default": true,
+      "description": "Bring a window that enters macOS's native full screen straight back to its workspace and show it with danky's fullscreen instead, so every window stays on a danky workspace."
+    },
     "float-windows-without-fullscreen": {
       "type": "boolean",
       "default": true,
@@ -104,19 +109,13 @@
     "accordion": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The accordion layout.",
+      "description": "A column switched to layout accordion.",
       "properties": {
         "padding": {
           "type": "integer",
           "minimum": 0,
           "default": 30,
           "description": "Maximum points by which neighbouring windows peek out; shrinks in narrow containers to leave content and respect recorded window minima."
-        },
-        "orientation": {
-          "type": "string",
-          "enum": ["auto", "keep"],
-          "default": "auto",
-          "description": "What a container's orientation becomes when it switches to accordion: auto runs along its longer side, keep keeps the orientation it had."
         }
       }
     },
@@ -224,8 +223,14 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1000,
-          "default": 150,
+          "default": 200,
           "description": "Roughly how long a window takes to arrive. 0 jumps."
+        },
+        "resize": {
+          "type": "string",
+          "enum": ["instant", "glide"],
+          "default": "instant",
+          "description": "instant sets a window's new size at once and glides only its position, which is smooth in every app. glide changes the size a step each frame too, smooth only in apps that redraw that fast."
         }
       }
     },

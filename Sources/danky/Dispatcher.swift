@@ -216,14 +216,14 @@ enum Dispatcher {
     }
 
     /// Applies the layout after the last that describes the window now (see `nextLayout`): floating or tiling
-    /// for the window, or a mode, an orientation or both for its container, its column. Anything but floating tiles a floating window first.
+    /// for the window, or tiles or accordion for its column. Anything but floating tiles a floating window first.
     private static func layout(_ names: [LayoutName], window: WindowID?) -> Reply {
         guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
         let id = window ?? coordinator.focusedWindow
         guard let floating = coordinator.isFloating(id) else { return .error("layout: no window danky manages is focused") }
         var current: [LayoutName] = floating ? [.floating] : [.tiling]
-        if !floating, let (container, axis) = coordinator.layoutContainer(of: id) {
-            current += LayoutName.describing(container.mode, axis: axis, auto: container.orientation == .auto)
+        if !floating, let (container, _) = coordinator.layoutContainer(of: id) {
+            current.append(LayoutName.describing(container.mode))
         }
         let name = nextLayout(in: names, current: current)
         switch name {
@@ -231,7 +231,7 @@ enum Dispatcher {
             coordinator.setFloating(id, name == .floating)
         default:
             if floating { coordinator.setFloating(id, false) }
-            coordinator.command(on: id) { $0.setLayout(name.mode, name.orientation) }
+            if let mode = name.mode { coordinator.command(on: id) { $0.setMode(mode) } }
         }
         return .ok("layout \(name.rawValue)")
     }

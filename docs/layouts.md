@@ -39,23 +39,27 @@ Each column keeps its own width, a share of the display.
 
 Dragging a column's left or right edge sets its width too.
 
+macOS's own full screen would put the window on a Space of its own, outside
+every workspace, so danky brings it straight back and shows it with
+`fullscreen` instead. `block-native-fullscreen = false` leaves it to macOS.
+
+Windows glide to their new places in `[animations] duration-ms`. An app has to
+redraw its contents for every size it is given, and few keep up with one a
+frame, so by default (`resize = 'instant'`) a window takes its new size at once
+and only its position glides. `resize = 'glide'` animates the size as well.
+
 ## Tiles and accordion
 
-A column holds one window or several. Several share it as tiles, top to
-bottom, or as an accordion, which gives it to the focused window, with the
+A column holds one window or several, always stacked top to bottom. Several
+share it as tiles, or as an accordion, which gives it to the focused window, with the
 others peeking out by up to `padding` points on each side. Peeks shrink in
 narrow columns to leave usable content and respect recorded window minima.
 Focus a neighbour and it comes to the front.
 
 <figure>
-{% include figures/tiles.svg %}
-{% include figures/accordion-h.svg %}
 {% include figures/accordion-v.svg %}
-<figcaption>The same three windows as tiles, as an accordion, and as a vertical one.</figcaption>
+<figcaption>Three windows in an accordion column.</figcaption>
 </figure>
-
-A column also has an axis: `horizontal`, `vertical`, or `auto`, the longer
-side of its rectangle. `layout vertical` turns it.
 
 ## Switching
 
@@ -64,7 +68,6 @@ side of its rectangle. `layout vertical` turns it.
 | Command | Changes | Of |
 |---|---|---|
 | `layout tiles\|accordion` | the mode | the focused window's column. |
-| `layout horizontal\|vertical\|auto` | the axis | the same column. |
 | `layout floating\|tiling` | tiled or not | the focused window. |
 | `flatten-workspace-tree` | every column back to one window each | the workspace. |
 

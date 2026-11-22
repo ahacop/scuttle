@@ -6,9 +6,6 @@ public struct Workspace: Equatable, Sendable {
     public var bounds: CGRect
     public var gaps: Gaps
     public var accordionPadding: CGFloat
-    /// Whether a container switching to accordion follows its longer side (`auto`), unless a `layout` command
-    /// chose its orientation.
-    public var autoOrientAccordions: Bool
     /// The strip. The root is always a horizontal container of columns, possibly empty.
     public internal(set) var root: Container
     /// The focused window, if any.
@@ -39,11 +36,10 @@ public struct Workspace: Equatable, Sendable {
     public var walls: Set<Direction> = []
 
     /// An empty workspace.
-    public init(bounds: CGRect, gaps: Gaps = .zero, accordionPadding: CGFloat = 30, autoOrientAccordions: Bool = false) {
+    public init(bounds: CGRect, gaps: Gaps = .zero, accordionPadding: CGFloat = 30) {
         self.bounds = bounds
         self.gaps = gaps
         self.accordionPadding = accordionPadding
-        self.autoOrientAccordions = autoOrientAccordions
         root = Container(.horizontal)
     }
 
@@ -179,29 +175,13 @@ public struct Workspace: Equatable, Sendable {
         layout.containerRects[path] ?? gaps.inset(bounds)
     }
 
-    /// Set the layout mode of the focused window's parent container. Ratios are kept, so tiles come back as they were.
-    public mutating func setMode(_ mode: LayoutMode) { setLayout(mode, nil) }
-
-    /// Set the orientation of the focused window's parent container, and remember that it was chosen.
-    public mutating func setOrientation(_ orientation: ContainerOrientation) { setLayout(nil, orientation) }
-
-    /// Set the mode, the orientation or both of the focused window's parent container, then tidy the tree once,
-    /// so the container is not merged into its parent halfway. With `autoOrientAccordions`, a container becoming
-    /// an accordion turns `auto` unless a command chose its orientation.
-    public mutating func setLayout(_ mode: LayoutMode?, _ orientation: ContainerOrientation?) {
+    /// Set the layout mode of the focused window's column: its windows stacked top to bottom as tiles, or as an
+    /// accordion. Ratios are kept, so tiles come back as they were. A window alone in its column has no container
+    /// to change.
+    public mutating func setMode(_ mode: LayoutMode) {
         isFullscreen = false
-        // The strip itself stays a row of columns; a window alone in its column has no container to change.
         guard let focused, let path = root.path(of: focused), path.count > 1 else { return }
-        root.modify(at: Array(path.dropLast())) { c in
-            if let mode {
-                if mode == .accordion, c.mode != .accordion, autoOrientAccordions, !c.orientationChosen { c.orientation = .auto }
-                c.mode = mode
-            }
-            if let orientation {
-                c.orientation = orientation
-                c.orientationChosen = true
-            }
-        }
+        root.modify(at: Array(path.dropLast())) { $0.mode = mode }
         normalize()
     }
 

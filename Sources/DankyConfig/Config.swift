@@ -22,6 +22,9 @@ public struct Config: Equatable {
     public var followAppActivation = FollowAppActivation()
     /// Float standard windows whose fullscreen button is missing or disabled, as AeroSpace does.
     public var floatWindowsWithoutFullscreen = true
+    /// Bring windows straight back out of macOS's native full screen, showing them with danky's `fullscreen`
+    /// on their workspace instead, so every window stays on a danky workspace.
+    public var blockNativeFullscreen = true
     /// The share of the width inside the outer gaps a fullscreen window takes, centred.
     /// 1 fills the width. `[display.<pattern>]` and workspace tables override it.
     public var fullscreenWidth = 1.0
@@ -158,6 +161,7 @@ public struct Config: Equatable {
         }
         followAppActivation = try FollowAppActivation(t, "follow-app-activation") ?? followAppActivation
         floatWindowsWithoutFullscreen = try t.bool("float-windows-without-fullscreen") ?? floatWindowsWithoutFullscreen
+        blockNativeFullscreen = try t.bool("block-native-fullscreen") ?? blockNativeFullscreen
         fullscreenWidth = try t.windowWidth("fullscreen-width") ?? fullscreenWidth
         loneWindowWidth = try t.windowWidth("lone-window-width")
         accordion = try t.table("accordion").map(Accordion.init) ?? accordion
@@ -268,16 +272,9 @@ extension Table {
     }
 }
 
-/// What a container's orientation becomes when it switches to accordion: `auto`, following its longer side,
-/// or `keep`, the orientation it had. An orientation chosen with a `layout` command is always kept.
-public enum AccordionOrientation: String, CaseIterable {
-    case auto, keep
-}
-
 public struct Accordion: Equatable {
     /// Points by which neighbouring windows peek out.
     public var padding = 30
-    public var orientation = AccordionOrientation.auto
 
     public init() {}
 
@@ -288,7 +285,6 @@ public struct Accordion: Equatable {
             t.warn("padding", "should be 0 or more; still read as \(padding)",
                    fix: ConfigFix(replace: String(padding), with: "0"))
         }
-        orientation = try t.choice("orientation") ?? orientation
         try t.done()
     }
 }
@@ -453,10 +449,19 @@ public enum SpaceSwitch: String, CaseIterable {
 }
 
 /// `[animations]`: windows glide to their tiles instead of jumping. Off while macOS's Reduce Motion is on.
+/// How a window's size changes while it glides to its tile.
+public enum ResizeAnimation: String, CaseIterable {
+    /// The size is set once, at the start, and only the position glides: smooth in every app.
+    case instant
+    /// The size glides with the position, one new size a frame: smooth only in apps that redraw that fast.
+    case glide
+}
+
 public struct Animations: Equatable {
     public var enabled = true
     /// Roughly how long a window takes to reach its tile. 0 jumps, as with animations off.
-    public var durationMs = 150
+    public var durationMs = 200
+    public var resize = ResizeAnimation.instant
 
     public init() {}
 
@@ -464,6 +469,7 @@ public struct Animations: Equatable {
         enabled = try t.bool("enabled") ?? enabled
         durationMs = try t.int("duration-ms") ?? durationMs
         guard (0...1000).contains(durationMs) else { throw ConfigError(path: t.path("duration-ms"), "must be 0 to 1000") }
+        resize = try t.choice("resize") ?? resize
         try t.done()
     }
 }

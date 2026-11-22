@@ -19,7 +19,7 @@ public enum Command: Equatable, Sendable {
     case joinWith(Direction)
     case resize(ResizeDimension, by: Int)
     /// One layout, or several to cycle through: the one after the last that describes the current state wins,
-    /// so `layout floating tiling` and `layout horizontal vertical` toggle between the two.
+    /// so `layout floating tiling` and `layout tiles accordion` toggle between the two.
     case layout([LayoutName])
     case fullscreen
     /// Step the focused column through the preset widths, as niri's `switch-preset-column-width`.
@@ -87,41 +87,23 @@ public func nextLayout<Name: Equatable>(in names: [Name], current: [Name]) -> Na
     return names[(last + 1) % names.count]
 }
 
-/// A state for `layout`, as in AeroSpace: a mode, an orientation or both for the focused window's container,
-/// or floating or tiling for the window.
+/// A state for `layout`: tiles or accordion for the focused window's column, or floating or tiling for the window.
 public enum LayoutName: String, Equatable, Sendable {
-    case tiles, accordion, horizontal, vertical, auto
-    case hTiles = "h_tiles", vTiles = "v_tiles", hAccordion = "h_accordion", vAccordion = "v_accordion"
+    case tiles, accordion
     case floating, tiling
 
-    /// The container mode this sets, nil if it leaves the mode alone.
+    /// The column mode this sets, nil for floating and tiling.
     public var mode: LayoutMode? {
         switch self {
-        case .tiles, .hTiles, .vTiles: .tiles
-        case .accordion, .hAccordion, .vAccordion: .accordion
-        default: nil
+        case .tiles: .tiles
+        case .accordion: .accordion
+        case .floating, .tiling: nil
         }
     }
 
-    /// The states a tiled window's container is in: its mode, the axis it runs along now, both together,
-    /// and `auto` when it follows its longer side.
-    public static func describing(_ mode: LayoutMode, axis: Orientation, auto: Bool) -> [LayoutName] {
-        let horizontal = axis == .horizontal
-        let both: LayoutName = switch mode {
-        case .tiles: horizontal ? .hTiles : .vTiles
-        case .accordion: horizontal ? .hAccordion : .vAccordion
-        }
-        return [mode == .tiles ? .tiles : .accordion, horizontal ? .horizontal : .vertical, both] + (auto ? [.auto] : [])
-    }
-
-    /// The container orientation this sets, nil if it leaves the orientation alone.
-    public var orientation: ContainerOrientation? {
-        switch self {
-        case .horizontal, .hTiles, .hAccordion: .horizontal
-        case .vertical, .vTiles, .vAccordion: .vertical
-        case .auto: .auto
-        default: nil
-        }
+    /// The state a tiled window's column is in.
+    public static func describing(_ mode: LayoutMode) -> LayoutName {
+        mode == .tiles ? .tiles : .accordion
     }
 }
 

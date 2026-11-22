@@ -78,11 +78,9 @@ struct ParseTests {
         #expect(try parse("layout tiling") == .layout([.tiling]))
         #expect(try parse("layout floating tiling") == .layout([.floating, .tiling]))
         #expect(try parse("layout accordion tiles") == .layout([.accordion, .tiles]))
-        #expect(try parse("layout horizontal vertical") == .layout([.horizontal, .vertical]))
-        #expect(try parse("layout auto") == .layout([.auto]))
-        #expect(try parse("layout accordion horizontal vertical") == .layout([.accordion, .horizontal, .vertical]))
-        #expect(try parse("layout h_tiles v_tiles h_accordion v_accordion") == .layout([.hTiles, .vTiles, .hAccordion, .vAccordion]))
-        #expect(try parse("layout floating h_accordion auto") == .layout([.floating, .hAccordion, .auto]))
+        #expect(throws: CommandError.self) { try parse("layout horizontal") }
+        #expect(throws: CommandError.self) { try parse("layout auto") }
+        #expect(throws: CommandError.self) { try parse("layout h_accordion") }
         #expect(throws: CommandError.self) { try parse("layout scrolling") }
         #expect(throws: CommandError.self) { try parse("layout master") }
         #expect(throws: CommandError.self) { try parse("layout dwindle") }
@@ -98,28 +96,22 @@ struct ParseTests {
     }
 
     @Test func `Several layouts cycle from the last that describes the window`() {
-        let cycle: [LayoutName] = [.tiles, .accordion, .vertical]
-        #expect(nextLayout(in: cycle, current: [.tiling, .tiles, .horizontal, .hTiles]) == .accordion)
-        #expect(nextLayout(in: cycle, current: [.tiling, .accordion, .horizontal, .hAccordion]) == .vertical)
-        #expect(nextLayout(in: cycle, current: [.tiling, .tiles, .vertical, .vTiles]) == .tiles)
-        #expect(nextLayout(in: cycle, current: [.floating]) == .tiles, "none describes it")
+        let toggle: [LayoutName] = [.tiles, .accordion]
+        #expect(nextLayout(in: toggle, current: [.tiling, .tiles]) == .accordion)
+        #expect(nextLayout(in: toggle, current: [.tiling, .accordion]) == .tiles)
+        #expect(nextLayout(in: toggle, current: [.floating]) == .tiles, "none describes it")
         let floating: [LayoutName] = [.floating, .tiling]
         #expect(nextLayout(in: floating, current: [.tiling, .tiles]) == .floating)
         #expect(nextLayout(in: floating, current: [.floating]) == .tiling)
         #expect(nextLayout(in: [LayoutName.accordion], current: [.tiling, .accordion]) == .accordion)
     }
 
-    @Test func `Layout names set mode, orientation or both`() {
-        #expect(LayoutName.hAccordion.mode == .accordion)
-        #expect(LayoutName.hAccordion.orientation == .horizontal)
-        #expect(LayoutName.vertical.mode == nil)
-        #expect(LayoutName.auto.orientation == .auto)
-        #expect(LayoutName.tiles.orientation == nil)
-    }
-
-    @Test func `Layout states describe the resolved axis`() {
-        #expect(LayoutName.describing(.accordion, axis: .vertical, auto: true) == [.accordion, .vertical, .vAccordion, .auto])
-        #expect(LayoutName.describing(.tiles, axis: .horizontal, auto: false) == [.tiles, .horizontal, .hTiles])
+    @Test func `Layout names set the column mode`() {
+        #expect(LayoutName.accordion.mode == .accordion)
+        #expect(LayoutName.tiles.mode == .tiles)
+        #expect(LayoutName.floating.mode == nil)
+        #expect(LayoutName.describing(.accordion) == .accordion)
+        #expect(LayoutName.describing(.tiles) == .tiles)
     }
 
     @Test func `Simple commands`() throws {

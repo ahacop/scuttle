@@ -25,17 +25,30 @@ public struct Spring: Equatable, Sendable {
 }
 
 /// One window moving from where it is to its tile: x, y, width and height each on the same spring,
-/// so shared edges of neighbouring windows move together.
+/// so shared edges of neighbouring windows move together. With `snapsSize`, the size goes to the target's at
+/// once and only the position glides: an app redraws its contents for every new size, and most cannot keep up
+/// with one a frame, so a size change in steps stutters where a move alone does not.
 public struct FrameAnimation: Equatable, Sendable {
+    public let snapsSize: Bool
     private var target: CGRect
     private var value: [Double]
     private var velocity: [Double] = [0, 0, 0, 0]
     /// Seconds since the target last changed, to give up on one that never settles.
     private var age: Double = 0
 
-    public init(from start: CGRect, to target: CGRect) {
+    public init(from start: CGRect, to target: CGRect, snapsSize: Bool = false) {
         self.target = target
+        self.snapsSize = snapsSize
         value = Self.components(start)
+        snapSize()
+    }
+
+    private mutating func snapSize() {
+        guard snapsSize else { return }
+        value[2] = Double(target.width)
+        value[3] = Double(target.height)
+        velocity[2] = 0
+        velocity[3] = 0
     }
 
     /// The frame now, rounded to whole points so a pure move does not jitter the size.
@@ -48,6 +61,7 @@ public struct FrameAnimation: Equatable, Sendable {
         guard new != target else { return }
         target = new
         age = 0
+        snapSize()
     }
 
     /// Advance by `dt` seconds. True once at rest on the target, or after `timeout` seconds.

@@ -30,6 +30,7 @@ file is left alone, with the read error shown in the menu.
 | `follow-space-order` | `false` | Set `true` to renumber workspaces when you reorder Spaces in Mission Control: on each display the leftmost Space becomes its lowest-numbered workspace, and windows stay where they are. Left `false`, a workspace keeps its number, and the next arrangement (a config reload, a display change, a Space removed) moves its windows back to that number's place. |
 | `default-tiling` | `true` | Set `false` to leave workspaces untiled unless overridden. |
 | `follow-app-activation` | `true` | Cmd-Tab and Dock clicks switch Spaces the fast way. Needs the macOS "switch to a Space with open windows" setting off. Write it as a [`[follow-app-activation]`](#follow-app-activation) table to leave some apps unfollowed. |
+| `block-native-fullscreen` | `true` | A window that enters macOS's native full screen (the green button, Control-Command-F) is brought straight back to its workspace, keeping its column, and shown with danky's `fullscreen` instead, so every window stays on a danky workspace. `false` leaves full-screen Spaces to macOS. |
 | `float-windows-without-fullscreen` | `true` | Float windows that can't go full screen, such as Finder's copy progress, About This Mac and Calculator. Terminals and editors that can hide their title bar still tile. A `layout tiling` rule tiles a window anyway. |
 | `fullscreen-width` | `1.0` | The share of the width, inside the outer gaps, that a `fullscreen` window takes, centred. A window alone on a workspace takes it too unless `lone-window-width` is set. `0.1` to `1`. [`[display.<pattern>]`](#displaypattern) and [`[workspace.<number>]`](#workspacenumber) override it. |
 | `lone-window-width` | resolved `fullscreen-width` | The centred width of a window alone on a workspace, independently of `fullscreen`. `0.1` to `1`. Resolves from the workspace's tables, then the most specific matching display override, then the top level. If unset at every level, uses the resolved `fullscreen-width`. |
@@ -151,7 +152,6 @@ do nothing while it holds one window.
 | Key | Default | |
 |---|---|---|
 | `padding` | `30` | Maximum points the neighbours peek out by, 0 or more; a negative value gives a warning but is still used as written. It shrinks to leave window content in narrow containers and respect recorded window minima. |
-| `orientation` | `'auto'` | On switching to accordion, `'auto'` runs along the container's longer side; `'keep'` keeps its orientation. An orientation set with `layout` is always kept. |
 
 </div>
 
@@ -372,7 +372,8 @@ swipe is macOS's own.
 | Key | Default | |
 |---|---|---|
 | `enabled` | `true` | Windows glide to their tiles instead of jumping. Off while macOS's Reduce Motion is on. |
-| `duration-ms` | `150` | Roughly how long a window takes to arrive, up to 1000. `0` jumps. |
+| `duration-ms` | `200` | Roughly how long a window takes to arrive, up to 1000. `0` jumps. |
+| `resize` | `'instant'` | How a window's size changes on the way. `'instant'` sets the new size at once and glides only the position, smooth in every app. `'glide'` changes the size a step each frame too, which only apps that redraw that fast keep up with; others stutter. |
 
 </div>
 
@@ -560,6 +561,7 @@ follow-space-order = false      # true renumbers workspaces when you reorder Spa
 default-tiling = true           # false leaves workspaces untiled unless overridden
 follow-app-activation = true    # Cmd-Tab and Dock clicks switch Spaces the fast way
 float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like float
+block-native-fullscreen = true  # macOS full screen becomes danky's fullscreen on the window's workspace
 fullscreen-width = 1.0          # share of the width a fullscreen window, or a window alone, takes, centred
 # lone-window-width = 0.75      # lone windows only; omitted uses the resolved fullscreen-width
 
@@ -581,7 +583,6 @@ preset-column-widths = [0.33333, 0.5, 0.66667]   # what switch-preset-column-wid
 
 [accordion]                     # a column switched to `layout accordion`
 padding = 30                    # maximum points the neighbours peek out by
-orientation = 'auto'            # auto: run along the container's longer side | keep
 
 [gaps]
 inner = 8                       # or { horizontal = 8, vertical = 8 }
@@ -626,7 +627,8 @@ vertical = false                # up and down too; always native, so macOS may a
 
 [animations]
 enabled = true                  # windows glide to their tiles; off while Reduce Motion is on
-duration-ms = 150               # roughly how long a window takes to arrive
+duration-ms = 200               # roughly how long a window takes to arrive
+resize = 'instant'              # instant: sizes jump, positions glide (smooth everywhere) | glide: sizes glide too
 
 [drag]
 placeholders = true             # outline where a dragged tile came from and the tile it will swap with
@@ -699,7 +701,5 @@ alt-shift-semicolon = 'mode service'
 esc = ['reload-config', 'mode main']
 r = ['flatten-workspace-tree', 'mode main']
 alt-shift-h = ['join-with left', 'mode main']
-alt-shift-j = ['join-with down', 'mode main']
-alt-shift-k = ['join-with up', 'mode main']
 alt-shift-l = ['join-with right', 'mode main']
 ```

@@ -50,4 +50,16 @@ struct AnimationTests {
         #expect(a.step(spring, dt: 0.1, timeout: 0.1) == true)
         #expect(a.frame == rect(1000, 0, 100, 100))
     }
+
+    @Test func `A snapped size is the target's from the first frame while the position glides`() {
+        var a = FrameAnimation(from: rect(0, 0, 500, 500), to: rect(400, 0, 300, 600), snapsSize: true)
+        #expect(a.frame.size == CGSize(width: 300, height: 600))
+        let frames = run(&a)
+        #expect(frames.allSatisfy { $0.size == CGSize(width: 300, height: 600) })
+        #expect(frames.count > 2, "the position still glides")
+        #expect(frames.last == rect(400, 0, 300, 600))
+        a.retarget(rect(0, 0, 800, 600))
+        #expect(a.frame.size == CGSize(width: 800, height: 600), "a new target's size is taken at once too")
+    }
 }
+

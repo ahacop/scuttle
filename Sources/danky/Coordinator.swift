@@ -56,6 +56,8 @@ final class Coordinator {
     var adoptTargets: [WindowID: String] = [:]
     /// New windows on their way to the focused display, kept out of the trees until they arrive.
     var adopting: Set<WindowID> = []
+    /// Windows danky asked to leave native full screen, with when it last asked. See NativeFullscreen.swift.
+    var leavingFullscreen: [WindowID: Date] = [:]
     /// The tiled window being dragged with the mouse, until the button is released, and its tile when the drag
     /// began: a tile that changes during the drag must not make the drop look like a resize. See Drag.swift.
     var drag: (id: WindowID, start: CGRect)?
@@ -140,6 +142,7 @@ final class Coordinator {
             for window in model.windows.values where window.isDocument { windowFacts.refresh(window) }
         }
         animator.setDuration(ms: config.animations.durationMs)
+        animator.setResize(glides: config.animations.resize == .glide)
         updateBorders()
         guard updatesWindows else { return false }
         configureWorkspaces()
@@ -338,7 +341,6 @@ final class Coordinator {
     private func configureWorkspaces() {
         for key in workspaces.keys {
             workspaces[key]!.accordionPadding = CGFloat(config.accordion.padding)
-            workspaces[key]!.autoOrientAccordions = config.accordion.orientation == .auto
             workspaces[key]!.columnWidth = config.scrolling.columnWidth
             workspaces[key]!.presetColumnWidths = config.scrolling.presetColumnWidths
             workspaces[key]!.fullscreenWidth = fullscreenWidth(for: key)
@@ -387,7 +389,23 @@ final class Coordinator {
             placements[window.id] = Placement(floating: settlement?.floating ?? classification.floating, space: nil)
             if !classification.runsRules, adopt(window) { return }
         }
-        guard !adopting.contains(window.id), !placements[window.id]!.floating else { return }
+        guard !adopting.contains(window.id) else { return }
+        // On a native full-screen Space, the window keeps its tile until danky has brought it back.
+        if holdOutOfNativeFullscreen(window) { return }
+        // Back from it: into its workspace's tree if the full-screen Space took it out, then danky's fullscreen.
+        // Still on its way (not yet ordered in), it is looked at again on its next event.
+        if leavingFullscreen[window.id] != nil, !isNativeFullscreenSpace(window.spaceID), window.isNormal {
+            let key = key(of: window)
+            let old = placements[window.id]!.space
+            if let key, old != key, !placements[window.id]!.floating {
+                if let old { edit(old) { $0.remove(window.id) } }
+                edit(key) { $0.insert(window.id) }
+                placements[window.id]!.space = key
+            }
+            finishLeavingNativeFullscreen(window.id, in: key)
+            return
+        }
+        guard !placements[window.id]!.floating else { return }
         let old = placements[window.id]!.space
         if let old, window.isMinimized || !window.isOrderedIn, takeOverTile(of: window.id, in: old) {
             placements[window.id]!.space = nil
@@ -414,6 +432,7 @@ final class Coordinator {
         notTabs.remove(id)
         minimizedIDs.remove(id)
         focusDeparture.forget(id)
+        leavingFullscreen[id] = nil
         guard let placement = placements.removeValue(forKey: id), let space = placement.space,
               !takeOverTile(of: id, in: space) else { return }
         edit(space) { $0.remove(id) }
@@ -534,8 +553,7 @@ final class Coordinator {
         let key = window.spaceID
         if workspaces[key] == nil {
             workspaces[key] = Workspace(bounds: area(of: display), gaps: gaps(on: display),
-                                        accordionPadding: CGFloat(config.accordion.padding),
-                                        autoOrientAccordions: config.accordion.orientation == .auto)
+                                        accordionPadding: CGFloat(config.accordion.padding))
             workspaces[key]!.columnWidth = config.scrolling.columnWidth
             workspaces[key]!.presetColumnWidths = config.scrolling.presetColumnWidths
             workspaces[key]!.fullscreenWidth = fullscreenWidth(for: key)

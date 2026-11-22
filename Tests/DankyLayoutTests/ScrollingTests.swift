@@ -278,11 +278,22 @@ struct ScrollingCommandTests {
     @Test func `Layout commands leave the strip alone`() {
         var ws = strip(2)
         ws.setMode(.accordion)
-        ws.setOrientation(.vertical)
         #expect(shape(ws.root) == "h[1 2]")
         ws.join(.left)
         ws.setMode(.accordion)
         #expect(shape(ws.root) == "h[av[1 2]]")
+    }
+
+    @Test func `Columns only stack top to bottom`() {
+        var ws = strip(3)
+        ws.join(.left)
+        #expect(shape(ws.root) == "h[1 v[2 3]]")
+        #expect(ws.join(.up) == false)
+        #expect(ws.join(.down) == false)
+        #expect(shape(ws.root) == "h[1 v[2 3]]", "no side-by-side split inside a column")
+        ws.setMode(.accordion)
+        ws.setMode(.tiles)
+        #expect(shape(ws.root) == "h[1 v[2 3]]")
     }
 
     @Test func `A swipe goes to the next column until the last`() {
