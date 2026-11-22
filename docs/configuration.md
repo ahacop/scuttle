@@ -8,7 +8,8 @@ permalink: /configuration/
 # Configuration
 
 The config file is `~/.config/scuttle/scuttle.toml`. It is created on first run
-and reloaded each time it is saved. A symlink is followed, and replacing the
+and reloaded each time it is saved. To open it, choose **Edit Config…** in the
+menu. A symlink is followed, and replacing the
 link also causes a reload. If the link points to a missing file, the current
 config stays in use and the error is shown in the menu.
 

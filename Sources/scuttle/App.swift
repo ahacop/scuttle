@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import ScuttleConfig
 import ScuttlePrivate
 import Sparkle
@@ -199,6 +200,10 @@ final class ScuttleApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         menu.addItem(item("Clear Saved Minimum Sizes", "clear-minimum-sizes"))
+        let edit = NSMenuItem(title: "Edit Config…", action: #selector(editConfig(_:)), keyEquivalent: "")
+        edit.target = self
+        edit.toolTip = Config.userConfigURL.path
+        menu.addItem(edit)
         menu.addItem(item("Reload Config", "reload-config"))
         let enabled = item("Enabled", "enable toggle")
         enabled.state = state.enabled ? .on : .off
@@ -251,6 +256,16 @@ final class ScuttleApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let it = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         it.submenu = menu
         return it
+    }
+
+    /// Opens the config file in the app set to open it, or, as `.toml` often has none, the default text editor.
+    @objc private func editConfig(_ sender: Any?) {
+        let url = Config.userConfigURL, workspace = NSWorkspace.shared
+        guard let editor = workspace.urlForApplication(toOpen: url) ?? workspace.urlForApplication(toOpen: .plainText) else {
+            workspace.open(url)
+            return
+        }
+        workspace.open([url], withApplicationAt: editor, configuration: NSWorkspace.OpenConfiguration())
     }
 
     @objc private func checkForUpdates(_ sender: Any?) {

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Edit Config…** in the menu opens the config file in your text editor.
 - Borders stay visible and resize with their windows during animations, instead of disappearing until the window arrives.
 - `scuttle version` prints the app's version when run through Homebrew's `scuttle` command, instead of `dev (0)`.
 
