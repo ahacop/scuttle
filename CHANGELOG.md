@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2
 
 - New setting `[modifiers] mod`: the modifier for every default binding, `alt` by default. In a binding, `mod` stands for it, as in `mod-h`. With `mod = 'ctrl-alt'`, `mod-h` is Control-Option-H. The default bindings in new configs are written with `mod`. Bindings written with `alt` are unchanged, so existing configs work as before.
 - The manual at [ahacop.github.io/scuttle](https://ahacop.github.io/scuttle/) is rewritten, and has a light, dark and system theme switch.
