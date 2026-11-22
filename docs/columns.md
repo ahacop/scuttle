@@ -11,8 +11,8 @@ Every tiled workspace is a strip of columns that can be wider than the
 display, as in [niri](https://github.com/YaLTeR/niri). Each column contains one
 window and is as tall as the display. A new window is placed in a new column to
 the right of the focused one, at `column-width`. When a column is focused, the
-strip is scrolled just enough to show all of it. Columns that fit on the
-display are centered, including a single column.
+strip is scrolled just enough to show all of it. If all columns fit on the
+display, the first one starts at the left edge, including a single column.
 
 <figure class="wide">
 {% include figures/scrolling.svg %}

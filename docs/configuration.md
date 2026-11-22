@@ -111,7 +111,8 @@ fullscreen-width = 0.8
 
 Every tiled workspace is a strip of columns that can be wider than the display.
 A new window is placed in a new column to the right of the focused one, at
-`column-width`. Columns that fit on the display are centered. When a column is
+`column-width`. If all columns fit on the display, the first one starts at the
+left edge. When a column is
 focused, the strip is scrolled just enough to show all of it. The commands for
 changing widths are covered in [Columns](columns.md).
 

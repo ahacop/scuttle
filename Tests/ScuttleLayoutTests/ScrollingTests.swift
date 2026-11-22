@@ -22,21 +22,34 @@ private func lefts(_ ws: Workspace) -> [CGFloat] {
 }
 
 struct ScrollingGeometryTests {
-    @Test func `A lone column keeps its width, centred`() {
-        #expect(strip(1).layout().frames[1] == rect(238, 0, 525, 600), "half the screen, as niri opens it")
+    @Test func `A lone column keeps its width, flush left`() {
+        #expect(strip(1).layout().frames[1] == rect(-peek, 0, 525, 600), "half the screen, as niri opens it")
         #expect(strip(1, width: 1).layout().frames[1] == rect(-peek, 0, 1000 + 2 * peek, 600), "a full-width one fills it")
     }
 
-    @Test func `Columns that fit are centred`() {
+    @Test func `Columns that fit start at the left edge`() {
         let ws = strip(2, width: 0.49)
-        #expect(ws.layout().frames[1] == rect(10, 0, 490, 600))
-        #expect(ws.layout().frames[2] == rect(500, 0, 490, 600))
+        #expect(ws.layout().frames[1] == rect(-peek, 0, 490, 600))
+        #expect(ws.layout().frames[2] == rect(465, 0, 490, 600))
+    }
+
+    @Test func `Narrowing a column that makes the strip fit leaves the first column where it was`() {
+        // As in the bug report: a half and a two-thirds column scroll; Alt-R wraps the first to a third and they fit.
+        var ws = strip(2)
+        ws.focus(1)
+        ws.setWidth(ofColumn: 0, 0.66667)
+        ws.reveal(1)
+        let before = ws.layout().frames[1]!.minX
+        ws.setWidth(ofColumn: 0, 0.33333)
+        ws.reveal(1)
+        #expect(ws.layout().frames[1]!.minX == before)
+        #expect(before == -peek)
     }
 
     @Test func `Inner and outer gaps match on both sides`() {
         let ws = strip(2, width: 0.49, gaps: Gaps(all: 10))
-        #expect(ws.layout().frames[1] == rect(15, 10, 480, 580))
-        #expect(ws.layout().frames[2] == rect(505, 10, 480, 580))
+        #expect(ws.layout().frames[1] == rect(-15, 10, 480, 580))
+        #expect(ws.layout().frames[2] == rect(475, 10, 480, 580))
     }
 
     @Test func `A new column opens right of the focused one and scrolls into view`() {
@@ -120,7 +133,7 @@ struct ScrollingGeometryTests {
         var ws = strip(3)
         ws.remove(3)
         #expect(ws.focused == 2)
-        #expect(lefts(ws) == [0, 500])
+        #expect(lefts(ws) == [-25, 475], "two that fit, from the left edge")
     }
 
 }
@@ -149,7 +162,7 @@ struct ScrollingCommandTests {
         var ws = strip(2)
         ws.resize(by: 200)
         ws.balanceSizes()
-        #expect(lefts(ws) == [0, 500])
+        #expect(lefts(ws) == [-25, 475])
     }
 
     @Test func `A swipe goes to the next column until the last`() {

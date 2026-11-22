@@ -2,7 +2,8 @@ import CoreGraphics
 
 // The scrolling layout, after niri's: the root is a row of columns, one window each and as tall as the screen,
 // each as wide as its own share of the screen whatever the number of columns, so the row runs past the
-// screen edges and scrolls to keep the focused column in view. Columns that fit, a lone one too, are centred, and focusing a column scrolls just far enough to show it whole.
+// screen edges and scrolls to keep the focused column in view. Columns that fit, a lone one too, start at the left
+// outer gap, as niri lays them out, and focusing a column scrolls just far enough to show it whole.
 //
 // macOS cannot clip another app's window at the screen edge, so a window scrolled out of view is parked
 // instead: on an edge with nothing beyond it, it hangs off the screen with `peek` points left on, in a gutter
@@ -65,11 +66,11 @@ extension Workspace {
 
     /// The scroll offset the layout uses. The strip never scrolls past either end, and the column at an end
     /// reaches into the gutter there, which nothing is parked in, out to the outer gap. A strip that fits
-    /// between the outer gaps is centred.
+    /// between the outer gaps starts at the left one, so changing a column's width never moves the first column.
     func offset(for spans: [(start: CGFloat, width: CGFloat)], in area: CGRect) -> CGFloat {
         let total = spans.last.map { $0.start + $0.width } ?? 0, inset = gaps.inset(bounds)
         let first = area.minX - inset.minX, last = total - area.width - (inset.maxX - area.maxX)
-        guard first < last else { return (first + (total - inset.width) / 2).rounded() }
+        guard first < last else { return first }
         return min(max(scrollOffset, first), last)
     }
 

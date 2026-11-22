@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Columns that fit on the display start at the left edge instead of being centered, so the first column stays in place when a width change makes the strip fit.
+
 ## 0.2
 
 - New setting `[modifiers] mod`: the modifier for every default binding, `alt` by default. In a binding, `mod` stands for it, as in `mod-h`. With `mod = 'ctrl-alt'`, `mod-h` is Control-Option-H. The default bindings in new configs are written with `mod`. Bindings written with `alt` are unchanged, so existing configs work as before.
