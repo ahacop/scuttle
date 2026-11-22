@@ -1,0 +1,18 @@
+# Starts with three half-width columns A B C on an empty workspace, A focused.
+sleep 0.5
+switch-preset-column-width
+sleep 0.9
+switch-preset-column-width
+sleep 0.9
+switch-preset-column-width
+sleep 0.9
+maximize-column
+sleep 0.9
+maximize-column
+sleep 0.9
+focus right
+sleep 0.9
+move left
+sleep 0.9
+move right
+sleep 0.9
