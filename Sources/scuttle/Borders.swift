@@ -21,16 +21,11 @@ final class BorderManager {
     private var flushScheduled = false
     /// Whether a delayed focus check is on its way: a burst of activations and reorders needs only one.
     private var refocusScheduled = false
-    /// Whether scuttle is animating the window, when its border only follows moves: redrawing it at every
-    /// size of a resize costs more than a frame.
-    private let isAnimating: (UInt32) -> Bool
     private let decorates: (Window, Borders) -> Bool
 
-    init(config: Borders, model: WindowModel, displays: [Display], isAnimating: @escaping (UInt32) -> Bool,
-         decorates: @escaping (Window, Borders) -> Bool) {
+    init(config: Borders, model: WindowModel, displays: [Display], decorates: @escaping (Window, Borders) -> Bool) {
         self.config = config
         self.model = model
-        self.isAnimating = isAnimating
         self.decorates = decorates
         visibleSpaces = Self.visibleSpaces(on: displays)
         focusedID = scuttle_border_focused_window()
@@ -139,7 +134,7 @@ final class BorderManager {
         scheduleFlush()
     }
 
-    /// Windows that finished animating: their borders catch up with any size they skipped.
+    /// Windows that finished animating: their borders are placed once more at the final frame.
     func arrived(_ ids: [UInt32]) { sync(ids) }
 
     private func sync<S: Sequence<UInt32>>(_ ids: S) {
@@ -167,8 +162,7 @@ final class BorderManager {
         let focused = window.id == focusedID
         let border = borders[window.id] ?? BorderWindow(target: window.id)
         borders[window.id] = border
-        border.update(window, color: focused ? config.activeColor : config.inactiveColor, config: config,
-                      moveOnly: isAnimating(window.id))
+        border.update(window, color: focused ? config.activeColor : config.inactiveColor, config: config)
     }
 
     private func refocus() {

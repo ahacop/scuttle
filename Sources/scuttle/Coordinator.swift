@@ -161,7 +161,6 @@ final class Coordinator {
     private func updateBorders() {
         if enabled, config.borders.enabled {
             borders = borders ?? BorderManager(config: config.borders, model: model, displays: displays.displays,
-                                               isAnimating: { [unowned self] id in animator.isAnimating(id) },
                                                decorates: { [windowFacts] window, config in windowFacts.decorates(window, config: config) })
             borders?.update(config: config.borders)
         } else {

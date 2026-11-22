@@ -39,12 +39,12 @@ final class BorderWindow {
     /// Whether `id` is one of this border's own windows.
     func owns(_ id: UInt32) -> Bool { scuttle_border_owns(&border, id) }
 
-    /// Place and draw the border around `window`. With `moveOnly`, a border whose shape would change hides instead,
-    /// as redrawing it at every size of a resize costs more than a frame; a new colour alone is drawn, once.
-    func update(_ window: Window, color: ScuttleConfig.Color, config: Borders, moveOnly: Bool = false) {
+    /// Place and draw the border around `window`, redrawn only when its look changed. During an animated resize
+    /// this runs once a frame per window: a redraw costs about 2 ms more than a move (scripts/border-bench.sh), and a
+    /// border hidden until its window arrived flickered off and on with every resize.
+    func update(_ window: Window, color: ScuttleConfig.Color, config: Borders) {
         let look = Look(size: window.frame.size, cornerRadius: window.cornerRadius,
                         color: color, width: config.width)
-        if moveOnly, drawn?.with(color: color) != look { return hide() }
         let scale = backingScale(of: window.frame)
         if scale != self.scale { recreate(scale: scale) }
         guard created else { return }
