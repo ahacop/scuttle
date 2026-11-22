@@ -16,29 +16,31 @@ $ scuttle switch-preset-column-width
 ```
 
 scuttle is a tiling window manager for macOS. Each workspace is a native Space,
-and switching between them takes about 70 ms instead of half a second. Windows
-on a workspace are arranged as a strip of full-height columns, one window per
-column, in the style of [niri](https://github.com/YaLTeR/niri). It has preset
-column widths, focus borders, a TOML config, and a `scuttle` command for
-scripts and status bars. It doesn't inject code into the Dock.
+and switching between them takes about 70 ms instead of half a second. The
+windows on a workspace are arranged as a strip of full-height columns, one
+window per column, in the style of [niri](https://github.com/YaLTeR/niri).
+Columns have preset widths, the focused window has a colored border, settings
+are kept in a TOML file, and a `scuttle` command is available for scripts and
+status bars. No code is injected into the Dock.
 
-macOS still draws every window. scuttle moves and resizes windows through the
-Accessibility API, and animates them by moving them a step at a time. macOS
-can't clip a window, so a column scrolled out of view hangs over the edge of
-the display.
+scuttle isn't a compositor, and windows are drawn the usual way. Windows are moved and resized through the
+Accessibility API, and animation is done by moving a window a step at a time.
+Windows can't be clipped on macOS, so a column scrolled out of view is left
+partly over the edge of the display.
 
 scuttle is early software. Its author uses it every day on macOS 27, but expect
 bugs.
 
-> **Private APIs.** macOS has no public API to switch Spaces quickly or move a
-> window to another Space, so scuttle uses a synthetic Dock swipe and some
-> private SkyLight functions. A macOS update can break them.
+> **Private APIs.** macOS has no public API for switching Spaces quickly or for
+> moving a window to another Space, so a synthetic Dock swipe and some private
+> SkyLight functions are used instead. They may stop working after a macOS
+> update.
 
 ## Requirements
 
 - macOS 15 or later, on Apple silicon or Intel. Intel Macs are supported up to
   macOS 26.
-- Accessibility permission. scuttle asks for it the first time it runs.
+- Accessibility permission. You are asked for it the first time scuttle is opened.
 
 ## Install
 
@@ -63,41 +65,42 @@ IDENTITY="Apple Development: Your Name (TEAMID)" just install
 open build/scuttle.app
 ```
 
-`just install` builds and signs `build/scuttle.app` and links the command into
-`~/.local/bin`. Sign it with the same identity every time (list yours with
-`security find-identity -p codesigning`). macOS ties the Accessibility
-permission to the signature, so an unsigned build loses it on every rebuild.
+With `just install`, `build/scuttle.app` is built and signed, and the `scuttle`
+command is linked into `~/.local/bin`. Sign it with the same identity every
+time (list yours with `security find-identity -p codesigning`). The
+Accessibility permission is tied to the app's signature, so an unsigned build
+loses it on every rebuild.
 
 ## First run
 
-On first run, scuttle writes `~/.config/scuttle/scuttle.toml` and asks for
-Accessibility permission. It also offers once to turn off the macOS setting
-"When switching to an application, switch to a Space with open windows" in
-System Settings > Desktop & Dock > Mission Control. With that setting off,
-Cmd-Tab and Dock clicks switch Spaces quickly instead of sliding, as long as
-scuttle is running. You can say no.
+On first run, `~/.config/scuttle/scuttle.toml` is created and Accessibility
+permission is requested. You are also offered, once, the option to turn off the
+macOS setting "When switching to an application, switch to a Space with open
+windows" in System Settings > Desktop & Dock > Mission Control. With that
+setting off and scuttle running, switching apps with Cmd-Tab or the Dock moves
+to the app's Space quickly instead of sliding. You can decline.
 
-This is a macOS setting, so it stays off after you quit or disable scuttle. If
-switching to an app with Cmd-Tab, the Dock or a launcher shows only its menu bar
-and not its window, turn the setting back on.
+This is a macOS setting, so it stays off after scuttle is quit or disabled. If
+only an app's menu bar appears when you switch to it with Cmd-Tab, the Dock or
+a launcher, and its window doesn't, turn the setting back on.
 
 Also turn off "Automatically rearrange Spaces based on most recent use" in the
-same place. Otherwise workspace numbers change on their own. `scuttle doctor`
-warns while it is on.
+same place. Otherwise the workspace numbers change on their own. A warning is
+listed by `scuttle doctor` while it is on.
 
-The menu bar shows the current workspace number. The menu has the common
-commands with their keys, and lists the other key bindings under Other Key
-Bindings. `scuttle doctor` checks the config and the macOS settings scuttle
-needs.
+The current workspace number is shown in the menu bar. The common commands and
+their keys are in the menu, and the other key bindings are listed under Other
+Key Bindings. Use `scuttle doctor` to check the config and the macOS settings
+scuttle needs.
 
 Run only one tiling window manager at a time. If AeroSpace, Amethyst, yabai or
-KiwiDesk is also running, they undo each other's work. scuttle shows `!` in the
-menu bar and names the one to quit.
+KiwiDesk is also running, each one's changes are undone by the other. A `!` is
+shown in the menu bar, and the one to quit is named in the menu.
 
 ### Magnet and Rectangle
 
-scuttle keeps tiled windows in their columns, even when another app moves them.
-To place a window with Magnet or Rectangle, float it first with
+Tiled windows are kept in their columns, even after being moved with another
+app. To place a window with Magnet or Rectangle, float it first with
 `scuttle layout floating`, or turn scuttle off with `scuttle enable off`. Use
 `scuttle layout tiling` or `scuttle enable on` to go back. To make a window
 cover its workspace, use [`scuttle fullscreen`](commands.md).
@@ -121,20 +124,21 @@ defaults write com.apple.dock workspaces-auto-swoosh -bool true && killall Dock
 
 ## Known limits
 
-- Docking has been tested with virtual displays more than with real ones.
-  Switching workspaces on a display the pointer isn't on can make the pointer
-  flicker.
-- On macOS 26, scuttle can't create or remove desktops. Add them in
+- Docking has been tested with virtual displays more than with real ones. The
+  pointer can flicker when you switch workspaces on a display the pointer isn't
+  on.
+- On macOS 26, desktops aren't created or removed automatically. Add them in
   [Mission Control](configuration.md#desktop-setup-on-macos-26). On macOS 27
-  and later, scuttle keeps one Space per workspace and leaves extra Spaces that
-  still have windows alone.
-- Some apps refuse some sizes, such as Safari's minimum width or Terminal's
-  character grid. scuttle lays out around them, but windows can overlap or
-  leave gaps. scuttle learns an app's minimum size when a window stays the same
-  size after two different resizes, so an app's first window may overlap its
-  neighbor until then. Clear Saved Minimum Sizes in the menu forgets what it
-  learned.
-- macOS can't focus a window on another Space, so scuttle switches Space first.
+  and later, there is one Space per workspace, and extra Spaces that still have
+  windows are left alone.
+- Some apps have size limits, such as Safari's minimum width or Terminal's
+  character grid. Columns are sized around these limits, but windows can still
+  overlap or leave gaps. An app's minimum size is recorded once one of its
+  windows stays the same size after two different resizes, so an app's first
+  window may overlap its neighbor until then. The recorded sizes are cleared
+  with Clear Saved Minimum Sizes in the menu.
+- A window on another Space can't be focused directly, so its Space is switched
+  to first.
 
 ## Credits
 

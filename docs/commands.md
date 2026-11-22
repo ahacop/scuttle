@@ -7,32 +7,32 @@ permalink: /commands/
 
 # Commands
 
-Key bindings, rules, hooks, the menu and `scuttle <command>` all use the same
-commands. `scuttle help` lists them.
+The same commands are used in key bindings, rules, hooks, the menu and
+`scuttle <command>`. Run `scuttle help` to list them.
 
 <div class="wide-table" markdown="1">
 
 | Command | |
 |---|---|
-| `workspace <n\|prev\|next>` | Switch to a workspace and focus its display. `prev` and `next` move through the focused display's workspaces and stop at the first and last. |
+| `workspace <n\|prev\|next>` | Switch to a workspace and focus its display. With `prev` and `next`, the focused display's workspaces are stepped through, without wrapping past the first or last. |
 | `workspace-back-and-forth` | Switch to the previous workspace. |
-| `move-window-to-workspace <n\|prev\|next> [--follow] [--window-id <id>]` | Move the focused window, or the window with that ID, to a workspace. With `--follow`, switch there too. |
+| `move-window-to-workspace <n\|prev\|next> [--follow] [--window-id <id>]` | Move the focused window, or the window with that ID, to a workspace. With `--follow`, also switch to it. |
 | `move-window-to-display <next\|prev> [--follow] [--window-id <id>]` | Move the window to the workspace on another display. |
-| `focus <left\|down\|up\|right> [--boundaries <b>] [--boundaries-action <a>]` | Focus the next column in that direction. `up` and `down` only go to another display. `--boundaries` is `workspace` (the default) or `all-monitors-outer-frame`, which lets focus continue onto the next display. `--boundaries-action` says what happens at the edge: `stop` (the default), `fail`, `wrap-around-the-workspace` (or `--wrap-around`), or `wrap-around-all-monitors`, which needs `all-monitors-outer-frame`. |
+| `focus <left\|down\|up\|right> [--boundaries <b>] [--boundaries-action <a>]` | Move focus to the next column in that direction. With `up` and `down`, focus can only move to another display. `--boundaries` is `workspace` (the default) or `all-monitors-outer-frame`, with which focus can continue onto the next display. With `--boundaries-action`, choose what happens at the edge: `stop` (the default), `fail`, `wrap-around-the-workspace` (or `--wrap-around`), or `wrap-around-all-monitors`, which requires `all-monitors-outer-frame`. |
 | `focus-monitor <left\|down\|up\|right\|next\|prev\|n>` | Focus a display. |
 | `move <left\|right>` | Swap the focused column with the one next to it. |
 | `resize width <+n\|-n>` | Make the focused column n points wider or narrower. |
-| `switch-preset-column-width` | Set the focused column to the next width in [`preset-column-widths`](configuration.md#scrolling) that is wider than it is now. After the widest, go back to the narrowest. |
-| `maximize-column` | Make the focused column as wide as the display. Run it again to restore its width. The other columns stay in the strip. |
-| `layout <floating\|tiling>... [--window-id <id>]` | Float the window, or tile it in a new column. `layout floating tiling` switches between the two. |
-| `fullscreen` | Show the focused window over the whole workspace, or turn that off. This is not macOS full screen. [`fullscreen-width`](configuration.md#top-level) makes it narrower. |
+| `switch-preset-column-width` | Set the focused column to the next width in [`preset-column-widths`](configuration.md#scrolling) that is wider than its current width. After the widest, the narrowest is next. |
+| `maximize-column` | Make the focused column as wide as the display. Run it again to restore the previous width. The other columns stay in the strip. |
+| `layout <floating\|tiling>... [--window-id <id>]` | Float the window, or tile it in a new column. Use `layout floating tiling` to switch between the two. |
+| `fullscreen` | Show the focused window over the whole workspace, or turn that off. This is not macOS full screen. Its width is set by [`fullscreen-width`](configuration.md#top-level). |
 | `balance-sizes` | Set every column to `column-width`. |
-| `clear-minimum-sizes` | Forget the minimum window sizes scuttle has learned, and lay out every workspace again. |
+| `clear-minimum-sizes` | Clear the recorded minimum window sizes and lay out every workspace again. |
 | `reload-config` | Reload the config file. |
-| `enable <on\|off\|toggle>` | Turn scuttle on or off. Off puts windows back where they were before scuttle tiled them, removes borders, and turns off key bindings, so turn it back on from the menu or with `scuttle enable on`. While off, scuttle ignores new windows, rules, Spaces and workspaces. When you turn it on, it tiles the windows that opened in the meantime, on the workspaces they are on. |
+| `enable <on\|off\|toggle>` | Turn scuttle on or off. When it is off, windows are put back where they were before they were tiled, borders are removed, and key bindings are turned off, so turn it back on from the menu or with `scuttle enable on`. While it is off, new windows, rules, Spaces and workspaces are ignored. When it is turned back on, windows opened in the meantime are tiled on the workspaces they are on. |
 | `list-workspaces`, `list-windows`, `list-monitors`, `list-displays` | See [Scripting](#scripting). `list-displays` is the same as `list-monitors`. |
 | `debug-state` | Print scuttle's state as JSON, for bug reports. |
-| `exec-and-forget <shell command>` | Run a shell command with `/bin/sh -c` and don't wait for it. Its output goes to the log. |
+| `exec-and-forget <shell command>` | Run a shell command with `/bin/sh -c` without waiting for it. Its output is written to the log. |
 
 </div>
 
@@ -43,30 +43,32 @@ workspaces.
 
 ### If a workspace switch gets stuck
 
-scuttle waits for macOS to confirm each Space switch before it sends the next
-one. If the log says `waiting for pending Space`, a switch timed out and later
-switches are waiting for it. If switching stays stuck, quit scuttle, run
+Each Space switch has to be confirmed before the next one is sent. If
+the log contains `waiting for pending Space`, a switch has timed out and later
+switches are queued behind it. If switching is still stuck, quit scuttle, run
 `killall Dock`, and open scuttle again.
 
 ### Targeting a window
 
-`move-window-to-workspace`, `move-window-to-display` and `layout` take
-`--window-id <id>` before or after their other arguments. Without it, they act
-on the focused window, or on the new window when run from a rule. Find window
-IDs with `scuttle list-windows --all`.
+`--window-id <id>` can be given to `move-window-to-workspace`,
+`move-window-to-display` and `layout`, before or after their other arguments.
+Without it, the focused window is used, or the new window when the command is
+run from a rule. To list window IDs, run `scuttle list-windows --all`.
 
-Only tiled and floating windows on numbered workspaces can be targeted. Minimized,
-hidden, native full-screen and system windows can't. An ID that is out of date or
-can't be targeted is an error. These commands don't switch Spaces or change focus.
+Only tiled and floating windows on numbered workspaces can be targeted.
+Minimized, hidden, native full-screen and system windows can't. An ID that is
+out of date or can't be targeted is an error. Spaces and focus are not changed
+when a window is targeted by ID.
 
-With an ID, `move-window-to-workspace prev` and `next` count from the window's
-own workspace, on its display, and stop at the first and last. Without an ID,
-they count from the focused display's workspace, the same as `workspace`.
-`move-window-to-display` always counts from the window's display.
+With an ID, `prev` and `next` in `move-window-to-workspace` are counted from the
+window's own workspace, on its display, without wrapping. Without an ID, they
+are counted from the focused display's workspace, as with `workspace`. For
+`move-window-to-display`, displays are always counted from the window's
+display.
 
-Without `--follow`, focus stays where it is, even if you bring a window to the
-workspace you are on. With `--follow`, scuttle switches to the window's
-workspace and focuses it:
+Without `--follow`, focus stays where it is, even when a window is brought to
+the current workspace. With `--follow`, the window's workspace is switched to
+and the window is focused:
 
 ```sh
 scuttle move-window-to-workspace 3 --window-id 12345 --follow
@@ -74,30 +76,30 @@ scuttle move-window-to-workspace 3 --window-id 12345 --follow
 
 ## Command line
 
-The `scuttle` command sends a command to the running app. It exits with status
-1 if the command fails or the app isn't running. A command that has nothing to
-do still succeeds: `move left` on the leftmost column prints
-`move left: nothing to do` and exits 0.
+With `scuttle <command>`, a command is sent to the running app. The exit status
+is 1 if the command fails or the app isn't running. A command with nothing to
+do still counts as a success: for `move left` on the leftmost column,
+`move left: nothing to do` is printed and the exit status is 0.
 
-These commands only work on the command line:
+These commands are only available on the command line:
 
 | Command | |
 |---|---|
-| `app` | Run the app in the foreground and log to the terminal. |
+| `app` | Run the app in the foreground, with its log printed to the terminal. |
 | `doctor [--config <path>]` | Check the config and the macOS settings scuttle needs, and check that no other tiling window manager is running. |
-| `recover` | Put back windows that a crashed session left tiled. |
+| `recover` | Put back windows left tiled by a session that crashed. |
 | `debug events\|windows` | Print window events or the list of windows, without the app. |
 | `version`, `-v`, `--version` | Print the version and build number. |
 
 The log is `~/Library/Logs/scuttle.log`. Attach it to bug reports.
 
-`debug-state` gives frames as `[x, y, width, height]`. A frame scuttle couldn't
-read, for example while a window is closing, is `[]`.
+In `debug-state`, frames are written as `[x, y, width, height]`. A frame that
+couldn't be read, for example while a window is closing, is written as `[]`.
 
 ### The socket
 
-Scripts can send commands to the socket directly. Send one command per
-connection. The reply starts with `ok` or `error`.
+Commands can also be sent to the socket directly, one command per connection.
+The reply starts with `ok` or `error`.
 
 ```sh
 printf 'workspace 2\n' | nc -U "$TMPDIR/scuttle.sock"
@@ -105,36 +107,36 @@ printf 'workspace 2\n' | nc -U "$TMPDIR/scuttle.sock"
 
 A request is UTF-8 text up to 1 MiB and can contain newlines. After writing it,
 close the writing half of the connection (`shutdown(SHUT_WR)`) and read the
-reply until the connection closes. The `scuttle` command and macOS `nc` already
-do this; a newline alone doesn't end a request. scuttle rejects a request that
-is too large or isn't valid UTF-8, or that stops arriving for two seconds,
-without running it.
+reply until the connection is closed. When the `scuttle` command or macOS
+`nc` is used, this happens automatically. A newline alone does not mark the end of a request.
+A request is rejected without being run if it is larger than 1 MiB, isn't valid
+UTF-8, or has had no new data for two seconds.
 
-The `scuttle` command also rejects replies over 1 MiB and replies that aren't
-valid UTF-8, instead of printing part of them. In that case the command may
-still have run. To keep list replies small, use filters or `--format`.
+With the `scuttle` command, replies over 1 MiB and replies that aren't valid
+UTF-8 are rejected instead of being printed in part. In that case, the command
+may still have been run. To keep list replies small, use filters or `--format`.
 
 ## Recovery
 
-Before scuttle tiles a window, it records the window's frame and Space. When you
-run `enable off`, quit, kill scuttle or log out, it puts every window back. If a
+Before a window is tiled, its frame and Space are recorded. When you run
+`enable off`, quit, kill scuttle or log out, every window is put back. If a
 window can't be put back, for example because its display is gone or its app
-doesn't respond, scuttle tries again the next time you disable or quit it, or
-run `scuttle recover`, unless you have moved the window yourself.
+is unresponsive, it is tried again the next time scuttle is disabled or quit,
+or when you run `scuttle recover`, unless you have moved the window yourself.
 
-After a crash, the menu offers to put windows back, and so does
+After a crash, putting the windows back is offered in the menu and with
 `scuttle recover`. scuttle stays off until you run `scuttle enable on`.
 
-While Mission Control or App Exposé is open, scuttle doesn't move windows. It
-applies the changes when you close it, to visible workspaces at once and to the
-others when you switch to them. Disabling or quitting still puts windows back
-while Mission Control is open.
+While Mission Control or App Exposé is open, windows aren't moved. The changes
+are applied after it is closed: to visible workspaces right away, and to the
+others when you switch to them. Windows are still put back if scuttle is
+disabled or quit while Mission Control is open.
 
 ## Scripting
 
-The list commands use [AeroSpace](https://nikitabobko.github.io/AeroSpace/commands)'s
-names, flags and output format, so most AeroSpace bar scripts work after you
-change the command name.
+The list commands have the same names, flags and output format as
+[AeroSpace](https://nikitabobko.github.io/AeroSpace/commands)'s, so most
+AeroSpace bar scripts work once the command name is changed.
 
 <div class="wide-table" markdown="1">
 
@@ -146,10 +148,11 @@ change the command name.
 
 </div>
 
-Without a display flag, `list-workspaces` and `list-windows` only cover the
-focused display. `list-monitors` lists every display. `list-windows` leaves out
-windows an app has hidden instead of closing, such as a settings window you
-closed with Cmd-W that the app keeps in memory.
+Without a display flag, only the focused display is included in
+`list-workspaces` and `list-windows`. Every display is included in
+`list-monitors`. Windows that are hidden instead of closed, such as a
+settings window closed with Cmd-W but kept in memory, are left out of
+`list-windows`.
 
 Format variables:
 
@@ -162,15 +165,16 @@ Format variables:
   (always empty), `window-is-floating`, `window-is-fullscreen`, `app-name`,
   `app-bundle-id`, `app-pid`, and the workspace variables
 
-scuttle reads `%{window-title}` through Accessibility. It is empty if the app
-doesn't answer, or if the window is on a Space you haven't visited since
+`%{window-title}` is read through Accessibility. It is empty if the app is
+unresponsive, or if the window is on a Space that hasn't been visited since
 scuttle started.
 
-`%{monitor-is-main}` tells a bar which workspaces are on the main display.
+Use `%{monitor-is-main}` in a bar to find which workspaces are on the main
+display.
 
 ### SketchyBar
 
-Update a bar from the config's [hooks](configuration.md#hooks):
+To update a bar, use the config's [hooks](configuration.md#hooks):
 
 ```toml
 [hooks]
@@ -180,25 +184,26 @@ workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change WORK
 focus-changed = ['exec-and-forget sketchybar --trigger focus_changed']
 ```
 
-The workspace hooks set `SCUTTLE_WORKSPACE` (empty on a full-screen Space),
-`SCUTTLE_PREV_WORKSPACE` and `SCUTTLE_DISPLAY` (counting from 1).
-`workspace-changing` only runs for switches scuttle makes, so use it to show
-the workspace being switched to, and use `workspace-changed`, which always
-follows, to show where the switch ended. `exec-and-forget` has `scuttle` and
-Homebrew on its `PATH`.
+In the workspace hooks, `SCUTTLE_WORKSPACE` (empty on a full-screen Space),
+`SCUTTLE_PREV_WORKSPACE` and `SCUTTLE_DISPLAY` (counting from 1) are set.
+`workspace-changing` is only run for switches made by scuttle, so use it to
+show the workspace being switched to. Use `workspace-changed`, which is always
+run afterwards, to show where the switch ended. `scuttle` and Homebrew are on
+the `PATH` of `exec-and-forget` commands.
 
-With `follow-space-order`, `workspace-changed` can run with the same
-`SCUTTLE_WORKSPACE` and `SCUTTLE_PREV_WORKSPACE` when reordering changed which
-Space has that number. A bar should still redraw.
+With `follow-space-order`, `workspace-changed` can be run with the same
+`SCUTTLE_WORKSPACE` and `SCUTTLE_PREV_WORKSPACE` when reordering has changed
+which Space has that number. Redraw the bar in that case too.
 
 ### Docking
 
 For per-display workspace settings, use
 [`[workspace.<number>.display.<pattern>]`](configuration.md#workspacenumberdisplaypattern).
-For anything else, use the `display-changed` hook. It runs after a display
-connects or disconnects and scuttle has moved the workspaces, and sets
-`SCUTTLE_DISPLAYS` and `SCUTTLE_PREV_DISPLAYS` to the number of displays now
-and before. `scuttle list-monitors` lists them by name.
+For anything else, use the `display-changed` hook. It is run after a display is
+connected or disconnected and the workspaces have been moved.
+`SCUTTLE_DISPLAYS` and `SCUTTLE_PREV_DISPLAYS` are set to the number of
+displays now and before. To list the displays by name, run
+`scuttle list-monitors`.
 
 ```toml
 [hooks]

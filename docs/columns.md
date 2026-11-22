@@ -8,25 +8,28 @@ permalink: /columns/
 # Columns
 
 Every tiled workspace is a strip of columns that can be wider than the
-display, as in [niri](https://github.com/YaLTeR/niri). Each column holds one
-window and is as tall as the display. A new window opens as a new column to the
-right of the focused one, at `column-width`. When you focus a column, the strip
-scrolls just enough to show all of it. Columns that fit on the display are
-centered, including a single column.
+display, as in [niri](https://github.com/YaLTeR/niri). Each column contains one
+window and is as tall as the display. A new window is placed in a new column to
+the right of the focused one, at `column-width`. When a column is focused, the
+strip is scrolled just enough to show all of it. Columns that fit on the
+display are centered, including a single column.
 
 <figure class="wide">
 {% include figures/scrolling.svg %}
-<figcaption>Columns 2 and 3 are in view. macOS can't clip a window, so columns 1 and 4 hang over the display edges.</figcaption>
+<figcaption>Columns 2 and 3 are in view. Windows can't be clipped on macOS, so columns 1 and 4 are left partly over the display edges.</figcaption>
 </figure>
 
-<kbd>Alt-H</kbd> and <kbd>Alt-L</kbd> focus the column to the left and right.
-Add <kbd>Shift</kbd> to move the column instead.
+The keys on this page are the default bindings, with
+[`mod`](configuration.md#modifiers) set to Alt.
 
-Workspaces are stacked top to bottom, as in niri. <kbd>Alt-J</kbd> and
-<kbd>Alt-K</kbd> switch to the workspace below and above. <kbd>Alt-Shift-J</kbd>
-and <kbd>Alt-Shift-K</kbd> move the focused column to that workspace and switch
-to it. They stop at the first and last workspace. Each workspace is a native
-Space, so Mission Control still shows them side by side.
+Press <kbd>Alt-H</kbd> or <kbd>Alt-L</kbd> to move focus to the column on the
+left or right. Add <kbd>Shift</kbd> to move the column instead.
+
+Workspaces are stacked top to bottom, as in niri. Press <kbd>Alt-J</kbd> or
+<kbd>Alt-K</kbd> to switch to the workspace below or above. Press
+<kbd>Alt-Shift-J</kbd> or <kbd>Alt-Shift-K</kbd> to move the focused column to
+that workspace and switch to it. There is no wrapping past the first or last workspace. Each workspace is
+a native Space, so they still appear side by side in Mission Control.
 
 ```toml
 [scrolling]
@@ -38,30 +41,29 @@ preset-column-widths = [0.33333, 0.5, 0.66667]
 
 Each column has its own width, as a share of the display.
 
-The keys are the default bindings, with [`mod`](configuration.md#modifiers) set to Alt.
-
 | Command | Key | |
 |---|---|---|
-| `switch-preset-column-width` | <kbd>Alt-R</kbd> | Set the column to the next width in `preset-column-widths` that is wider than it is now. After the widest, go back to the narrowest. |
-| `maximize-column` | <kbd>Alt-F</kbd> | Make the column as wide as the display. Press again to restore its width. The other columns stay in the strip. |
+| `switch-preset-column-width` | <kbd>Alt-R</kbd> | Set the column to the next width in `preset-column-widths` that is wider than its current width. After the widest, the narrowest is next. |
+| `maximize-column` | <kbd>Alt-F</kbd> | Make the column as wide as the display. Run it again to restore the previous width. The other columns stay in the strip. |
 | `resize width +n` / `-n` | <kbd>Alt-=</kbd> <kbd>Alt--</kbd> | Make the column n points wider or narrower. The default bindings use 50. |
 | `fullscreen` | <kbd>Alt-Shift-F</kbd> | Show the window over the whole workspace. The columns keep their widths. |
 
-You can also drag the left or right edge of a window to change its column's
-width.
+A column's width can also be changed by dragging the left or right edge of its
+window.
 
-macOS full screen would move the window to a Space of its own, outside every
-workspace. scuttle moves it back and shows it with `fullscreen` instead. Set
-`block-native-fullscreen = false` to let macOS handle it.
+In macOS full screen, a window is moved to a Space of its own, outside every
+workspace. By default, such a window is put back on its workspace and shown
+with `fullscreen` instead. Set `block-native-fullscreen = false` to leave macOS
+full screen as it is.
 
-When windows move, they animate over `[animations] duration-ms`. Apps have to
-redraw for every new size, and many can't do that every frame. So by default
-(`resize = 'instant'`) a window takes its new size at once and only its
-position animates. `resize = 'glide'` animates the size too.
+Window moves are animated over `[animations] duration-ms`. Each new size
+requires a redraw of the window's contents, and in many apps that redraw takes
+longer than one frame. So by default (`resize = 'instant'`), a window is given its new size at once and only
+its position is animated. With `resize = 'glide'`, the size is animated too.
 
 ## Floating
 
-`layout floating` takes a window out of the strip. It stays where you put it.
-`layout tiling` puts it back in a new column, and `layout floating tiling`
-(<kbd>Alt-V</kbd>) switches between the two. Dialogs, sheets and panels always
-float.
+Use `layout floating` to take a window out of the strip. A floating window
+stays where you put it. Use `layout tiling` to put it back in a new column, or
+`layout floating tiling` (<kbd>Alt-V</kbd>) to switch between the two. Dialogs, sheets and panels
+are always floating.

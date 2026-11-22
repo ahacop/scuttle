@@ -19,8 +19,9 @@
   --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* The theme follows the system unless light or dark is chosen in the top bar, which sets data-theme on <html>. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #19191a;
     --bar: #232325;
@@ -33,6 +34,20 @@
     --code: #222224;
     --tile: #232325;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #19191a;
+  --bar: #232325;
+  --fg: #e8e8e5;
+  --dim: #9a9b96;
+  --line: #333335;
+  --accent: #3ccfac;
+  --cap: #2c2c2f;
+  --cap-edge: #4a4a4e;
+  --code: #222224;
+  --tile: #232325;
 }
 
 html {
@@ -89,6 +104,32 @@ a:focus-visible {
 .bar .repo {
   text-decoration: none;
   color: var(--dim);
+}
+
+.bar .end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme {
+  display: flex;
+  gap: 2px;
+}
+
+.theme button {
+  padding: 1px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  cursor: pointer;
+}
+
+.theme button[aria-pressed="true"] {
+  background: var(--fg);
+  color: var(--bg);
 }
 
 .spaces {

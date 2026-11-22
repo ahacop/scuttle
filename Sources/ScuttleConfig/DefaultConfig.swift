@@ -5,23 +5,23 @@ extension Config {
     public static let defaultTOML = """
     #:schema https://ahacop.github.io/scuttle/schemas/scuttle.json
     # ~/.config/scuttle/scuttle.toml. Saved changes take effect at once.
-    # A key you leave out keeps the value shown here.
+    # A key left out of this file has the value shown here.
     # Every key and command: https://ahacop.github.io/scuttle/configuration/
 
     start-at-login = true
     workspaces = 5                  # across all displays, one native Space each
-    follow-space-order = false      # true renumbers workspaces when you reorder Spaces in Mission Control
-    default-tiling = true           # false leaves workspaces untiled unless overridden
-    follow-app-activation = true    # Cmd-Tab and Dock clicks switch Spaces the fast way
-    float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like float
-    block-native-fullscreen = true  # macOS full screen becomes scuttle's fullscreen on the window's workspace
-    fullscreen-width = 1.0          # share of the width a fullscreen window, or a window alone, takes, centred
-    # lone-window-width = 0.75      # lone windows only; omitted uses the resolved fullscreen-width
+    follow-space-order = false      # true: workspaces are renumbered when Spaces are reordered in Mission Control
+    default-tiling = true           # false: workspaces aren't tiled unless [workspace.N] says so
+    follow-app-activation = true    # fast Space switching when you use Cmd-Tab or the Dock
+    float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like are floating
+    block-native-fullscreen = true  # macOS full screen is replaced with scuttle's fullscreen on the window's workspace
+    fullscreen-width = 1.0          # share of the display width for a fullscreen or lone window, centered
+    # lone-window-width = 0.75      # lone windows only; if omitted, fullscreen-width is used
 
     # Example: follow every app but one. Replaces the follow-app-activation line above.
     # [follow-app-activation]
     # enabled = true
-    # exclude-apps = ['com.synology.SynologyDrive']   # its menu bar popover counts as a window
+    # exclude-apps = ['com.synology.SynologyDrive']   # its menu bar popover is counted as a window
 
     # Example: only tile workspace 2.
     # default-tiling = false
@@ -32,15 +32,15 @@ extension Config {
 
     [scrolling]
     column-width = 0.5              # a new column's share of the display
-    preset-column-widths = [0.33333, 0.5, 0.66667]   # what switch-preset-column-width steps through
+    preset-column-widths = [0.33333, 0.5, 0.66667]   # the widths for switch-preset-column-width
 
 
     [gaps]
     inner = 8                       # or { horizontal = 8, vertical = 8 }
     outer = 8                       # or { top = 8, bottom = 8, left = 8, right = 8 }
 
-    # Display patterns: main, secondary, or part of a name as `scuttle list-displays` prints it.
-    # A workspace lives on the first display its patterns match, else on the main display.
+    # Display patterns: main, secondary, or part of a name as listed by `scuttle list-displays`.
+    # A workspace is placed on the first display that matches its patterns, else on the main display.
     # [workspace-to-display]
     # 5 = 'secondary'
 
@@ -48,8 +48,8 @@ extension Config {
     # [display.main]
     # gaps.outer.top = 44
     # [display.'DELL U3421WE']
-    # fullscreen-width = 0.55       # on an ultrawide, a fullscreen or lone window takes half the width
-    # lone-window-width = 0.75      # lone windows only; omitted uses the resolved fullscreen-width
+    # fullscreen-width = 0.55       # on an ultrawide, a fullscreen or lone window is about half the width
+    # lone-window-width = 0.75      # lone windows only; if omitted, fullscreen-width is used
 
     [borders]
     enabled = true
@@ -57,10 +57,10 @@ extension Config {
     active-color = '#e1e3e4'        # '#rrggbb' or '#rrggbbaa'
     inactive-color = '#494d64'
     order = 'below'                 # below | above (a click-through ring over the window)
-    exclude-apps = []               # bundle IDs whose windows get no border
+    exclude-apps = []               # bundle IDs of apps whose windows have no border
 
-    # Optional per-window decoration; independent of [[rules]] placement commands.
-    # Last match wins; [borders].enabled = false and exclude-apps always veto.
+    # Optional per-window border rules, separate from [[rules]]. If several match, the last one
+    # applies. [borders] enabled = false and exclude-apps take priority over them.
     # [[borders.rules]]
     # app-id = 'com.example.editor'
     # window-identifier = '^DocumentSettingsWindow$' # AXIdentifier, not a numeric window ID
@@ -68,24 +68,24 @@ extension Config {
 
     [focus-follows-mouse]
     enabled = false
-    delay-ms = 100                  # how long the pointer rests on a window before it takes focus
+    delay-ms = 100                  # how long the pointer has to stay on a window before it is focused
 
     [swipe]
-    enabled = false                 # the Spaces swipe focuses the next window of a tiled workspace first
-    space-switch = 'instant'        # instant (focus, then switch past the edge) | native (macOS also acts); native on macOS 27+
-    vertical = false                # up and down too; always native, so macOS may also open an overview
+    enabled = false                 # true: the Spaces swipe moves focus between columns first
+    space-switch = 'instant'        # instant (Space switch only past the last column) | native (macOS also gets the swipe); native on macOS 27+
+    vertical = false                # up and down too; these are always passed to macOS
 
     [animations]
-    enabled = true                  # windows glide to their tiles; off while Reduce Motion is on
-    duration-ms = 200               # roughly how long a window takes to arrive
-    resize = 'instant'              # instant: sizes jump, positions glide (smooth everywhere) | glide: sizes glide too
+    enabled = true                  # window moves are animated; off while Reduce Motion is on
+    duration-ms = 200               # about how long a move lasts
+    resize = 'instant'              # instant: only positions are animated | glide: sizes are animated too
 
     [drag]
-    placeholders = true             # outline where a dragged tile came from and the tile it will swap with
+    placeholders = true             # outlines on a dragged window's column and the column it will be swapped with
 
-    # mod is the modifier a binding's mod- stands for: alt, ctrl, cmd, shift, hyper, meh, or several
-    # joined by -, such as 'ctrl-alt'. alt, ctrl, cmd and shift: which key of each pair bindings answer
-    # to, both | left | right. With alt = 'left', right Option still types special characters.
+    # mod: the modifier that mod- stands for in bindings. alt, ctrl, cmd, shift, hyper, meh, or several
+    # joined by -, such as 'ctrl-alt'. alt, ctrl, cmd and shift: which key of each pair counts in bindings,
+    # both | left | right. With alt = 'left', right Option can still be used to type special characters.
     [modifiers]
     mod = 'alt'
     alt = 'both'
@@ -93,15 +93,16 @@ extension Config {
     cmd = 'both'
     shift = 'both'
 
-    # scuttle commands run on events. exec-and-forget gets $SCUTTLE_WORKSPACE, $SCUTTLE_PREV_WORKSPACE and $SCUTTLE_DISPLAY
-    # in the workspace hooks, and $SCUTTLE_DISPLAYS, $SCUTTLE_PREV_DISPLAYS (how many displays) in display-changed.
+    # scuttle commands to run on events. For exec-and-forget, $SCUTTLE_WORKSPACE, $SCUTTLE_PREV_WORKSPACE and
+    # $SCUTTLE_DISPLAY are set in the workspace hooks, and $SCUTTLE_DISPLAYS and $SCUTTLE_PREV_DISPLAYS
+    # (how many displays) in display-changed.
     # [hooks]
     # startup = ['exec-and-forget brew services restart sketchybar']
     # workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']
     # focus-changed = []
     # display-changed = []
 
-    # Every rule whose conditions all match a new window runs, in order.
+    # The commands of every rule that matches a new window are run, in order.
     [[rules]]
     app-id = 'com.apple.systempreferences'   # also: app-name, title (regexes), kind (normal|dialog|sheet|panel)
     run = 'layout floating'
@@ -122,7 +123,7 @@ extension Config {
     mod-l = 'focus right'
     mod-shift-h = 'move left'
     mod-shift-l = 'move right'
-    # Workspaces stack top to bottom, as in niri: up and down go between them.
+    # Workspaces are stacked top to bottom, as in niri: the up and down keys are used to move between them.
     mod-j = 'workspace next'
     mod-k = 'workspace prev'
     mod-shift-j = 'move-window-to-workspace next --follow'
