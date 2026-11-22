@@ -181,7 +181,8 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Fullscreen", "fullscreen"))
         menu.addItem(.separator())
 
-        menu.addItem(submenu("Display", items([
+        // Built each time the menu opens, so it appears once a second display is connected.
+        if state.displays.displays.count > 1 { menu.addItem(submenu("Display", items([
             ("Focus Left", "focus-monitor left"), ("Focus Down", "focus-monitor down"),
             ("Focus Up", "focus-monitor up"), ("Focus Right", "focus-monitor right"),
             ("Focus Next", "focus-monitor next"), ("Focus Previous", "focus-monitor prev"), nil,
@@ -189,7 +190,7 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ("Move Window to Previous", "move-window-to-display prev"),
             ("Move Window to Next and Follow", "move-window-to-display next --follow"),
             ("Move Window to Previous and Follow", "move-window-to-display prev --follow"),
-        ])))
+        ]))) }
         let modes = NSMenu()
         let names = state.config.modes.keys.sorted()
         for name in names.filter({ $0 == "main" }) + names.filter({ $0 != "main" }) {
