@@ -102,34 +102,50 @@ a:focus-visible {
 }
 
 .bar .repo {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
   text-decoration: none;
   color: var(--dim);
+}
+
+.bar .repo:hover {
+  color: var(--fg);
 }
 
 .bar .end {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
+/* A three-way toggle, drawn as one bordered control so it doesn't read as more links. */
 .theme {
   display: flex;
-  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
 }
 
 .theme button {
-  padding: 1px 8px;
+  padding: 0 7px;
   border: 0;
   border-radius: 4px;
   background: none;
   color: var(--dim);
   font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
   cursor: pointer;
 }
 
+.theme button:hover {
+  color: var(--fg);
+}
+
 .theme button[aria-pressed="true"] {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--line);
+  color: var(--fg);
 }
 
 .spaces {
