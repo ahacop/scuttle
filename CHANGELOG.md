@@ -8,4 +8,5 @@ Forked from [dinky](https://github.com/mikker/Dinky) 0.30 and renamed danky.
 - `switch-preset-column-width` (Alt-R) steps the focused column through `[scrolling] preset-column-widths`, niri's thirds by default.
 - `maximize-column` (Alt-F) widens the focused column to the whole display and back. `fullscreen` moves to Alt-Shift-F, `layout floating tiling` to Alt-V.
 - A lone column keeps its width, centred, instead of filling the display. `column-width` defaults to `0.5`.
+- Fewer default bindings: Ctrl-Left/Right (macOS's own Space switching is back), Alt-6…9 and Alt-Shift-6…9 (past the 5 default workspaces) and Alt-Shift-N (`move-window-to-display next`) are gone. Add them to `[bindings]` to keep them.
 - No Sparkle update feed: the menu has no Check for Updates until one is configured.

@@ -58,8 +58,8 @@ for i in 1...20 {
 usleep(200_000)
 post(.leftMouseUp, to)
 """
-# Control-Arrow with the secondary-fn flag, as Mission Control expects, <count> times. The fuzzer posts it in
-# danky's `service` mode, which does not bind ctrl-left/right, so the switch is the native one.
+# Control-Arrow with the secondary-fn flag, as Mission Control expects, <count> times. danky's defaults do not
+# bind ctrl-left/right, so the switch is the native one.
 KEYS_SOURCE = """
 import CoreGraphics
 import Foundation
@@ -182,10 +182,8 @@ class Fuzzer:
 
     def native_switch(self, s, direction=None, times=1):
         self.tool(KEYS, KEYS_SOURCE)
-        self.cli("mode", "service")
         ok = self.run(KEYS, direction or self.rng.choice(["left", "right"]), times)
         time.sleep(0.6 * times)  # each keystroke plays the slide
-        self.cli("mode", "main")
         return ok
 
     def tool(self, path, source):

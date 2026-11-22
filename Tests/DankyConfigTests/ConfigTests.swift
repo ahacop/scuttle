@@ -32,9 +32,8 @@ struct ConfigTests {
         #expect(config.rules[0].match.appId == "com.apple.systempreferences")
         #expect(config.rules[0].run == ["layout floating"])
         let main = config.bindings.bindings
-        #expect(try main[KeyCombo("ctrl-left")]?.commands == ["workspace prev"])
-        #expect(try main[KeyCombo("alt-9")]?.commands == ["workspace 9"])
-        #expect(try main[KeyCombo("alt-shift-9")]?.commands == ["move-window-to-workspace 9"])
+        #expect(try main[KeyCombo("alt-5")]?.commands == ["workspace 5"])
+        #expect(try main[KeyCombo("alt-shift-5")]?.commands == ["move-window-to-workspace 5"])
         #expect(try main[KeyCombo("alt-l")]?.commands == ["focus right"])
         #expect(try main[KeyCombo("alt-j")]?.commands == ["workspace next"], "workspaces stack top to bottom")
         #expect(try main[KeyCombo("alt-shift-k")]?.commands == ["move-window-to-workspace prev --follow"])
@@ -42,7 +41,7 @@ struct ConfigTests {
         #expect(try main[KeyCombo("alt-r")]?.commands == ["switch-preset-column-width"])
         #expect(try main[KeyCombo("alt-f")]?.commands == ["maximize-column"])
         #expect(try main[KeyCombo("alt-shift-f")]?.commands == ["fullscreen"])
-        #expect(main.count == 36)
+        #expect(main.count == 25)
         #expect(config.blockNativeFullscreen)
     }
 
