@@ -70,8 +70,8 @@ Cmd-Tab or the Dock shows only its menu bar instead of switching to its Space,
 turn the setting back on in System Settings > Desktop & Dock > Mission Control.
 
 The menu bar shows the current workspace. Its menu has the everyday commands
-(workspaces, focus, move, join, resize, layout, displays and modes), each with
-the key bound to it in the current mode, and lists the bindings it doesn't
+(workspaces, focus, move, column widths, floating and fullscreen), each with
+the key bound to it, and lists the bindings it doesn't
 cover under Other Key Bindings. `danky doctor` checks the config and the macOS
 settings danky depends on.
 

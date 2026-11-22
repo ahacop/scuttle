@@ -12,10 +12,10 @@ struct ConfigCheckTests {
         #expect(findings == [])
     }
 
-    @Test func `Missing main mode is a warning`() throws {
+    @Test func `Missing bindings are a warning`() throws {
         let findings = try check("workspaces = 3")
         #expect(findings.map(\.level) == [.warning])
-        #expect(findings[0].message.contains("[mode.main]"))
+        #expect(findings[0].message.contains("[bindings]"))
     }
 
     @Test func `Parser warnings are findings first`() {
@@ -25,7 +25,7 @@ struct ConfigCheckTests {
     }
 
     @Test func `Workspace table past the last workspace is a warning`() throws {
-        let findings = try check("workspaces = 3\n[mode.main]\n[workspace.3]\ntiling = false\n[workspace.7]\ntiling = false\n[workspace.4]\ntiling = false")
+        let findings = try check("workspaces = 3\n[bindings]\nalt-h = 'focus left'\n[workspace.3]\ntiling = false\n[workspace.7]\ntiling = false\n[workspace.4]\ntiling = false")
         #expect(findings == [
             .init(level: .warning, message: "workspace.4: past the last workspace (3), so it does nothing"),
             .init(level: .warning, message: "workspace.7: past the last workspace (3), so it does nothing"),
@@ -33,24 +33,17 @@ struct ConfigCheckTests {
     }
 
     @Test func `Unknown command in binding`() throws {
-        let findings = try check("[mode.main]\nalt-h = 'fly left'")
+        let findings = try check("[bindings]\nalt-h = 'fly left'")
         #expect(findings.count == 1)
         #expect(findings[0].level == .error)
-        #expect(findings[0].message.hasPrefix("mode.main.alt-h:"))
-    }
-
-    @Test func `Mode command must name a mode`() throws {
-        let findings = try check("[mode.main]\nalt-h = 'mode resize'")
-        #expect(findings.count == 1)
-        #expect(findings[0].message.contains("names a mode that is not in the config"))
-        #expect(try check("[mode.main]\nalt-h = 'mode resize'\n[mode.resize]\nesc = 'mode main'") == [])
+        #expect(findings[0].message.hasPrefix("bindings.alt-h:"))
     }
 
     @Test func `Rule and hook commands are checked`() throws {
         let findings = try check("""
         [hooks]
         focus-changed = ['exec-and-forget true', 'nonsense']
-        [mode.main]
+        [bindings]
         alt-h = 'focus left'
         [[rules]]
         app-id = 'com.apple.finder'

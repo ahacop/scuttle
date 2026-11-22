@@ -43,8 +43,8 @@ public struct Config: Equatable {
     public var hooks = Hooks()
     /// `[[rules]]`, in file order.
     public var rules: [WindowRule] = []
-    /// Keyed by mode name, e.g. `main`, `service`.
-    public var modes: [String: Mode] = [:]
+    /// `[bindings]`: the key bindings.
+    public var bindings = Bindings()
     /// Non-fatal config problems found while parsing.
     public var warnings: [ConfigWarning] = []
 
@@ -178,10 +178,9 @@ public struct Config: Equatable {
         modifiers = try t.table("modifiers").map(ModifierSides.init) ?? modifiers
         hooks = try t.table("hooks").map(Hooks.init) ?? hooks
         rules = try t.tables("rules")?.map(WindowRule.init) ?? []
-        if let modeTable = try t.table("mode") {
-            for name in modeTable.keys {
-                modes[name] = try Mode(modeTable.table(name)!)
-            }
+        bindings = try t.table("bindings").map(Bindings.init) ?? bindings
+        if t.isTable("mode") {
+            throw ConfigError(path: "mode", "binding modes are gone: put the keys of [mode.main] under [bindings]")
         }
         try t.done()
     }
@@ -499,8 +498,6 @@ public struct Hooks: Equatable {
     public var workspaceChanged: [String] = []
     /// When the focused window changes.
     public var focusChanged: [String] = []
-    /// When the binding mode changes.
-    public var modeChanged: [String] = []
     /// When a display connects or disconnects.
     public var displayChanged: [String] = []
 
@@ -511,7 +508,6 @@ public struct Hooks: Equatable {
         workspaceChanging = try t.commands("workspace-changing", allowEmpty: true) ?? workspaceChanging
         workspaceChanged = try t.commands("workspace-changed", allowEmpty: true) ?? workspaceChanged
         focusChanged = try t.commands("focus-changed", allowEmpty: true) ?? focusChanged
-        modeChanged = try t.commands("mode-changed", allowEmpty: true) ?? modeChanged
         displayChanged = try t.commands("display-changed", allowEmpty: true) ?? displayChanged
         try t.done()
     }

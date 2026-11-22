@@ -86,8 +86,6 @@ extension Command {
             return none ? .balanceSizes : nil
         case "clear-minimum-sizes":
             return none ? .clearMinimumSizes : nil
-        case "mode":
-            return one.map { .mode($0) }
         case "reload-config":
             return none ? .reloadConfig : nil
         case "enable":
@@ -98,8 +96,6 @@ extension Command {
             return .listWorkspaces(try WorkspaceQuery(parsing: args))
         case "list-monitors", "list-displays":
             return .listMonitors(try MonitorQuery(parsing: args))
-        case "list-modes":
-            return none ? .listModes(current: false) : one == "--current" ? .listModes(current: true) : nil
         case "debug-state":
             return none ? .debugState : nil
         default:

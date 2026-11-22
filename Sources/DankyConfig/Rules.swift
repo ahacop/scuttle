@@ -106,9 +106,9 @@ public struct KeyBinding: Equatable {
     }
 }
 
-/// `[mode.<name>]`: key combos mapped to their bindings. A binding is a command string, a list of
+/// `[bindings]`: key combos mapped to their bindings. A binding is a command string, a list of
 /// them, or a table with `command` and `exclude-apps`.
-public struct Mode: Equatable {
+public struct Bindings: Equatable {
     public var bindings: [KeyCombo: KeyBinding] = [:]
 
     public init() {}

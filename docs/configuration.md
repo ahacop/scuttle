@@ -12,10 +12,10 @@ symlink is followed, and replacing the link reloads too; a link to a missing
 file is left alone, with the read error shown in the menu.
 
 - Every key is optional; a missing key keeps the default below. Without
-  `[mode.main]` there are no bindings, without `[[rules]]` no rules.
+  `[bindings]` there are no key bindings, without `[[rules]]` no rules.
 - Unknown keys are errors. A broken config does not load: the previous one
   stays and the error shows in the menu.
-- `danky doctor [--config <path>]` also checks commands, modes and key names.
+- `danky doctor [--config <path>]` also checks commands and key names.
 - The [JSON Schema](schemas/danky.json) gives completion in editors that read
   Taplo's `#:schema` line, such as Zed or VS Code with Even Better TOML.
 
@@ -410,7 +410,6 @@ environment `exec-and-forget` gets.
 | `workspace-changing` | When a danky switch starts, before it lands, and again when a burst of switches changes the target. |
 | `workspace-changed` | When a display's workspace changes, or a switch gives up. With `follow-space-order`, also when a reorder renumbers a display's workspaces, even if the number it shows stays the same, so a bar listing workspaces redraws. |
 | `focus-changed` | When focus changes, debounced 50 ms. |
-| `mode-changed` | When the binding mode changes, including back to `main` when the config reloads. Sets `DANKY_MODE` and `DANKY_PREV_MODE`. |
 | `display-changed` | When a display connects or disconnects, once the displays have settled and danky has moved the workspaces to them, about a second later. Sets `DANKY_DISPLAYS` and `DANKY_PREV_DISPLAYS`, how many displays there are now and were before. |
 
 </div>
@@ -501,16 +500,15 @@ JSON field is `null`, when the identifier is unavailable or the window has not y
 do not expose identifiers. Dialogs, panels and fixed-size windows retain their
 usual floating behavior.
 
-## `[mode.<name>]`
+## `[bindings]`
 
-Key bindings. danky starts in `main`; `mode <name>` switches. Each key maps to
-a command or a list of commands. Bound keys are swallowed. A key can also map
+Key bindings. Each key maps to a command or a list of commands. Bound keys are swallowed. A key can also map
 to a table with `command` and `exclude-apps`, a list of bundle IDs: while one
 of those apps is frontmost, danky leaves the key to it. Terminals that use
 `ctrl-hjkl` for their own panes keep it that way.
 
 ```toml
-[mode.main]
+[bindings]
 ctrl-h = { command = 'focus left --wrap-around', exclude-apps = ['com.github.wez.wezterm', 'com.mitchellh.ghostty'] }
 ```
 
@@ -623,13 +621,11 @@ cmd = 'both'
 shift = 'both'
 
 # danky commands run on events. exec-and-forget gets $DANKY_WORKSPACE, $DANKY_PREV_WORKSPACE and $DANKY_DISPLAY
-# in the workspace hooks, $DANKY_MODE, $DANKY_PREV_MODE in mode-changed, and $DANKY_DISPLAYS,
-# $DANKY_PREV_DISPLAYS (how many displays) in display-changed.
+# in the workspace hooks, and $DANKY_DISPLAYS, $DANKY_PREV_DISPLAYS (how many displays) in display-changed.
 # [hooks]
 # startup = ['exec-and-forget brew services restart sketchybar']
 # workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']
 # focus-changed = []
-# mode-changed = []
 # display-changed = []
 
 # Every rule whose conditions all match a new window runs, in order.
@@ -637,7 +633,7 @@ shift = 'both'
 app-id = 'com.apple.systempreferences'   # also: app-name, title (regexes), kind (normal|dialog|sheet|panel)
 run = 'layout floating'
 
-[mode.main]
+[bindings]
 ctrl-left = 'workspace prev'
 ctrl-right = 'workspace next'
 alt-1 = 'workspace 1'
@@ -675,9 +671,4 @@ alt-f = 'maximize-column'
 alt-shift-f = 'fullscreen'
 alt-v = 'layout floating tiling'
 alt-shift-n = 'move-window-to-display next'
-alt-shift-semicolon = 'mode service'
-
-[mode.service]
-esc = ['reload-config', 'mode main']
-r = ['balance-sizes', 'mode main']
 ```

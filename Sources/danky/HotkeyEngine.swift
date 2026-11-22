@@ -3,18 +3,14 @@ import CoreGraphics
 import DankyConfig
 import Foundation
 
-/// One key-down event tap with per-mode bindings. A bound key is swallowed and its command list
+/// One key-down event tap with the config's bindings. A bound key is swallowed and its command list
 /// handed to `onCommands`, except in apps excluded by that binding; anything else passes through
-/// untouched. Mode commands are the caller's job: it sees `mode service` among the commands and
-/// calls `setMode`.
+/// untouched.
 final class HotkeyEngine {
     private let onCommands: ([String]) -> Void
-    private var modes: [String: [KeyPress: KeyBinding]] = [:]
+    private var bindings: [KeyPress: KeyBinding] = [:]
     private var sides = ModifierSides()
-    private(set) var currentMode = "main"
     var enabled = true
-    /// Called with the new mode's name and the previous one whenever the mode changes.
-    var onModeChange: ((_ mode: String, _ previous: String) -> Void)?
     private var tap: CFMachPort?
 
     /// `onCommands` is called on the main queue with the binding's commands, in order.
@@ -22,28 +18,10 @@ final class HotkeyEngine {
         self.onCommands = onCommands
     }
 
-    /// Replaces all bindings and goes back to `main`.
-    func load(modes: [String: Mode], sides: ModifierSides) {
+    /// Replaces all bindings.
+    func load(_ bindings: Bindings, sides: ModifierSides) {
         self.sides = sides
-        self.modes = modes.mapValues { mode in
-            Dictionary(uniqueKeysWithValues: mode.bindings.map { (KeyPress($0.key), $0.value) })
-        }
-        enter("main")
-    }
-
-    func setMode(_ name: String) {
-        guard modes[name] != nil else {
-            fputs("hotkeys: unknown mode '\(name)', staying in '\(currentMode)'\n", stderr)
-            return
-        }
-        enter(name)
-    }
-
-    private func enter(_ name: String) {
-        guard name != currentMode else { return }
-        let previous = currentMode
-        currentMode = name
-        onModeChange?(name, previous)
+        self.bindings = Dictionary(uniqueKeysWithValues: bindings.bindings.map { (KeyPress($0.key), $0.value) })
     }
 
     /// Creates the tap on the current run loop, unless it exists. False if it could not (Accessibility missing);
@@ -61,10 +39,10 @@ final class HotkeyEngine {
         return true
     }
 
-    /// The commands bound to this event in the current mode, if danky should take it.
+    /// The commands bound to this event, if danky should take it.
     fileprivate func commands(for event: CGEvent) -> [String]? {
         guard enabled, let press = KeyPress(event, sides: sides) else { return nil }
-        guard let binding = modes[currentMode]?[press],
+        guard let binding = bindings[press],
               binding.applies(to: NSWorkspace.shared.frontmostApplication?.bundleIdentifier) else { return nil }
         return binding.commands
     }

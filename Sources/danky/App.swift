@@ -105,12 +105,11 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var bindings = MenuBindings(nil)
 
     // Every action is a command string, run exactly as `danky <command>` would run it, and shows the key
-    // bound to that command in the current mode.
+    // bound to that command.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         let state = AppState.shared
-        let mode = state.hotkeys.currentMode
-        bindings = MenuBindings(state.config.modes[mode])
+        bindings = MenuBindings(state.config.bindings)
         let count = state.numbers.count
         let current = state.displays.focusedDisplay().flatMap(state.numbers.current(on:))
         menu.addItem(withTitle: "Workspace \(current.map { "\($0)" } ?? "?") of \(count)", action: nil, keyEquivalent: "")
@@ -125,9 +124,6 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let setup = NSMenuItem(title: "Desktop Setup…", action: #selector(showDesktopSetup(_:)), keyEquivalent: "")
             setup.target = self
             menu.addItem(setup)
-        }
-        if mode != "main" {
-            menu.addItem(withTitle: "Mode: \(mode)", action: nil, keyEquivalent: "")
         }
         if let error = state.configError {
             menu.addItem(withTitle: "Config error: \(error)", action: nil, keyEquivalent: "")
@@ -191,14 +187,6 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ("Move Window to Next and Follow", "move-window-to-display next --follow"),
             ("Move Window to Previous and Follow", "move-window-to-display prev --follow"),
         ]))) }
-        let modes = NSMenu()
-        let names = state.config.modes.keys.sorted()
-        for name in names.filter({ $0 == "main" }) + names.filter({ $0 != "main" }) {
-            let it = item(name, "mode \(name)")
-            it.state = name == mode ? .on : .off
-            modes.addItem(it)
-        }
-        menu.addItem(submenu("Mode", modes))
         // Bindings no item above runs, such as several commands at once or exec-and-forget.
         let others = bindings.unshown
         if !others.isEmpty {

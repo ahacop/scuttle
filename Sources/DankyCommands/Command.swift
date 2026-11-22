@@ -28,14 +28,11 @@ public enum Command: Equatable, Sendable {
     case maximizeColumn
     case balanceSizes
     case clearMinimumSizes
-    case mode(String)
     case reloadConfig
     case enable(Toggle)
     case listWindows(WindowQuery)
     case listWorkspaces(WorkspaceQuery)
     case listMonitors(MonitorQuery)
-    /// Every mode in the config, main first, or with `current` only the mode danky is in.
-    case listModes(current: Bool)
     /// The coordinator's state as JSON: displays, trees with their expected frames, placements and windows.
     case debugState
     /// Shell text run with `/bin/sh -c`, not waited for.

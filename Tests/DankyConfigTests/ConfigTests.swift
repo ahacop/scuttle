@@ -31,8 +31,7 @@ struct ConfigTests {
         #expect(config.rules.count == 1)
         #expect(config.rules[0].match.appId == "com.apple.systempreferences")
         #expect(config.rules[0].run == ["layout floating"])
-        #expect(Set(config.modes.keys) == ["main", "service"])
-        let main = config.modes["main"]!.bindings
+        let main = config.bindings.bindings
         #expect(try main[KeyCombo("ctrl-left")]?.commands == ["workspace prev"])
         #expect(try main[KeyCombo("alt-9")]?.commands == ["workspace 9"])
         #expect(try main[KeyCombo("alt-shift-9")]?.commands == ["move-window-to-workspace 9"])
@@ -40,20 +39,17 @@ struct ConfigTests {
         #expect(try main[KeyCombo("alt-j")]?.commands == ["workspace next"], "workspaces stack top to bottom")
         #expect(try main[KeyCombo("alt-shift-k")]?.commands == ["move-window-to-workspace prev --follow"])
         #expect(try main[KeyCombo("alt-shift-l")]?.commands == ["move right"])
-        #expect(try main[KeyCombo("alt-shift-semicolon")]?.commands == ["mode service"])
         #expect(try main[KeyCombo("alt-r")]?.commands == ["switch-preset-column-width"])
         #expect(try main[KeyCombo("alt-f")]?.commands == ["maximize-column"])
         #expect(try main[KeyCombo("alt-shift-f")]?.commands == ["fullscreen"])
-        #expect(main.count == 37)
-        #expect(try config.modes["service"]!.bindings[KeyCombo("esc")]?.commands == ["reload-config", "mode main"])
-        #expect(try config.modes["service"]!.bindings[KeyCombo("r")]?.commands == ["balance-sizes", "mode main"])
+        #expect(main.count == 36)
         #expect(config.blockNativeFullscreen)
     }
 
     @Test func `Shipped file is the defaults plus rules and bindings`() throws {
         var shipped = Config.default
         shipped.rules = []
-        shipped.modes = [:]
+        shipped.bindings = Bindings()
         #expect(shipped == Config(), "a key left out of a user's file must mean what the shipped file says")
     }
 
@@ -429,24 +425,21 @@ struct ConfigTests {
 
     @Test func `Binding values`() throws {
         let config = try Config.parse("""
-        [mode.main]
+        [bindings]
         alt-a = 'workspace 1'
-        alt-b = ['layout floating', 'mode main']
+        alt-b = ['layout floating', 'balance-sizes']
         ctrl-h = { command = 'focus left --wrap-around', exclude-apps = ['com.github.wez.wezterm', 'com.mitchellh.ghostty'] }
         ctrl-j = { command = ['focus down', 'balance-sizes'] }
         ctrl-k = { command = 'focus up' }
-
-        [mode.resize]
-        minus = 'resize width -50'
         """)
-        let main = config.modes["main"]!.bindings
+        let main = config.bindings.bindings
         #expect(main[KeyCombo(modifiers: .alt, key: "a")] == KeyBinding(["workspace 1"]))
-        #expect(main[KeyCombo(modifiers: .alt, key: "b")] == KeyBinding(["layout floating", "mode main"]))
+        #expect(main[KeyCombo(modifiers: .alt, key: "b")] == KeyBinding(["layout floating", "balance-sizes"]))
         #expect(main[KeyCombo(modifiers: .ctrl, key: "h")] == KeyBinding(["focus left --wrap-around"],
                                                                          excludeApps: ["com.github.wez.wezterm", "com.mitchellh.ghostty"]))
         #expect(main[KeyCombo(modifiers: .ctrl, key: "j")] == KeyBinding(["focus down", "balance-sizes"]))
         #expect(main[KeyCombo(modifiers: .ctrl, key: "k")] == KeyBinding(["focus up"]))
-        #expect(config.modes["resize"]!.bindings[KeyCombo(key: "minus")] == KeyBinding(["resize width -50"]))
+        assertError("[mode.main]\nalt-a = 'workspace 1'\n", path: "mode", line: 1, contains: "put the keys of [mode.main] under [bindings]")
     }
 
     @Test func `Binding exclusions`() {
@@ -458,18 +451,18 @@ struct ConfigTests {
     }
 
     @Test func `Bad binding values fail`() {
-        assertError("[mode.main]\nalt-a = ''\n", path: "mode.main.alt-a", line: 2, contains: "can't be empty")
-        assertError("[mode.main]\nalt-a = []\n", path: "mode.main.alt-a", line: 2, contains: "can't be empty")
-        assertError("[mode.main]\nalt-a = 3\n", path: "mode.main.alt-a", line: 2, contains: "command string")
-        assertError("[mode.main]\nalt-a = ['x', 3]\n", path: "mode.main.alt-a", line: 2, contains: "command string")
-        assertError("[mode.main]\nalt-a = { exclude-apps = ['com.example.App'] }\n", path: "mode.main.alt-a.command", line: 2, contains: "missing, a binding table needs 'command'")
-        assertError("[mode.main]\nalt-a = { command = 'x', ignored = true }\n", path: "mode.main.alt-a.ignored", line: 2, contains: "unknown key")
-        assertError("[mode.main]\nalt-a = { command = 'x', exclude-apps = 'com.example.App' }\n", path: "mode.main.alt-a.exclude-apps", line: 2, contains: "list of strings")
-        assertError("[mode.main]\nalt-a = { command = '' }\n", path: "mode.main.alt-a.command", line: 2, contains: "can't be empty")
-        assertError("[mode.main]\nalt-super-a = 'x'\n", path: "mode.main.alt-super-a", line: 2, contains: "'alt-super-a'")
-        assertError("[mode.main]\nalt-shift-a = 'x'\nshift-alt-a = 'y'\n", path: "mode.main.shift-alt-a", line: 3, contains: "bound twice")
-        assertError("[mode.main]\nhyper-a = 'x'\nctrl-alt-cmd-shift-a = 'y'\n", path: "mode.main.ctrl-alt-cmd-shift-a", line: 3, contains: "bound twice")
-        assertError("[mode.main.binding]\nalt-a = 'x'\n", path: "mode.main.binding", line: 1, contains: "unknown key 'binding'")
+        assertError("[bindings]\nalt-a = ''\n", path: "bindings.alt-a", line: 2, contains: "can't be empty")
+        assertError("[bindings]\nalt-a = []\n", path: "bindings.alt-a", line: 2, contains: "can't be empty")
+        assertError("[bindings]\nalt-a = 3\n", path: "bindings.alt-a", line: 2, contains: "command string")
+        assertError("[bindings]\nalt-a = ['x', 3]\n", path: "bindings.alt-a", line: 2, contains: "command string")
+        assertError("[bindings]\nalt-a = { exclude-apps = ['com.example.App'] }\n", path: "bindings.alt-a.command", line: 2, contains: "missing, a binding table needs 'command'")
+        assertError("[bindings]\nalt-a = { command = 'x', ignored = true }\n", path: "bindings.alt-a.ignored", line: 2, contains: "unknown key")
+        assertError("[bindings]\nalt-a = { command = 'x', exclude-apps = 'com.example.App' }\n", path: "bindings.alt-a.exclude-apps", line: 2, contains: "list of strings")
+        assertError("[bindings]\nalt-a = { command = '' }\n", path: "bindings.alt-a.command", line: 2, contains: "can't be empty")
+        assertError("[bindings]\nalt-super-a = 'x'\n", path: "bindings.alt-super-a", line: 2, contains: "'alt-super-a'")
+        assertError("[bindings]\nalt-shift-a = 'x'\nshift-alt-a = 'y'\n", path: "bindings.shift-alt-a", line: 3, contains: "bound twice")
+        assertError("[bindings]\nhyper-a = 'x'\nctrl-alt-cmd-shift-a = 'y'\n", path: "bindings.ctrl-alt-cmd-shift-a", line: 3, contains: "bound twice")
+        assertError("[bindings.binding]\nalt-a = 'x'\n", path: "bindings.binding", line: 1, contains: "'binding'")
     }
 
     @Test func `Window rule round-trips`() throws {
@@ -542,16 +535,14 @@ struct ConfigTests {
         workspace-changing = 'exec-and-forget sketchybar --trigger workspace_changing'
         workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']
         focus-changed = []
-        mode-changed = ['exec-and-forget sketchybar --trigger mode_changed', 'balance-sizes']
         display-changed = 'layout accordion'
         """).hooks
         #expect(hooks.startup == ["exec-and-forget brew services restart sketchybar"])
         #expect(hooks.workspaceChanging == ["exec-and-forget sketchybar --trigger workspace_changing"])
         #expect(hooks.workspaceChanged == ["exec-and-forget sketchybar --trigger workspace_change"])
         #expect(hooks.focusChanged == [])
-        #expect(hooks.modeChanged == ["exec-and-forget sketchybar --trigger mode_changed", "balance-sizes"])
         #expect(hooks.displayChanged == ["layout accordion"])
-        assertError("[hooks]\nmode-changed = [1]\n", path: "hooks.mode-changed", line: 2, contains: "command string")
+        assertError("[hooks]\nfocus-changed = [1]\n", path: "hooks.focus-changed", line: 2, contains: "command string")
         assertError("[hooks]\nstartup = ['']\n", path: "hooks.startup", line: 2, contains: "can't be empty")
         assertError("[hooks]\non-startup = 'x'\n", path: "hooks.on-startup", line: 2, contains: "unknown key")
         assertError("after-startup-command = ['x']\n", path: "after-startup-command", line: 1, contains: "unknown key")

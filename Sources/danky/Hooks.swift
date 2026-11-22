@@ -3,8 +3,7 @@ import Foundation
 // The config's `[hooks]`: `workspace-changing` when danky starts or retargets a switch, `workspace-changed`
 // when any display's current workspace changes (danky's switches and native ones alike), a danky switch
 // gives up, or `follow-space-order` renumbers a display's workspaces, `focus-changed` when the focused
-// window changes, debounced, `mode-changed` when the binding mode changes, with the new mode and the
-// previous one, `display-changed` once the workspaces have moved after a
+// window changes, debounced, `display-changed` once the workspaces have moved after a
 // display connects or disconnects, and `startup` once. Started once the coordinator has read the windows and displays, so startup fires nothing
 // but `startup`. Main thread only.
 final class Hooks {
@@ -23,9 +22,6 @@ final class Hooks {
         state.numbers.onArranged = { [weak self] in self?.arranged() }
         SpaceSwitcher.shared.onTarget = { [weak self] uuid, target in self?.switchTargeted(uuid, target) }
         state.coordinator?.onFocusChange = { [weak self] in self?.focusChanged() }
-        state.hotkeys.onModeChange = { mode, previous in
-            run(AppState.shared.config.hooks.modeChanged, env: ["DANKY_MODE": mode, "DANKY_PREV_MODE": previous])
-        }
         run(state.config.hooks.startup)
     }
 

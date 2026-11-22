@@ -75,10 +75,6 @@ enum Dispatcher {
             guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
             coordinator.clearMinimumSizes()
             return .ok("cleared minimum sizes")
-        case .mode(let name):
-            guard AppState.shared.config.modes[name] != nil else { return .error("no mode '\(name)' in the config") }
-            AppState.shared.hotkeys.setMode(name)
-            return .ok("mode \(name)")
         case .reloadConfig:
             if let error = AppState.shared.loadConfig() { return .error("config: \(error)") }
             return .ok("reloaded \(Config.userConfigURL.path)")
@@ -92,11 +88,6 @@ enum Dispatcher {
             return .ok(listWorkspaces(query))
         case .listMonitors(let query):
             return .ok(listMonitors(query))
-        case .listModes(let current):
-            let state = AppState.shared
-            if current { return .ok(state.hotkeys.currentMode) }
-            let names = state.config.modes.keys.sorted()
-            return .ok((names.filter { $0 == "main" } + names.filter { $0 != "main" }).joined(separator: "\n"))
         case .debugState:
             guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
             return .ok(coordinator.debugState())

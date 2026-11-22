@@ -7,7 +7,7 @@ permalink: /concepts/
 
 # Concepts
 
-Seven nouns. The rest of the manual is verbs.
+Six nouns. The rest of the manual is verbs.
 
 ## Workspace
 
@@ -107,19 +107,15 @@ app-id = 'com.apple.Music'
 run = ['layout floating', 'move-window-to-workspace 5']
 ```
 
-## Mode
+## Bindings
 
-Key bindings live in modes, one active at a time. danky starts in `main`.
-`mode service` switches to the bindings in `[mode.service]` until a binding
-there switches back.
+One set of key bindings, in `[bindings]`. Each key runs a command or a list of
+them.
 
 ```toml
-[mode.main]
-alt-shift-semicolon = 'mode service'
-
-[mode.service]
-esc = ['reload-config', 'mode main']
-r = ['balance-sizes', 'mode main']
+[bindings]
+alt-r = 'switch-preset-column-width'
+alt-shift-j = 'move-window-to-workspace next --follow'
 ```
 
-The menu bar menu lists each command with its key in the current mode.
+The menu bar menu lists each command with its key.

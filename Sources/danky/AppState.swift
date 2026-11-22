@@ -39,7 +39,7 @@ final class AppState {
 
     init(swipeFocus: SwipeFocus = SwipeFocus()) {
         self.swipeFocus = swipeFocus
-        hotkeys.load(modes: config.modes, sides: config.modifiers)
+        hotkeys.load(config.bindings, sides: config.modifiers)
     }
 
     /// Loads `~/.config/danky/danky.toml`, writing the default config there first if it is missing.
@@ -106,10 +106,10 @@ final class AppState {
         case .success(let config):
             self.config = config
             configError = nil
-            // Invalidate before mode hooks or layout/Space updates can pump the run loop.
+            // Invalidate before layout/Space updates can pump the run loop.
             // At launch, the swipe tap starts only after the coordinator knows its windows.
             if coordinator != nil { swipeFocus.update(config: config.swipe) }
-            hotkeys.load(modes: config.modes, sides: config.modifiers)
+            hotkeys.load(config.bindings, sides: config.modifiers)
             // At launch the app arranges the workspaces itself, once the coordinator has started.
             if let coordinator {
                 if coordinator.update(config: config) { numbers.arrange() }

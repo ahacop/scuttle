@@ -104,7 +104,6 @@ struct ParseTests {
         #expect(try parse("fullscreen") == .fullscreen)
         #expect(throws: CommandError.self) { try parse("flatten-workspace-tree") }
         #expect(throws: CommandError.self) { try parse("retile") }
-        #expect(try parse("mode service") == .mode("service"))
         #expect(try parse("reload-config") == .reloadConfig)
         #expect(try parse("enable on") == .enable(.on))
         #expect(try parse("enable off") == .enable(.off))
@@ -118,7 +117,7 @@ struct ParseTests {
         #expect(try parse("  workspace   2 \n") == .workspace(.number(2)))
     }
 
-    private static let defaultBindings = Config.default.modes.values.flatMap { $0.bindings.values.flatMap(\.commands) }
+    private static let defaultBindings = Config.default.bindings.bindings.values.flatMap(\.commands)
 
     @Test func `Default config has bindings`() {
         #expect(!Self.defaultBindings.isEmpty)
@@ -137,8 +136,8 @@ struct ParseTests {
     private static let knownGood = [
         "workspace 1", "workspace-back-and-forth", "move-window-to-workspace 2 --follow", "move-window-to-display next",
         "focus left", "focus-monitor next", "move left", "resize width +10", "layout floating",
-        "fullscreen", "balance-sizes", "switch-preset-column-width", "maximize-column", "clear-minimum-sizes", "mode main", "reload-config", "enable on",
-        "list-workspaces", "list-windows", "list-monitors", "list-displays", "list-modes", "debug-state", "exec-and-forget true",
+        "fullscreen", "balance-sizes", "switch-preset-column-width", "maximize-column", "clear-minimum-sizes", "reload-config", "enable on",
+        "list-workspaces", "list-windows", "list-monitors", "list-displays", "debug-state", "exec-and-forget true",
     ]
 
     @Test func `Known-good lines cover exactly the documented names`() {
@@ -186,7 +185,7 @@ struct ParseErrorTests {
     @Test(arguments: ["", "   ", "workspace", "workspace 0", "workspace -1", "workspace 1 2", "focus sideways",
                       "resize width 50", "resize diagonal +50", "resize width +x", "layout", "layout grid",
                       "layout floating grid", "layout tiles", "move-window-to-display 2", "move-window-to-workspace --follow",
-                      "mode", "mode a b", "enable maybe", "fullscreen now", "Workspace 1", "exec-and-forget", "exec-and-forget  "])
+                      "enable maybe", "fullscreen now", "Workspace 1", "exec-and-forget", "exec-and-forget  "])
     func `Bad strings`(s: String) {
         #expect(message(s) != "parsed")
     }

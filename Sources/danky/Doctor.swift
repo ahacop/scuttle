@@ -24,7 +24,7 @@ func runDoctor(_ args: [String]) -> Int32 {
     } else {
         do {
             config = try Config.load(from: url)
-            ok("parses: \(config.workspaces) workspaces, \(config.modes.count) modes, \(config.rules.count) window rules")
+            ok("parses: \(config.workspaces) workspaces, \(config.bindings.bindings.count) key bindings, \(config.rules.count) window rules")
         } catch {
             fail("\(error)")
         }

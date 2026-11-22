@@ -92,13 +92,11 @@ extension Config {
     shift = 'both'
 
     # danky commands run on events. exec-and-forget gets $DANKY_WORKSPACE, $DANKY_PREV_WORKSPACE and $DANKY_DISPLAY
-    # in the workspace hooks, $DANKY_MODE, $DANKY_PREV_MODE in mode-changed, and $DANKY_DISPLAYS,
-    # $DANKY_PREV_DISPLAYS (how many displays) in display-changed.
+    # in the workspace hooks, and $DANKY_DISPLAYS, $DANKY_PREV_DISPLAYS (how many displays) in display-changed.
     # [hooks]
     # startup = ['exec-and-forget brew services restart sketchybar']
     # workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']
     # focus-changed = []
-    # mode-changed = []
     # display-changed = []
 
     # Every rule whose conditions all match a new window runs, in order.
@@ -106,7 +104,7 @@ extension Config {
     app-id = 'com.apple.systempreferences'   # also: app-name, title (regexes), kind (normal|dialog|sheet|panel)
     run = 'layout floating'
 
-    [mode.main]
+    [bindings]
     ctrl-left = 'workspace prev'
     ctrl-right = 'workspace next'
     alt-1 = 'workspace 1'
@@ -144,10 +142,5 @@ extension Config {
     alt-shift-f = 'fullscreen'
     alt-v = 'layout floating tiling'
     alt-shift-n = 'move-window-to-display next'
-    alt-shift-semicolon = 'mode service'
-
-    [mode.service]
-    esc = ['reload-config', 'mode main']
-    r = ['balance-sizes', 'mode main']
     """
 }

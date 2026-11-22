@@ -35,14 +35,14 @@ extension KeyCombo {
     }()
 }
 
-/// The bindings of one mode, looked up by the command they run. Lookups mark bindings as shown, so
+/// The key bindings, looked up by the command they run. Lookups mark bindings as shown, so
 /// the ones no menu item claimed can be listed on their own.
 struct MenuBindings {
     private var bindings: [(combo: KeyCombo, commands: [String], parsed: Command?)]
     private var shown: Set<KeyCombo> = []
 
-    init(_ mode: Mode?) {
-        bindings = (mode?.bindings ?? [:])
+    init(_ config: Bindings?) {
+        bindings = (config?.bindings ?? [:])
             .map { combo, binding in
                 let commands = binding.commands
                 return (combo, commands, commands.count == 1 ? try? Command.parse(commands[0]) : nil)

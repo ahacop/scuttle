@@ -149,7 +149,6 @@ struct SchemaTests {
         workspace-changing = ['exec-and-forget true']
         workspace-changed = []
         focus-changed = 'exec-and-forget true'
-        mode-changed = 'exec-and-forget true'
         display-changed = 'exec-and-forget true'
 
         [[rules]]
@@ -162,13 +161,10 @@ struct SchemaTests {
         kind = 'dialog'
         run = ['layout floating', 'move-window-to-workspace 2']
 
-        [mode.main]
+        [bindings]
         alt-1 = 'workspace 1'
-        alt-r = 'mode resize'
+        alt-r = ['switch-preset-column-width', 'balance-sizes']
         ctrl-h = { command = ['focus left', 'balance-sizes'], exclude-apps = ['com.github.wez.wezterm'] }
-
-        [mode.resize]
-        esc = ['mode main']
         h = 'resize width -50'
         """
 

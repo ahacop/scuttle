@@ -54,8 +54,6 @@ extension Command {
             description: "Give every column on the workspace the default width."),
         Doc(syntax: "clear-minimum-sizes",
             description: "Forget the minimum window sizes danky has learned for every app, and re-apply every layout."),
-        Doc(syntax: "mode <name>",
-            description: "Switch to a binding mode from the config, such as 'main' or 'service'."),
         Doc(syntax: "reload-config",
             description: "Reload ~/.config/danky/danky.toml. On an error the previous config stays."),
         Doc(syntax: "enable <on|off|toggle>",
@@ -72,8 +70,6 @@ extension Command {
             description: "Print displays as 'number | name'. Format variables: " + vars(MonitorQuery.variables) + "."),
         Doc(syntax: "list-displays [--focused [no]] [--format <format>]",
             description: "The same as list-monitors."),
-        Doc(syntax: "list-modes [--current]",
-            description: "Print the binding modes in the config, one per line, main first. --current prints the mode danky is in."),
         Doc(syntax: "debug-state",
             description: "Print the tiling state as JSON: displays, each workspace's tree and expected frames, "
                 + "placements and windows. For tests and bug reports."),

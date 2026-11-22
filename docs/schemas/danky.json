@@ -254,7 +254,6 @@
           "description": "When a display's workspace changes or a switch settles or gives up, not on intermediate Spaces. With follow-space-order, also after renumbering even if the visible number is unchanged. exec-and-forget gets DANKY_WORKSPACE, DANKY_PREV_WORKSPACE and DANKY_DISPLAY."
         },
         "focus-changed": { "$ref": "#/definitions/hook", "description": "When the focused window changes, debounced by 50 ms." },
-        "mode-changed": { "$ref": "#/definitions/hook", "description": "When the binding mode changes, including back to main when the config reloads. exec-and-forget gets DANKY_MODE and DANKY_PREV_MODE." },
         "display-changed": { "$ref": "#/definitions/hook", "description": "When a display connects or disconnects. exec-and-forget gets DANKY_DISPLAYS and DANKY_PREV_DISPLAYS, how many displays there are now and were before." }
       }
     },
@@ -277,15 +276,11 @@
         }
       }
     },
-    "mode": {
+    "bindings": {
       "type": "object",
-      "description": "Key bindings, grouped in modes. danky starts in main; the `mode <name>` command switches.",
-      "additionalProperties": {
-        "type": "object",
-        "description": "Key combinations mapped to the command or commands they run.",
-        "propertyNames": { "$ref": "#/definitions/keyCombo" },
-        "additionalProperties": { "$ref": "#/definitions/binding" }
-      }
+      "description": "Key combinations mapped to the command or commands they run.",
+      "propertyNames": { "$ref": "#/definitions/keyCombo" },
+      "additionalProperties": { "$ref": "#/definitions/binding" }
     }
   },
   "definitions": {
@@ -333,7 +328,7 @@
     },
     "command": {
       "type": "string",
-      "pattern": "^\\s*(workspace|workspace-back-and-forth|move-window-to-workspace|move-window-to-display|focus|focus-monitor|move|resize|layout|fullscreen|switch-preset-column-width|maximize-column|balance-sizes|clear-minimum-sizes|mode|reload-config|enable|list-workspaces|list-windows|list-monitors|list-displays|list-modes|debug-state|exec-and-forget)(\\s.*)?$",
+      "pattern": "^\\s*(workspace|workspace-back-and-forth|move-window-to-workspace|move-window-to-display|focus|focus-monitor|move|resize|layout|fullscreen|switch-preset-column-width|maximize-column|balance-sizes|clear-minimum-sizes|reload-config|enable|list-workspaces|list-windows|list-monitors|list-displays|debug-state|exec-and-forget)(\\s.*)?$",
       "description": "A danky command, as `danky help` lists them: `workspace 3`, `layout floating`, `exec-and-forget open -a Safari`. move-window-to-workspace, move-window-to-display and layout accept --window-id <id> to target a managed window on a numbered workspace."
     },
     "commands": {
