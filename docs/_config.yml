@@ -1,8 +1,8 @@
 title: scuttle
 description: A tiling window manager for macOS that leaves System Integrity Protection on.
 url: https://ahacop.github.io
-baseurl: "/danky"
-repository: ahacop/danky
+baseurl: "/scuttle"
+repository: ahacop/scuttle
 version: "0.30"
 markdown: kramdown
 permalink: pretty

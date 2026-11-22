@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+VERSION_SET="${VERSION:+1}"
 VERSION="${VERSION:-0.0}"
 BUILD="${BUILD:-1}"
 # Set IDENTITY to your own signing identity (security find-identity -p codesigning). Ad-hoc (-) works, but
@@ -26,6 +27,11 @@ cp "$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)/scuttle" "$APP/Contents/M
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
+# Only release packaging sets VERSION. Local builds drop the Sparkle feed, so they never offer to replace
+# themselves with the latest release.
+if [[ -z "${VERSION_SET:-}" ]]; then
+  plutil -remove SUFeedURL "$APP/Contents/Info.plist"
+fi
 
 # The app icon: Resources/Scuttle.icon (Icon Composer) compiled into Assets.car and an icns fallback.
 ICON_OUT="$(mktemp -d)"

@@ -41,14 +41,23 @@ Status: early, in daily use by its author on macOS 27. Expect rough edges.
 
 ## Install
 
-There is no release build yet; build it from source.
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask ahacop/tap/scuttle
+```
+
+Or download `scuttle.app.zip` from the
+[latest release](https://github.com/ahacop/scuttle/releases/latest), unzip it
+and move `scuttle.app` to Applications. Either way, scuttle updates itself:
+the menu has Check for Updates.
 
 ### From source
 
 Needs Swift 6 and [`just`](https://github.com/casey/just).
 
 ```sh
-git clone https://github.com/ahacop/danky.git && cd danky
+git clone https://github.com/ahacop/scuttle.git && cd scuttle
 IDENTITY="Apple Development: Your Name (TEAMID)" just install
 open build/scuttle.app
 ```

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ahacop.github.io/danky/schemas/scuttle.json",
+  "$id": "https://ahacop.github.io/scuttle/schemas/scuttle.json",
   "title": "scuttle configuration",
   "description": "~/.config/scuttle/scuttle.toml. Every key is optional; a key left out keeps its default.",
   "type": "object",

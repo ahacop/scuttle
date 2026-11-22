@@ -532,10 +532,10 @@ The default `alt-` bindings take over Option-letter characters; set
 ## Default config
 
 ```toml
-#:schema https://ahacop.github.io/danky/schemas/scuttle.json
+#:schema https://ahacop.github.io/scuttle/schemas/scuttle.json
 # ~/.config/scuttle/scuttle.toml. Saved changes take effect at once.
 # A key you leave out keeps the value shown here.
-# Every key and command: https://ahacop.github.io/danky/configuration/
+# Every key and command: https://ahacop.github.io/scuttle/configuration/
 
 start-at-login = true
 workspaces = 5                  # across all displays, one native Space each

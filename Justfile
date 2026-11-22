@@ -16,6 +16,15 @@ run: kill
 kill:
     pkill -f "scuttle.app/Contents/MacOS/scuttle" || true
 
+# Build, sign, notarize and zip a release into dist/, with its appcast and cask, without publishing. See RELEASING.md.
+package version:
+    scripts/package-release.sh {{quote(version)}}
+
+# Prepare, test, package, tag and publish a GitHub release from a clean, pushed main. The version defaults
+# to the latest tag plus 0.1.
+release version="":
+    scripts/release.sh {{quote(version)}}
+
 vm-install: bundle
     scripts/vm-install.sh
 

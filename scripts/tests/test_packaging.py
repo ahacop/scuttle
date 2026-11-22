@@ -42,7 +42,10 @@ elif name == "plutil":
     import plistlib
     path = pathlib.Path(args[-1])
     info = plistlib.loads(path.read_bytes())
-    info[args[1]] = args[3]
+    if args[0] == "-remove":
+        info.pop(args[1], None)
+    else:
+        info[args[1]] = args[3]
     path.write_bytes(plistlib.dumps(info))
 elif name == "xcrun":
     if args[0] == "actool":
@@ -83,7 +86,7 @@ class PackagingTests(unittest.TestCase):
         (self.root / "Resources/Scuttle.icon").mkdir(parents=True)
         (self.root / "Resources/Info.plist").write_bytes(plistlib.dumps({
             "CFBundleShortVersionString": "0.0", "CFBundleVersion": "1",
-            "LSMinimumSystemVersion": "15.0",
+            "LSMinimumSystemVersion": "15.0", "SUFeedURL": "https://example.com/appcast.xml",
         }))
         (self.root / "CHANGELOG.md").write_text("# Changelog\n")
         self.framework = self.root / ".build/artifacts/sparkle/Sparkle/macos-arm64_x86_64/Sparkle.framework/Versions/Current"
@@ -154,6 +157,59 @@ class PackagingTests(unittest.TestCase):
             with self.subTest(archs=archs):
                 (app / "scuttle").write_text(archs)
                 self.assertNotEqual(self.run_script("check-universal.sh", str(app.parent.parent)).returncode, 0)
+
+    def test_package_checks_archive_before_unrestricted_cask(self):
+        result = self.run_script("package-release.sh", "0.24")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        cask = (self.root / "dist/scuttle.rb").read_text()
+        self.assertNotIn("depends_on arch:", cask)
+        self.assertNotIn("@VERSION@", cask)
+        commands = self.commands()
+        self.assertEqual(len([c for c in commands if c[0] == "lipo" and "-verify_arch" in c]), 36)
+        self.assertIn(["codesign", "--verify", "--strict", "--verbose=1", "build/scuttle.app"], commands)
+        self.assertTrue(any(c[:2] == ["xcrun", "notarytool"] for c in commands))
+        self.assertTrue(any(c[:2] == ["xcrun", "stapler"] for c in commands))
+        self.assertTrue(any(c[0] == "spctl" for c in commands))
+        self.assertFalse(any("hardwareRequirements" in e.tag for e in ET.parse(self.root / "dist/appcast.xml").iter()))
+
+    def test_thin_archive_fails_before_sparkle_signing_and_cask(self):
+        self.env["THIN_ARCHIVE"] = "1"
+        result = self.run_script("package-release.sh", "0.24")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "dist/scuttle.rb").exists())
+        self.assertFalse(any(c[0] == "sign_update" for c in self.commands()))
+
+    def test_appcast_keeps_architecture_safeguard(self):
+        app = self.root / "build/scuttle.app/Contents/MacOS"
+        app.mkdir(parents=True)
+        shutil.copy(self.root / "Resources/Info.plist", app.parent / "Info.plist")
+        dist = self.root / "dist"
+        dist.mkdir()
+        (dist / "scuttle.app.zip").write_bytes(b"archive")
+        (dist / "signature.txt").write_text("A" * 86 + "==")
+        for archs, expected in [("arm64", "arm64"), ("arm64 x86_64", None), ("x86_64", None)]:
+            with self.subTest(archs=archs):
+                (app / "scuttle").write_text(archs)
+                result = subprocess.run(["python3", "scripts/appcast.py", "0.0"],
+                                        cwd=self.root, env=self.env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                requirement = ET.parse(dist / "appcast.xml").findtext(
+                    ".//{http://www.andymatuschak.org/xml-namespaces/sparkle}hardwareRequirements")
+                self.assertEqual(requirement, expected)
+
+
+    def test_only_versioned_builds_keep_the_update_feed(self):
+        for version, keeps in [("0.24", True), (None, False)]:
+            with self.subTest(version=version):
+                env = dict(self.env)
+                env.pop("VERSION", None)
+                if version:
+                    env["VERSION"] = version
+                result = subprocess.run(["bash", "scripts/bundle.sh", "--debug"], cwd=self.root,
+                                        env=env, text=True, capture_output=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                info = plistlib.loads((self.root / "build/scuttle.app/Contents/Info.plist").read_bytes())
+                self.assertEqual("SUFeedURL" in info, keeps)
 
 if __name__ == "__main__":
     unittest.main()

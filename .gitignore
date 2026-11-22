@@ -11,3 +11,5 @@ __pycache__/
 docs/_site/
 docs/.jekyll-cache/
 docs/.jekyll-metadata
+# Sparkle private key exports (generate_keys -x). Never commit these.
+*-sparkle-key
