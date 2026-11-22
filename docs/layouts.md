@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Layouts
-description: One layout, a scrolling strip of columns after niri. Column widths, presets, maximizing, tiles and accordion.
+description: One layout, a scrolling strip of one-window columns after niri. Column widths, presets and maximizing.
 permalink: /layouts/
 ---
 
@@ -17,8 +17,8 @@ whole. Columns that fit, a lone one too, are centred.
 <figcaption>Columns 2 and 3 in view. macOS can't clip a window, so 1 and 4 hang off the edges with a sliver left on.</figcaption>
 </figure>
 
-`focus` and `move` go left and right between columns, up and down within one.
-`join-with` puts the window into the column beside it.
+Each column is one window, as tall as the display. `focus` and `move` go left
+and right between columns.
 
 ```toml
 [scrolling]
@@ -48,31 +48,8 @@ redraw its contents for every size it is given, and few keep up with one a
 frame, so by default (`resize = 'instant'`) a window takes its new size at once
 and only its position glides. `resize = 'glide'` animates the size as well.
 
-## Tiles and accordion
+## Floating
 
-A column holds one window or several, always stacked top to bottom. Several
-share it as tiles, or as an accordion, which gives it to the focused window, with the
-others peeking out by up to `padding` points on each side. Peeks shrink in
-narrow columns to leave usable content and respect recorded window minima.
-Focus a neighbour and it comes to the front.
-
-<figure>
-{% include figures/accordion-v.svg %}
-<figcaption>Three windows in an accordion column.</figcaption>
-</figure>
-
-## Switching
-
-<div class="wide-table" markdown="1">
-
-| Command | Changes | Of |
-|---|---|---|
-| `layout tiles\|accordion` | the mode | the focused window's column. |
-| `layout floating\|tiling` | tiled or not | the focused window. |
-| `flatten-workspace-tree` | every column back to one window each | the workspace. |
-
-</div>
-
-Given several names, `layout` applies the one after the current, so
-`layout tiles accordion` toggles. The keys, defaults and edge cases are in
-[Configuration](configuration.md) and [Commands](commands.md).
+`layout floating` takes a window out of the strip, where it stays as you put
+it; `layout tiling` gives it a column again, and `layout floating tiling`
+toggles (Alt-V). Dialogs, sheets and panels float on their own.

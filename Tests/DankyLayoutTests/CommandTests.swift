@@ -26,19 +26,7 @@ struct SwapAndMoveTests {
 }
 
 struct JoinTests {
-    @Test func `Join wraps neighbour window`() {
-        var ws = workspace(3, bounds: rect(0, 0, 3000, 500))
-        ws.focus(2)
-        #expect(ws.join(.right) == true)
-        #expect(shape(ws.root) == "h[1 v[2 3]]")
-        #expect(ws.focused == 2)
-    }
 
-    @Test func `Join without neighbour fails`() {
-        var ws = three()
-        ws.focus(1)
-        #expect(ws.join(.left) == false)
-    }
 }
 
 struct ResizeTests {

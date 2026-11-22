@@ -46,7 +46,7 @@ struct ParseTests {
                 #expect(throws: CommandError.self) { try parse("\(line) --window-id \(value)") }
             }
         }
-        for line in ["workspace 2", "focus left", "move left", "fullscreen", "retile", "list-windows --all"] {
+        for line in ["workspace 2", "focus left", "move left", "fullscreen", "balance-sizes", "list-windows --all"] {
             #expect(throws: CommandError.self) { try parse("\(line) --window-id 123") }
         }
         #expect(try parse("exec-and-forget echo --window-id 123") == .execAndForget("echo --window-id 123"))
@@ -60,24 +60,29 @@ struct ParseTests {
     @Test(arguments: [("left", Direction.left), ("down", .down), ("up", .up), ("right", .right)])
     func directional(word: String, dir: Direction) throws {
         #expect(try parse("focus \(word)") == .focus(dir))
-        #expect(try parse("move \(word)") == .move(dir))
-        #expect(try parse("join-with \(word)") == .joinWith(dir))
+    }
+
+    @Test func `Columns move only sideways, and there is nothing to join`() throws {
+        #expect(try parse("move left") == .move(.left))
+        #expect(try parse("move right") == .move(.right))
+        #expect(throws: CommandError.self) { try parse("move up") }
+        #expect(throws: CommandError.self) { try parse("move down") }
+        #expect(throws: CommandError.self) { try parse("join-with left") }
     }
 
     @Test func resize() throws {
-        #expect(try parse("resize smart -50") == .resize(.smart, by: -50))
-        #expect(try parse("resize smart +50") == .resize(.smart, by: 50))
-        #expect(try parse("resize width +10") == .resize(.width, by: 10))
-        #expect(try parse("resize height -20") == .resize(.height, by: -20))
+        #expect(try parse("resize width +10") == .resize(by: 10))
+        #expect(try parse("resize width -50") == .resize(by: -50))
+        #expect(throws: CommandError.self) { try parse("resize height -20") }
+        #expect(throws: CommandError.self) { try parse("resize smart +50") }
     }
 
     @Test func layout() throws {
-        #expect(try parse("layout tiles") == .layout([.tiles]))
-        #expect(try parse("layout accordion") == .layout([.accordion]))
         #expect(try parse("layout floating") == .layout([.floating]))
         #expect(try parse("layout tiling") == .layout([.tiling]))
         #expect(try parse("layout floating tiling") == .layout([.floating, .tiling]))
-        #expect(try parse("layout accordion tiles") == .layout([.accordion, .tiles]))
+        #expect(throws: CommandError.self) { try parse("layout tiles") }
+        #expect(throws: CommandError.self) { try parse("layout accordion") }
         #expect(throws: CommandError.self) { try parse("layout horizontal") }
         #expect(throws: CommandError.self) { try parse("layout auto") }
         #expect(throws: CommandError.self) { try parse("layout h_accordion") }
@@ -95,34 +100,15 @@ struct ParseTests {
         #expect(throws: CommandError.self) { try parse("swap-with-master") }
     }
 
-    @Test func `Several layouts cycle from the last that describes the window`() {
-        let toggle: [LayoutName] = [.tiles, .accordion]
-        #expect(nextLayout(in: toggle, current: [.tiling, .tiles]) == .accordion)
-        #expect(nextLayout(in: toggle, current: [.tiling, .accordion]) == .tiles)
-        #expect(nextLayout(in: toggle, current: [.floating]) == .tiles, "none describes it")
-        let floating: [LayoutName] = [.floating, .tiling]
-        #expect(nextLayout(in: floating, current: [.tiling, .tiles]) == .floating)
-        #expect(nextLayout(in: floating, current: [.floating]) == .tiling)
-        #expect(nextLayout(in: [LayoutName.accordion], current: [.tiling, .accordion]) == .accordion)
-    }
-
-    @Test func `Layout names set the column mode`() {
-        #expect(LayoutName.accordion.mode == .accordion)
-        #expect(LayoutName.tiles.mode == .tiles)
-        #expect(LayoutName.floating.mode == nil)
-        #expect(LayoutName.describing(.accordion) == .accordion)
-        #expect(LayoutName.describing(.tiles) == .tiles)
-    }
-
     @Test func `Simple commands`() throws {
         #expect(try parse("fullscreen") == .fullscreen)
-        #expect(try parse("flatten-workspace-tree") == .flattenWorkspaceTree)
+        #expect(throws: CommandError.self) { try parse("flatten-workspace-tree") }
+        #expect(throws: CommandError.self) { try parse("retile") }
         #expect(try parse("mode service") == .mode("service"))
         #expect(try parse("reload-config") == .reloadConfig)
         #expect(try parse("enable on") == .enable(.on))
         #expect(try parse("enable off") == .enable(.off))
         #expect(try parse("enable toggle") == .enable(.toggle))
-        #expect(try parse("retile") == .retile)
         #expect(try parse("clear-minimum-sizes") == .clearMinimumSizes)
         #expect(try parse("exec-and-forget sketchybar --trigger 'a b'") == .execAndForget("sketchybar --trigger 'a b'"))
         #expect(try parse("  exec-and-forget   echo  hi") == .execAndForget("echo  hi"))
@@ -150,8 +136,8 @@ struct ParseTests {
     /// One line that parses, per documented command.
     private static let knownGood = [
         "workspace 1", "workspace-back-and-forth", "move-window-to-workspace 2 --follow", "move-window-to-display next",
-        "focus left", "focus-monitor next", "move left", "join-with left", "resize smart +10", "layout tiles",
-        "fullscreen", "flatten-workspace-tree", "balance-sizes", "switch-preset-column-width", "maximize-column", "retile", "clear-minimum-sizes", "mode main", "reload-config", "enable on",
+        "focus left", "focus-monitor next", "move left", "resize width +10", "layout floating",
+        "fullscreen", "balance-sizes", "switch-preset-column-width", "maximize-column", "clear-minimum-sizes", "mode main", "reload-config", "enable on",
         "list-workspaces", "list-windows", "list-monitors", "list-displays", "list-modes", "debug-state", "exec-and-forget true",
     ]
 
@@ -198,8 +184,8 @@ struct ParseErrorTests {
     }
 
     @Test(arguments: ["", "   ", "workspace", "workspace 0", "workspace -1", "workspace 1 2", "focus sideways",
-                      "resize smart 50", "resize diagonal +50", "resize smart +x", "layout", "layout grid",
-                      "layout tiles grid", "layout accordion h_list", "layout horizontal sideways", "layout auto_tiles", "move-window-to-display 2", "move-window-to-workspace --follow",
+                      "resize width 50", "resize diagonal +50", "resize width +x", "layout", "layout grid",
+                      "layout floating grid", "layout tiles", "move-window-to-display 2", "move-window-to-workspace --follow",
                       "mode", "mode a b", "enable maybe", "fullscreen now", "Workspace 1", "exec-and-forget", "exec-and-forget  "])
     func `Bad strings`(s: String) {
         #expect(message(s) != "parsed")

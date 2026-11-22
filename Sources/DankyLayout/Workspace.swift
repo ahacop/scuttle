@@ -5,30 +5,29 @@ public struct Workspace: Equatable, Sendable {
     /// The Space's visible rect, top-left origin.
     public var bounds: CGRect
     public var gaps: Gaps
-    public var accordionPadding: CGFloat
-    /// The strip. The root is always a horizontal container of columns, possibly empty.
+    /// The strip: a horizontal container whose children are the columns, one window each, possibly none.
     public internal(set) var root: Container
     /// The focused window, if any.
     public internal(set) var focused: WindowID?
-    /// Whether the focused window is shown fullscreen over the tree. Focusing another window or any layout
+    /// Whether the focused window is shown fullscreen over the strip. Focusing another window or any layout
     /// command ends it.
     var isFullscreen = false
-    /// The window shown fullscreen over the tree, if any.
+    /// The window shown fullscreen over the strip, if any.
     public var fullscreen: WindowID? { isFullscreen ? focused : nil }
     /// The share of the width inside the outer gaps a fullscreen window takes, centred. 1 fills the width.
     public var fullscreenWidth = 1.0
     /// A lone window's share, or nil to keep using the fullscreen width.
     public var loneWindowWidth: Double?
-    /// Sizes windows refused to go below. Tiles grow to them when their siblings can give the space.
+    /// Sizes windows refused to go below. Columns grow to fit them.
     public var minimumSizes: [WindowID: CGSize] = [:]
     /// The width of a new column, as a share of the width inside the outer gaps.
     public var columnWidth = 0.5
     /// The widths `switch-preset-column-width` steps through, as shares, narrowest first. niri's by default.
     public var presetColumnWidths: [Double] = Workspace.defaultPresetColumnWidths
     public static let defaultPresetColumnWidths = [0.33333, 0.5, 0.66667]
-    /// The width a column had before `maximize-column` widened it, kept on each of its windows.
+    /// The width a column had before `maximize-column` widened it, by its window.
     var maximizedFrom: [WindowID: Double] = [:]
-    /// Each window's column width, as a share. Every window of a column has its column's width.
+    /// Each window's column width, as a share.
     var columnWidths: [WindowID: Double] = [:]
     /// How far the strip is scrolled, in points from its start. The layout clamps it.
     var scrollOffset: CGFloat = 0
@@ -36,14 +35,13 @@ public struct Workspace: Equatable, Sendable {
     public var walls: Set<Direction> = []
 
     /// An empty workspace.
-    public init(bounds: CGRect, gaps: Gaps = .zero, accordionPadding: CGFloat = 30) {
+    public init(bounds: CGRect, gaps: Gaps = .zero) {
         self.bounds = bounds
         self.gaps = gaps
-        self.accordionPadding = accordionPadding
         root = Container(.horizontal)
     }
 
-    /// All windows in tree order.
+    /// All windows, left to right.
     public var windows: [WindowID] { Node.container(root).windows }
 
     /// Whether the window is tiled here.
@@ -56,12 +54,10 @@ public struct Workspace: Equatable, Sendable {
         focus(id)
     }
 
-    /// Remove a window. Its share goes to its siblings, redundant containers collapse.
-    /// If it was focused, focus moves to the window that took its place.
+    /// Remove a window and its column. If it was focused, focus moves to the most recently focused column left.
     public mutating func remove(_ id: WindowID) {
         guard let path = root.path(of: id) else { return }
-        root.modify(at: Array(path.dropLast())) { $0.remove(at: path.last!) }
-        normalize()
+        root.remove(at: path[0])
         columnWidths[id] = nil
         maximizedFrom[id] = nil
         if focused == id {
@@ -69,13 +65,6 @@ public struct Workspace: Equatable, Sendable {
             focused = nil
             if let next = root.mostRecentWindow ?? windows.first { focus(next) }
         }
-    }
-
-    /// Lay `ids` out afresh as one column each, in order, keeping the focus and the column widths.
-    private mutating func rebuild(_ ids: [WindowID]) {
-        root = Container(.horizontal, .tiles, ids.map(Node.window))
-        for id in ids { columnWidths[id] = columnWidths[id] ?? columnWidth }
-        if let focused { focus(focused) }
     }
 
     /// Put `new` in `old`'s place, keeping its size, focus and fullscreen: another tab of the same native tab group
@@ -89,14 +78,7 @@ public struct Workspace: Equatable, Sendable {
         maximizedFrom[new] = maximizedFrom.removeValue(forKey: old)
     }
 
-    /// Undo every tree edit: every window gets a column of its own, in order.
-    public mutating func flatten() {
-        isFullscreen = false
-        rebuild(windows)
-    }
-
-    /// Focus a window and mark it most recent along its path, so accordions show it on top.
-    /// Ends fullscreen unless it is the fullscreen window.
+    /// Focus a window and scroll its column into view. Ends fullscreen unless it is the fullscreen window.
     public mutating func focus(_ id: WindowID) {
         guard let path = root.path(of: id) else { return }
         if focused != id { isFullscreen = false }
@@ -118,71 +100,19 @@ public struct Workspace: Equatable, Sendable {
         return true
     }
 
-    /// The window snapped to the `side` edge: containers along that axis give their first or last child,
-    /// the others their most recently focused one. Adapted from AeroSpace's findLeafWindowRecursive(snappedTo:).
+    /// The window at the `side` edge: the first or last column, or for up and down the focused one.
     public func edgeWindow(_ side: Direction) -> WindowID? {
-        let layout = tiledLayout()
-        var container = root, path: [Int] = []
-        while !container.children.isEmpty {
-            let index = axisOfContainer(at: path, in: layout) != side.orientation ? container.activeIndex
-                : side.isForward ? container.children.count - 1 : 0
-            switch container.children[index] {
-            case .window(let id): return id
-            case .container(let c): (container, path) = (c, path + [index])
-            }
-        }
-        return nil
+        guard !root.children.isEmpty else { return nil }
+        let index = side.orientation == .vertical ? root.activeIndex : side.isForward ? root.children.count - 1 : 0
+        return root.children[index].windows.first
     }
 
-    /// Give every container in the tree equal ratios.
+    /// Give every column the default width.
     public mutating func balanceSizes() {
         isFullscreen = false
-        root.balance()
         for id in columnWidths.keys { columnWidths[id] = columnWidth }
+        maximizedFrom = [:]
         if let focused { reveal(focused) }
-    }
-
-    /// The window's parent container, nil if the window is not here.
-    public func container(of id: WindowID) -> Container? {
-        root.path(of: id).map { root.container(at: Array($0.dropLast())) }
-    }
-
-    /// The axis of the window's parent container, `auto` resolved, nil if the window is not here.
-    public func containerAxis(of id: WindowID) -> Orientation? {
-        root.path(of: id).map { axisOfContainer(at: Array($0.dropLast())) }
-    }
-
-    /// The container `layout` commands change for the window, with the axis it runs along now: its column. Nil if the window is not here.
-    public func layoutContainer(of id: WindowID) -> (container: Container, axis: Orientation)? {
-        guard let path = root.path(of: id) else { return nil }
-        let containerPath = Array(path.dropLast())
-        return (root.container(at: containerPath), axisOfContainer(at: containerPath))
-    }
-
-    /// The axis the container at `path` runs along now, `auto` resolved from the rectangle it is laid out in,
-    /// so minimum sizes count as they do on screen.
-    func axisOfContainer(at path: [Int]) -> Orientation {
-        axisOfContainer(at: path, in: tiledLayout())
-    }
-
-    /// The axis of the container at `path` in `layout`, for callers asking about several containers at once.
-    func axisOfContainer(at path: [Int], in layout: Layout) -> Orientation {
-        root.container(at: path).axis(in: rect(at: path, in: layout))
-    }
-
-    /// The rectangle the container at `path` is laid out in, gaps and minimum sizes applied.
-    func rect(at path: [Int], in layout: Layout) -> CGRect {
-        layout.containerRects[path] ?? gaps.inset(bounds)
-    }
-
-    /// Set the layout mode of the focused window's column: its windows stacked top to bottom as tiles, or as an
-    /// accordion. Ratios are kept, so tiles come back as they were. A window alone in its column has no container
-    /// to change.
-    public mutating func setMode(_ mode: LayoutMode) {
-        isFullscreen = false
-        guard let focused, let path = root.path(of: focused), path.count > 1 else { return }
-        root.modify(at: Array(path.dropLast())) { $0.mode = mode }
-        normalize()
     }
 
     /// Toggle fullscreen for the focused window. The tree is not changed.
@@ -219,8 +149,4 @@ public struct Workspace: Equatable, Sendable {
         stripLayout()
     }
 
-    /// Tidy the tree after an edit. The strip stays the root even with one column left.
-    mutating func normalize() {
-        root.normalize()
-    }
 }

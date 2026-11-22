@@ -42,25 +42,11 @@ over the tiles. Fullscreen fills the workspace, above the tiles, or the share
 of its width `fullscreen-width` gives it; it is not macOS full screen. Dialogs, sheets and panels float on their own. A
 [rule](#rule) decides for anything else.
 
-## Tree
+## Strip
 
-A tiled workspace is a row of columns, the strip. A column is one window, or a
-container laying its windows along one axis, as tiles or as an accordion.
-
-<figure>
-{% include figures/tree.svg %}
-<pre>workspace · tiles ↔
-├── Ghostty
-└── tiles ↕
-    ├── Safari
-    └── accordion ↔
-        ├── Mail
-        └── Notes</pre>
-<figcaption>Three containers, four windows.</figcaption>
-</figure>
-
-`focus`, `move` and `join-with` walk and edit it. `layout` sets a column's
-mode and axis. `flatten-workspace-tree` gives every window a column again.
+A tiled workspace is a row of columns, the strip. Each column is one window,
+as tall as the display, at its own width. `focus` and `move` walk and reorder
+it; [Layouts](layouts.md) has the widths.
 
 ## Display
 
@@ -87,7 +73,7 @@ across the display edge too. [`[focus-follows-mouse]`](configuration.md#focus-fo
 moves it with the pointer instead. When the focused window closes or is minimized
 and macOS leaves no key window, focus goes to its workspace's next tile. A close
 also repairs a redirect of the same app's key window to another display. The next
-tile is the same one shown by an accordion or focused after moving a window away.
+tile is the same one focused after moving a window away.
 This also applies when quitting the
 focused app removes its window and leaves no key window. A later key, click,
 focus command or Space switch takes precedence; dragging and merging tabs does not
@@ -133,7 +119,7 @@ alt-shift-semicolon = 'mode service'
 
 [mode.service]
 esc = ['reload-config', 'mode main']
-r = ['flatten-workspace-tree', 'mode main']
+r = ['balance-sizes', 'mode main']
 ```
 
 The menu bar menu lists each command with its key in the current mode.

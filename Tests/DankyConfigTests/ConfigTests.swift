@@ -22,7 +22,6 @@ struct ConfigTests {
         #expect(config.defaultTiling)
         #expect(config.followAppActivation == FollowAppActivation())
         #expect(config.floatWindowsWithoutFullscreen)
-        #expect(config.accordion.padding == 30)
         #expect(config.gaps == Gaps())
         #expect(config.displays == [])
         #expect(config.borders.enabled)
@@ -37,15 +36,16 @@ struct ConfigTests {
         #expect(try main[KeyCombo("ctrl-left")]?.commands == ["workspace prev"])
         #expect(try main[KeyCombo("alt-9")]?.commands == ["workspace 9"])
         #expect(try main[KeyCombo("alt-shift-9")]?.commands == ["move-window-to-workspace 9"])
-        #expect(try main[KeyCombo("alt-k")]?.commands == ["focus up"])
+        #expect(try main[KeyCombo("alt-l")]?.commands == ["focus right"])
+        #expect(try main[KeyCombo("alt-k")] == nil, "nothing is above or below in a column")
         #expect(try main[KeyCombo("alt-shift-l")]?.commands == ["move right"])
         #expect(try main[KeyCombo("alt-shift-semicolon")]?.commands == ["mode service"])
         #expect(try main[KeyCombo("alt-r")]?.commands == ["switch-preset-column-width"])
         #expect(try main[KeyCombo("alt-f")]?.commands == ["maximize-column"])
         #expect(try main[KeyCombo("alt-shift-f")]?.commands == ["fullscreen"])
-        #expect(main.count == 39)
+        #expect(main.count == 33)
         #expect(try config.modes["service"]!.bindings[KeyCombo("esc")]?.commands == ["reload-config", "mode main"])
-        #expect(try config.modes["service"]!.bindings[KeyCombo("alt-shift-l")]?.commands == ["join-with right", "mode main"])
+        #expect(try config.modes["service"]!.bindings[KeyCombo("r")]?.commands == ["balance-sizes", "mode main"])
         #expect(config.blockNativeFullscreen)
     }
 
@@ -68,14 +68,14 @@ struct ConfigTests {
     }
 
     @Test func `Warnings and errors count a CRLF line break as one line`() throws {
-        let config = try Config.parse("[accordion]\r\npadding = -1\r\n")
+        let config = try Config.parse("[gaps]\r\ninner = -1\r\n")
         #expect(config.warnings.map(\.line) == [2])
         assertError("[scrolling]\r\ncolumn-width = 1.5\r\n", path: "scrolling.column-width", line: 2, contains: "0.1 to 1")
         assertError("workspaces = 5\r\n\r\n[gaps]\r\nouter = 'wide'\r\n", path: "gaps.outer", line: 4, contains: "expected")
     }
 
     @Test func `Warnings and errors find their line under a table header with a comment`() throws {
-        let config = try Config.parse("[accordion] # the peeks\npadding = -1\n")
+        let config = try Config.parse("[gaps] # the spacing\ninner = -1\n")
         #expect(config.warnings.map(\.line) == [2])
         assertError("[scrolling]   # the strip\ncolumn-width = 1.5\n", path: "scrolling.column-width", line: 2, contains: "0.1 to 1")
         assertError("[gaps]\ninner = 4\n[ scrolling ] # ]\ncolumn-width = 1.5\n", path: "scrolling.column-width", line: 4, contains: "0.1 to 1")
@@ -323,10 +323,6 @@ struct ConfigTests {
         #expect(display.warnings == [ConfigWarning(path: "display.main.gaps.outer", "should be 0 or more; still read as -8",
                                                    line: 2, fix: ConfigFix(replace: "-8", with: "0"))])
 
-        let accordion = try Config.parse("[accordion]\npadding = -5\n")
-        #expect(accordion.accordion.padding == -5)
-        #expect(accordion.warnings == [ConfigWarning(path: "accordion.padding", "should be 0 or more; still read as -5",
-                                                      line: 2, fix: ConfigFix(replace: "-5", with: "0"))])
 
         for (value, number) in [("-2", -2.0), ("-2.0", -2.0), ("-2.5", -2.5)] {
             let config = try Config.parse("[borders]\nwidth = \(value)\n")
@@ -351,9 +347,7 @@ struct ConfigTests {
     }
 
     @Test func accordion() throws {
-        let accordion = try Config.parse("[accordion]\npadding = 12\n").accordion
-        #expect(accordion.padding == 12)
-        assertError("[accordion]\norientation = 'keep'\n", path: "accordion.orientation", line: 2, contains: "unknown key")
+        assertError("[accordion]\npadding = 12\n", path: "accordion", line: 1, contains: "unknown key")
     }
 
     @Test func scrolling() throws {
@@ -438,20 +432,20 @@ struct ConfigTests {
         alt-a = 'workspace 1'
         alt-b = ['layout floating', 'mode main']
         ctrl-h = { command = 'focus left --wrap-around', exclude-apps = ['com.github.wez.wezterm', 'com.mitchellh.ghostty'] }
-        ctrl-j = { command = ['focus down', 'retile'] }
+        ctrl-j = { command = ['focus down', 'balance-sizes'] }
         ctrl-k = { command = 'focus up' }
 
         [mode.resize]
-        minus = 'resize smart -50'
+        minus = 'resize width -50'
         """)
         let main = config.modes["main"]!.bindings
         #expect(main[KeyCombo(modifiers: .alt, key: "a")] == KeyBinding(["workspace 1"]))
         #expect(main[KeyCombo(modifiers: .alt, key: "b")] == KeyBinding(["layout floating", "mode main"]))
         #expect(main[KeyCombo(modifiers: .ctrl, key: "h")] == KeyBinding(["focus left --wrap-around"],
                                                                          excludeApps: ["com.github.wez.wezterm", "com.mitchellh.ghostty"]))
-        #expect(main[KeyCombo(modifiers: .ctrl, key: "j")] == KeyBinding(["focus down", "retile"]))
+        #expect(main[KeyCombo(modifiers: .ctrl, key: "j")] == KeyBinding(["focus down", "balance-sizes"]))
         #expect(main[KeyCombo(modifiers: .ctrl, key: "k")] == KeyBinding(["focus up"]))
-        #expect(config.modes["resize"]!.bindings[KeyCombo(key: "minus")] == KeyBinding(["resize smart -50"]))
+        #expect(config.modes["resize"]!.bindings[KeyCombo(key: "minus")] == KeyBinding(["resize width -50"]))
     }
 
     @Test func `Binding exclusions`() {
@@ -547,14 +541,14 @@ struct ConfigTests {
         workspace-changing = 'exec-and-forget sketchybar --trigger workspace_changing'
         workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']
         focus-changed = []
-        mode-changed = ['exec-and-forget sketchybar --trigger mode_changed', 'retile']
+        mode-changed = ['exec-and-forget sketchybar --trigger mode_changed', 'balance-sizes']
         display-changed = 'layout accordion'
         """).hooks
         #expect(hooks.startup == ["exec-and-forget brew services restart sketchybar"])
         #expect(hooks.workspaceChanging == ["exec-and-forget sketchybar --trigger workspace_changing"])
         #expect(hooks.workspaceChanged == ["exec-and-forget sketchybar --trigger workspace_change"])
         #expect(hooks.focusChanged == [])
-        #expect(hooks.modeChanged == ["exec-and-forget sketchybar --trigger mode_changed", "retile"])
+        #expect(hooks.modeChanged == ["exec-and-forget sketchybar --trigger mode_changed", "balance-sizes"])
         #expect(hooks.displayChanged == ["layout accordion"])
         assertError("[hooks]\nmode-changed = [1]\n", path: "hooks.mode-changed", line: 2, contains: "command string")
         assertError("[hooks]\nstartup = ['']\n", path: "hooks.startup", line: 2, contains: "can't be empty")
@@ -567,16 +561,13 @@ struct ConfigTests {
         #expect(defaults == FocusFollowsMouse())
         #expect(!defaults.enabled)
         #expect(defaults.delayMs == 100)
-        #expect(defaults.accordionEdges)
         let ffm = try Config.parse("""
         [focus-follows-mouse]
         enabled = true
         delay-ms = 0
-        accordion-edges = false
         """).focusFollowsMouse
         #expect(ffm.enabled)
         #expect(ffm.delayMs == 0)
-        #expect(!ffm.accordionEdges)
         assertError("[focus-follows-mouse]\ndelay-ms = -1\n", path: "focus-follows-mouse.delay-ms", line: 2, contains: "0 or more")
         assertError("[focus-follows-mouse]\naccordion = true\n", path: "focus-follows-mouse.accordion", line: 2, contains: "unknown key")
     }

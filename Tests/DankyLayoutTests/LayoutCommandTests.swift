@@ -2,16 +2,6 @@ import CoreGraphics
 import Testing
 @testable import DankyLayout
 
-/// i3's answer for `move` from every window of h[1 v[2 3]] in every direction.
-struct MoveEveryDirectionTests {
-    static let expected: [WindowID: [Direction: String]] = [
-        1: [.left: "h[1 v[2 3]]", .right: "v[2 3 1]", .up: "v[1 2 3]", .down: "v[2 3 1]"],
-        2: [.left: "h[1 2 3]", .right: "h[1 3 2]", .up: "v[2 h[1 3]]", .down: "h[1 v[3 2]]"],
-        3: [.left: "h[1 3 2]", .right: "h[1 2 3]", .up: "h[1 v[3 2]]", .down: "v[h[1 2] 3]"],
-    ]
-
-}
-
 struct FullscreenExitTests {
     @Test func `Focusing another window ends fullscreen`() {
         var ws = workspace(3)
@@ -22,33 +12,14 @@ struct FullscreenExitTests {
         #expect(ws.fullscreen == nil)
     }
 
-    @Test func `Layout commands end fullscreen and keep the tree`() {
-        let commands: [(String, (inout Workspace) -> Void)] = [
-            ("setMode", { $0.setMode(.tiles) }), ("move", { $0.move(.right) }),
-            ("join", { $0.join(.down) }), ("resize", { $0.resize(by: 0) }), ("flatten", { $0.flatten() }),
-        ]
-        for (name, command) in commands {
-            var ws = workspace(3, bounds: rect(0, 0, 3000, 500))
-            ws.toggleFullscreen()
-            command(&ws)
-            #expect(ws.fullscreen == nil, "\(name)")
-        }
-    }
-}
-
-struct AccordionCommandTests {
-
-    @Test func `Container of unknown window is nil`() {
-        #expect(workspace(1).container(of: 9) == nil)
-    }
-
-}
-
-struct ResizeAxisTests {
-
-    @Test func `No container along the axis`() {
-        var ws = workspace(2)
-        #expect(ws.resize(by: 50, along: .vertical) == false)
+    @Test func `Moving and resizing end fullscreen`() {
+        var ws = workspace(3)
+        ws.toggleFullscreen()
+        ws.move(.left)
+        #expect(ws.fullscreen == nil)
+        ws.toggleFullscreen()
+        ws.resize(by: 10)
+        #expect(ws.fullscreen == nil)
     }
 }
 
@@ -68,8 +39,4 @@ struct MinimumSizeTests {
         #expect(ws.resize(by: -100) == false)
     }
 
-    @Test func `Accordion minimum includes the peeking neighbours`() {
-        let accordion = Node.container(Container(.horizontal, .accordion, [.window(1), .window(2), .window(3)]))
-        #expect(accordion.minimumExtent(.horizontal, gap: 8, padding: 30, [2: CGSize(width: 400, height: 0)]) == 460)
-    }
 }

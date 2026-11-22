@@ -26,7 +26,7 @@ extension Command {
                 + "Without --follow, keep focus here. With --follow, focus it there."),
         Doc(syntax: "focus <left|down|up|right> [--boundaries workspace|all-monitors-outer-frame] "
                 + "[--boundaries-action stop|fail|wrap-around-the-workspace|wrap-around-all-monitors]",
-            description: "Focus the neighbouring window in a direction in the layout tree. At the workspace edge, "
+            description: "Focus the column beside the focused one, left or right. At the workspace edge, and for up and down, "
                 + "--boundaries all-monitors-outer-frame goes on to the display in that direction and focuses the window "
                 + "at its near edge. At the last edge, --boundaries-action stops (the default), fails, wraps to the far "
                 + "side of the workspace, or, with all-monitors-outer-frame, to the display at the far side. "
@@ -34,32 +34,24 @@ extension Command {
         Doc(syntax: "focus-monitor <left|down|up|right|next|prev|N>",
             description: "Focus the display in a direction, the next or previous one, or display N as list-monitors numbers it: its most recently focused window, "
                 + "or the display itself when its workspace is empty, so workspace commands act on it."),
-        Doc(syntax: "move <left|down|up|right>",
-            description: "Move the focused window in a direction: left and right swap columns or take a window out "
-                + "of its column into a new one, up and down move it within its column."),
-        Doc(syntax: "join-with <left|down|up|right>",
-            description: "Put the focused window into the neighbouring column, left or right. Up and down do nothing."),
-        Doc(syntax: "resize <smart|width|height> <+N|-N>",
-            description: "Grow or shrink the focused window by N points: smart and width change its column's width, height its share of the column."),
+        Doc(syntax: "move <left|right>",
+            description: "Swap the focused column with its neighbour on that side."),
+        Doc(syntax: "resize width <+N|-N>",
+            description: "Widen or narrow the focused column by N points."),
         Doc(syntax: "switch-preset-column-width",
             description: "Give the focused column the next of [scrolling] preset-column-widths, wider than it is now, "
                 + "wrapping to the narrowest, as niri does."),
         Doc(syntax: "maximize-column",
             description: "Widen the focused column to the whole screen, or give a maximized column back its width. "
                 + "The column stays in the strip."),
-        Doc(syntax: "layout <tiles|accordion|floating|tiling>... [--window-id <id>]",
-            description: "Stack the focused window's column as tiles or as an accordion, or float or tile the window. "
+        Doc(syntax: "layout <floating|tiling>... [--window-id <id>]",
+            description: "Float the focused window, or tile it into a column of its own. "
                 + "--window-id selects a managed window from list-windows --all instead, without focusing it. "
-                + "With several, apply the one after the last that describes the window now, so 'layout floating tiling' "
-                + "and 'layout tiles accordion' toggle."),
+                + "With both, apply the one after the one that describes the window now, so 'layout floating tiling' toggles."),
         Doc(syntax: "fullscreen",
             description: "Toggle the focused window filling the workspace, over the strip. The strip is kept."),
-        Doc(syntax: "flatten-workspace-tree",
-            description: "Give every window on the workspace a column of its own, in order, undoing tree edits. Column widths are kept."),
         Doc(syntax: "balance-sizes",
-            description: "Give every column the default width and every window an equal share of its column."),
-        Doc(syntax: "retile",
-            description: "Re-read every window and re-apply the layout of every workspace on screen."),
+            description: "Give every column on the workspace the default width."),
         Doc(syntax: "clear-minimum-sizes",
             description: "Forget the minimum window sizes danky has learned for every app, and re-apply every layout."),
         Doc(syntax: "mode <name>",

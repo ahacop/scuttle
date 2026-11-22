@@ -170,24 +170,15 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(submenu("Move Window and Follow", moveFollow))
         menu.addItem(.separator())
 
-        menu.addItem(submenu("Focus", directions("focus")))
-        menu.addItem(submenu("Move Window", directions("move")))
-        menu.addItem(submenu("Join Column", items([
-            ("Left", "join-with left"), ("Right", "join-with right"),
-        ])))
+        menu.addItem(submenu("Focus", items([("Left", "focus left"), ("Right", "focus right")])))
+        menu.addItem(submenu("Move Column", items([("Left", "move left"), ("Right", "move right")])))
         menu.addItem(submenu("Column Width", items([
             ("Next Preset", "switch-preset-column-width"), ("Maximize", "maximize-column"), nil,
-            ("Wider", "resize width +50"), ("Narrower", "resize width -50"),
-        ])))
-        menu.addItem(submenu("Window Height", items([
-            ("Taller", "resize height +50"), ("Shorter", "resize height -50"),
-        ])))
-        menu.addItem(submenu("Column Layout", items([
-            ("Tiles", "layout tiles"), ("Accordion", "layout accordion"),
+            ("Wider", "resize width +50"), ("Narrower", "resize width -50"), nil,
+            ("Reset All", "balance-sizes"),
         ])))
         menu.addItem(item("Toggle Floating", "layout floating tiling"))
         menu.addItem(item("Fullscreen", "fullscreen"))
-        menu.addItem(item("Reset Sizes", "balance-sizes"))
         menu.addItem(.separator())
 
         menu.addItem(submenu("Display", items([
@@ -218,7 +209,6 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(.separator())
 
-        menu.addItem(item("Re-tile", "retile"))
         menu.addItem(item("Clear Saved Minimum Sizes", "clear-minimum-sizes"))
         menu.addItem(item("Reload Config", "reload-config"))
         let enabled = item("Enabled", "enable toggle")
@@ -266,10 +256,6 @@ final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(entry.map { item($0.0, $0.1) } ?? .separator())
         }
         return menu
-    }
-
-    private func directions(_ command: String) -> NSMenu {
-        items(["left", "down", "up", "right"].map { ($0.capitalized, "\(command) \($0)") })
     }
 
     private func submenu(_ title: String, _ menu: NSMenu) -> NSMenuItem {

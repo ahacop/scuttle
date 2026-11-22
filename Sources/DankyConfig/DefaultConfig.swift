@@ -34,8 +34,6 @@ extension Config {
     column-width = 0.5              # a new column's share of the display
     preset-column-widths = [0.33333, 0.5, 0.66667]   # what switch-preset-column-width steps through
 
-    [accordion]                     # a column switched to `layout accordion`
-    padding = 30                    # maximum points the neighbours peek out by
 
     [gaps]
     inner = 8                       # or { horizontal = 8, vertical = 8 }
@@ -71,7 +69,6 @@ extension Config {
     [focus-follows-mouse]
     enabled = false
     delay-ms = 100                  # how long the pointer rests on a window before it takes focus
-    accordion-edges = true          # resting on a peeking accordion edge focuses that window
 
     [swipe]
     enabled = false                 # the Spaces swipe focuses the next window of a tiled workspace first
@@ -132,28 +129,20 @@ extension Config {
     alt-shift-9 = 'move-window-to-workspace 9'
     alt-tab = 'workspace-back-and-forth'
     alt-h = 'focus left'
-    alt-j = 'focus down'
-    alt-k = 'focus up'
     alt-l = 'focus right'
     alt-shift-h = 'move left'
-    alt-shift-j = 'move down'
-    alt-shift-k = 'move up'
     alt-shift-l = 'move right'
-    alt-minus = 'resize smart -50'
-    alt-equal = 'resize smart +50'
+    alt-minus = 'resize width -50'
+    alt-equal = 'resize width +50'
     alt-r = 'switch-preset-column-width'
     alt-f = 'maximize-column'
     alt-shift-f = 'fullscreen'
     alt-v = 'layout floating tiling'
-    alt-comma = 'layout accordion'
-    alt-slash = 'layout tiles'
     alt-shift-n = 'move-window-to-display next'
     alt-shift-semicolon = 'mode service'
 
     [mode.service]
     esc = ['reload-config', 'mode main']
-    r = ['flatten-workspace-tree', 'mode main']
-    alt-shift-h = ['join-with left', 'mode main']
-    alt-shift-l = ['join-with right', 'mode main']
+    r = ['balance-sizes', 'mode main']
     """
 }

@@ -15,11 +15,11 @@ permalink: /
 $ danky list-windows --workspace 3
 4211 | Ghostty | ~
 4388 | Safari  | danky
-$ danky layout accordion <span class="cursor">█</span></code></pre>
+$ danky switch-preset-column-width <span class="cursor">█</span></code></pre>
 
 danky tiles the windows on each native Space and switches Spaces in about 70 ms
 instead of half a second. It has one layout, a scrolling strip of columns
-after niri with preset column widths, an accordion mode, focus borders, a TOML
+of one window each after niri, with preset column widths, focus borders, a TOML
 config and a `danky` command line for scripts and bars. Nothing is injected into
 the Dock.
 

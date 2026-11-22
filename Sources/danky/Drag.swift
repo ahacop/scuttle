@@ -2,7 +2,7 @@ import AppKit
 import DankyLayout
 
 // Dragging a tiled window with the mouse. On release, a drag that moved one edge of the window on an axis is a
-// resize: the tree takes the new size and the other tiles make room. Any other drag is a move: dropping it with the
+// resize: its column takes the new width, and the strip stays the height it is. Any other drag is a move: dropping it with the
 // pointer over another tile swaps the two, anywhere else puts it back. While a move is under way, placeholders outline the window's tile and where it
 // would land. Only frames that change while the mouse button is down count as a drag, which keeps danky's own frame
 // writes and apps moving themselves out of it.
@@ -48,8 +48,8 @@ extension Coordinator {
         guard let expected = layout.frames[id] else { return }
         if window.frame.isClose(to: start, within: 2) {
             guard !window.frame.isClose(to: expected, within: 2) else { return }
-        } else if let edges = movedEdges(from: start, to: window.frame) {
-            edit(key) { $0.resize(id, to: window.frame.size, moving: edges) }
+        } else if movedEdges(from: start, to: window.frame) != nil {
+            edit(key) { $0.resize(id, to: window.frame.size) }
         } else if let target = dropTarget(of: id, in: layout) {
             edit(key) { $0.swap(id, target) }
         }

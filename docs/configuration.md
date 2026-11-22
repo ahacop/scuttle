@@ -117,22 +117,17 @@ is parked: it hangs off the display edge with a sliver of at least 25 points
 left on, an inner gap from the columns in view. Where another display sits beyond that edge, the column stops
 at the border instead and waits behind the columns in view.
 
-Commands work on columns. `focus left` and `right` move between columns, `up`
-and `down` within one. `move left` and `right` swap the column with its
-neighbour, or take a window that shares its column out into a new column.
-`join-with left` and `right` put the window into the neighbouring column.
-`resize width` (and `smart`) changes the column's width, `resize height` the
-window's share of its column; `balance-sizes` resets them all. Hover focus
-leaves columns that are not wholly in view alone; a click scrolls to them.
+Each column is one window, as tall as the display. `focus left` and `right`
+move between columns, and `move left` and `right` swap the column with its
+neighbour. `resize width` changes the column's width and `balance-sizes` gives
+every column the default width again. Hover focus leaves columns that are not
+wholly in view alone; a click scrolls to them.
 
 `switch-preset-column-width` (Alt-R) steps the focused column through
 `preset-column-widths`, to the first one wider than it is now, wrapping to the
 narrowest, as niri's does. `maximize-column` (Alt-F) widens the column to the
 whole display and back; its neighbours stay in the strip, scrolled aside.
 `fullscreen` (Alt-Shift-F) instead shows the window over the strip.
-
-`layout tiles` and `layout accordion` set the focused window's column, so they
-do nothing while it holds one window.
 
 ## `[scrolling]`
 
@@ -142,16 +137,6 @@ do nothing while it holds one window.
 |---|---|---|
 | `column-width` | `0.5` | A new column's width, as a share of the display inside the outer gaps, from `0.1` to `1`. |
 | `preset-column-widths` | `[0.33333, 0.5, 0.66667]` | The widths `switch-preset-column-width` steps through, as shares of the display, each `0.1` to `1`. niri's thirds by default. |
-
-</div>
-
-## `[accordion]`
-
-<div class="wide-table" markdown="1">
-
-| Key | Default | |
-|---|---|---|
-| `padding` | `30` | Maximum points the neighbours peek out by, 0 or more; a negative value gives a warning but is still used as written. It shrinks to leave window content in narrow containers and respect recorded window minima. |
 
 </div>
 
@@ -324,14 +309,13 @@ when AX is unavailable.
 |---|---|---|
 | `enabled` | `false` | Focus the managed window the pointer rests on. Ignored while a button is down or a menu is open, and until the pointer moves to another window after Cmd-Tab or a Space change. |
 | `delay-ms` | `100` | How long the pointer must rest. |
-| `accordion-edges` | `true` | Resting on a peeking accordion edge focuses that window. |
 
 </div>
 
 ## `[swipe]`
 
 With `enabled = true`, the trackpad swipe that switches Spaces also moves focus
-between a tiled workspace's windows: scrolling columns, accordion children or tiles.
+between a tiled workspace's columns.
 In `'instant'` mode on macOS before 27, danky keeps the swipe from the Dock and
 switches Space only past the last window. In `'native'` mode, macOS receives the
 whole swipe: a short swipe can move focus, and a full, quick swipe can both move
@@ -581,8 +565,6 @@ fullscreen-width = 1.0          # share of the width a fullscreen window, or a w
 column-width = 0.5              # a new column's share of the display
 preset-column-widths = [0.33333, 0.5, 0.66667]   # what switch-preset-column-width steps through
 
-[accordion]                     # a column switched to `layout accordion`
-padding = 30                    # maximum points the neighbours peek out by
 
 [gaps]
 inner = 8                       # or { horizontal = 8, vertical = 8 }
@@ -618,7 +600,6 @@ exclude-apps = []               # bundle IDs whose windows get no border
 [focus-follows-mouse]
 enabled = false
 delay-ms = 100                  # how long the pointer rests on a window before it takes focus
-accordion-edges = true          # resting on a peeking accordion edge focuses that window
 
 [swipe]
 enabled = false                 # the Spaces swipe focuses the next window of a tiled workspace first
@@ -679,27 +660,19 @@ alt-shift-8 = 'move-window-to-workspace 8'
 alt-shift-9 = 'move-window-to-workspace 9'
 alt-tab = 'workspace-back-and-forth'
 alt-h = 'focus left'
-alt-j = 'focus down'
-alt-k = 'focus up'
 alt-l = 'focus right'
 alt-shift-h = 'move left'
-alt-shift-j = 'move down'
-alt-shift-k = 'move up'
 alt-shift-l = 'move right'
-alt-minus = 'resize smart -50'
-alt-equal = 'resize smart +50'
+alt-minus = 'resize width -50'
+alt-equal = 'resize width +50'
 alt-r = 'switch-preset-column-width'
 alt-f = 'maximize-column'
 alt-shift-f = 'fullscreen'
 alt-v = 'layout floating tiling'
-alt-comma = 'layout accordion'
-alt-slash = 'layout tiles'
 alt-shift-n = 'move-window-to-display next'
 alt-shift-semicolon = 'mode service'
 
 [mode.service]
 esc = ['reload-config', 'mode main']
-r = ['flatten-workspace-tree', 'mode main']
-alt-shift-h = ['join-with left', 'mode main']
-alt-shift-l = ['join-with right', 'mode main']
+r = ['balance-sizes', 'mode main']
 ```

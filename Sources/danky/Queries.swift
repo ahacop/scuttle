@@ -87,7 +87,7 @@ func listWindows(_ query: WindowQuery) -> Reply {
         values.merge([
             "window-id": "\(window.id)", "window-title": title ?? "",
             "window-identifier": coordinator?.windowFacts.identifier(for: window.id) ?? "",
-            "window-layout": layout, "window-parent-container-layout": layout,
+            "window-layout": layout,
             "window-is-floating": "\(layout == "floating")", "window-is-fullscreen": "\(layout == "fullscreen")",
             "app-name": app?.localizedName ?? window.app, "app-bundle-id": app?.bundleIdentifier ?? "",
             "app-pid": "\(window.pid)",

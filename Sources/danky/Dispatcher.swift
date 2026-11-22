@@ -61,29 +61,16 @@ enum Dispatcher {
             return layout(names, window: window)
         case .move(let direction):
             return tree("move \(direction)") { $0.move(direction) }
-        case .joinWith(let direction):
-            return tree("join-with \(direction)") { $0.join(direction) }
-        case .resize(let dimension, let delta):
-            let axis: Orientation? = switch dimension {
-            case .smart: nil
-            case .width: .horizontal
-            case .height: .vertical
-            }
-            return tree("resize \(dimension.rawValue) \(delta)") { $0.resize(by: CGFloat(delta), along: axis) }
+        case .resize(let delta):
+            return tree("resize width \(delta)") { $0.resize(by: CGFloat(delta)) }
         case .fullscreen:
             return tree("fullscreen") { $0.toggleFullscreen(); return true }
         case .switchPresetColumnWidth:
             return tree("switch-preset-column-width") { $0.switchPresetColumnWidth() }
         case .maximizeColumn:
             return tree("maximize-column") { $0.toggleMaximizedColumn() }
-        case .flattenWorkspaceTree:
-            return tree("flatten-workspace-tree") { $0.flatten(); return true }
         case .balanceSizes:
             return tree("balance-sizes") { $0.balanceSizes(); return true }
-        case .retile:
-            guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
-            coordinator.reconcile()
-            return .ok("retiled")
         case .clearMinimumSizes:
             guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
             coordinator.clearMinimumSizes()
@@ -215,24 +202,13 @@ enum Dispatcher {
         }
     }
 
-    /// Applies the layout after the last that describes the window now (see `nextLayout`): floating or tiling
-    /// for the window, or tiles or accordion for its column. Anything but floating tiles a floating window first.
+    /// Floats or tiles the window: the one of `names` after the one that describes it now (see `nextLayout`).
     private static func layout(_ names: [LayoutName], window: WindowID?) -> Reply {
         guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
         let id = window ?? coordinator.focusedWindow
         guard let floating = coordinator.isFloating(id) else { return .error("layout: no window danky manages is focused") }
-        var current: [LayoutName] = floating ? [.floating] : [.tiling]
-        if !floating, let (container, _) = coordinator.layoutContainer(of: id) {
-            current.append(LayoutName.describing(container.mode))
-        }
-        let name = nextLayout(in: names, current: current)
-        switch name {
-        case .floating, .tiling:
-            coordinator.setFloating(id, name == .floating)
-        default:
-            if floating { coordinator.setFloating(id, false) }
-            if let mode = name.mode { coordinator.command(on: id) { $0.setMode(mode) } }
-        }
+        let name = nextLayout(in: names, current: [floating ? .floating : .tiling])
+        coordinator.setFloating(id, name == .floating)
         return .ok("layout \(name.rawValue)")
     }
 

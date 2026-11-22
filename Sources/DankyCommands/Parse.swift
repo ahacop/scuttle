@@ -67,13 +67,11 @@ extension Command {
             if let n = one.flatMap({ Int($0) }) { return n >= 1 ? .focusMonitorNumber(n) : nil }
             return one.flatMap(MonitorTarget.init(rawValue:)).map { .focusMonitor($0) }
         case "move":
-            return one.flatMap(Direction.init).map { .move($0) }
-        case "join-with":
-            return one.flatMap(Direction.init).map { .joinWith($0) }
+            return one.flatMap(Direction.init).flatMap { $0.orientation == .horizontal ? .move($0) : nil }
         case "resize":
-            guard args.count == 2, let dimension = ResizeDimension(rawValue: args[0]),
+            guard args.count == 2, args[0] == "width",
                   args[1].hasPrefix("+") || args[1].hasPrefix("-"), let delta = Int(args[1]) else { return nil }
-            return .resize(dimension, by: delta)
+            return .resize(by: delta)
         case "layout":
             let layouts = args.compactMap(LayoutName.init(rawValue:))
             guard !none, layouts.count == args.count else { return nil }
@@ -84,12 +82,8 @@ extension Command {
             return none ? .switchPresetColumnWidth : nil
         case "maximize-column":
             return none ? .maximizeColumn : nil
-        case "flatten-workspace-tree":
-            return none ? .flattenWorkspaceTree : nil
         case "balance-sizes":
             return none ? .balanceSizes : nil
-        case "retile":
-            return none ? .retile : nil
         case "clear-minimum-sizes":
             return none ? .clearMinimumSizes : nil
         case "mode":

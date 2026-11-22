@@ -2,11 +2,7 @@ import CoreGraphics
 
 /// Directional commands and resize. Each returns false when there was nothing to do.
 extension Workspace {
-    /// Smallest share a window can be resized down to.
-    static let minimumRatio = 0.1
-
-    /// The window in `direction` from `id`. Uses a virtual layout where accordions are split like tiles,
-    /// so stacked accordion children still have a left and right. Ties go to the most recently focused window.
+    /// The window in `direction` from `id`: the column beside it. Up and down find none on one workspace.
     public func neighbor(of id: WindowID, _ direction: Direction) -> WindowID? {
         var layout = Layout()
         root.layout(in: bounds, gaps: .zero, padding: 0, virtual: true, into: &layout)
@@ -27,13 +23,13 @@ extension Workspace {
         return candidates.min { $0.distance < $1.distance }?.id
     }
 
-    /// The window a trackpad swipe toward `direction` focuses: the focused window's neighbour that way, a column of
-    /// the scrolling strip, an accordion child or a tile. Nil at the edge, where the swipe is macOS's again.
+    /// The window a trackpad swipe toward `direction` focuses: the column beside the focused one. Nil at the edge,
+    /// where the swipe is macOS's again.
     public func swipeTarget(_ direction: Direction) -> WindowID? {
         focused.flatMap { neighbor(of: $0, direction) }
     }
 
-    /// Swap two windows' places in the tree, keeping both tiles' sizes. Focus stays where it was.
+    /// Swap two windows' columns, each keeping its column's width. Focus stays where it was.
     @discardableResult
     public mutating func swap(_ first: WindowID, _ second: WindowID) -> Bool {
         guard first != second, let a = root.path(of: first), let b = root.path(of: second) else { return false }
@@ -43,122 +39,25 @@ extension Workspace {
         return true
     }
 
-    /// Move the focused window one step in `direction`: columns left and right, within its column up and down.
-    /// See `moveInStrip`.
+    /// Move the focused window's column one step left or right, swapping it with its neighbour. Up and down do
+    /// nothing: a column is one window.
     @discardableResult
     public mutating func move(_ direction: Direction) -> Bool {
         isFullscreen = false
-        return moveInStrip(direction)
-    }
-
-    mutating func moveInTree(_ direction: Direction) -> Bool {
-        guard let focused, let path = root.path(of: focused) else { return false }
-        let axis = direction.orientation, forward = direction.isForward, layout = tiledLayout()
-        let parentPath = Array(path.dropLast()), index = path.last!
-        let parent = root.container(at: parentPath)
-        let sibling = index + (forward ? 1 : -1)
-        if axisOfContainer(at: parentPath, in: layout) == axis, parent.children.indices.contains(sibling) {
-            if case .window(let other) = parent.children[sibling] { return swap(focused, other) }
-            var destination = parentPath + [sibling]
-            while case .container(let c) = root.node(at: destination), axisOfContainer(at: destination, in: layout) != axis {
-                destination.append(c.activeIndex)
-            }
-            detach(path, adjusting: &destination)
-            if case .container(let c) = root.node(at: destination) {
-                root.modify(at: destination) { $0.insert(.window(focused), at: forward ? 0 : c.children.count) }
-            } else {
-                root.modify(at: Array(destination.dropLast())) { $0.insert(.window(focused), at: destination.last! + 1) }
-            }
-        } else if let depth = path.indices.dropLast().last(where: { axisOfContainer(at: Array(path.prefix($0)), in: layout) == axis }) {
-            var outer = Array(path.prefix(depth + 1))
-            detach(path, adjusting: &outer)
-            root.modify(at: Array(outer.dropLast())) { $0.insert(.window(focused), at: outer.last! + (forward ? 1 : 0)) }
-        } else {
-            return false
-        }
-        normalize()
+        guard direction.orientation == .horizontal, let focused, let column = root.path(of: focused)?.first else { return false }
+        let other = column + (direction.isForward ? 1 : -1)
+        guard root.children.indices.contains(other) else { return false }
+        let node = root.children[other]
+        root.replace(at: other, with: root.children[column])
+        root.replace(at: column, with: node)
         focus(focused)
         return true
     }
 
-    /// Put the focused window into the neighbouring subtree in `direction`: into it if it is a container
-    /// across the axis, else into a new container wrapping the neighbour. Adapted from AeroSpace's join-with.
+    /// Widen (positive) or narrow the focused window's column by `delta` points. False when nothing visibly changed.
     @discardableResult
-    public mutating func join(_ direction: Direction) -> Bool {
+    public mutating func resize(by delta: CGFloat) -> Bool {
         isFullscreen = false
-        return joinInStrip(direction)
-    }
-
-    /// `atRoot` joins at the root, as the strip does for its columns; otherwise the window joins at the deepest
-    /// container along the direction with a neighbour there.
-    mutating func joinInTree(_ direction: Direction, atRoot: Bool = false) -> Bool {
-        guard let focused, let path = root.path(of: focused) else { return false }
-        let forward = direction.isForward, offset = forward ? 1 : -1, layout = tiledLayout()
-        guard let depth = atRoot ? 0 : path.indices.last(where: { depth in
-            let prefix = Array(path.prefix(depth))
-            return axisOfContainer(at: prefix, in: layout) == direction.orientation
-                && root.container(at: prefix).children.indices.contains(path[depth] + offset)
-        }) else { return false }
-        var target = Array(path.prefix(depth)) + [path[depth] + offset]
-        detach(path, adjusting: &target)
-        let across = direction.orientation.opposite
-        // Asked after the detach: the target may have grown into the space the window left.
-        switch root.node(at: target) {
-        case .container(let c) where axisOfContainer(at: target) == across:
-            root.modify(at: target) { $0.insert(.window(focused), at: forward ? 0 : c.children.count) }
-        case let node:
-            let pair: [Node] = forward ? [.window(focused), node] : [node, .window(focused)]
-            root.modify(at: Array(target.dropLast())) { $0.replace(at: target.last!, with: .container(Container(ContainerOrientation(across), .tiles, pair))) }
-        }
-        normalize()
-        focus(focused)
-        return true
-    }
-
-    /// Grow (positive) or shrink the focused window by `delta` points along its nearest tiles container's axis,
-    /// or the nearest one running along `axis` if given. Siblings give or take space proportionally; no share
-    /// drops below `minimumRatio` and the window does not shrink below its minimum size. False when nothing
-    /// visibly changed.
-    /// A width or smart resize changes the column's width.
-    @discardableResult
-    public mutating func resize(by delta: CGFloat, along axis: Orientation? = nil) -> Bool {
-        isFullscreen = false
-        if axis != .vertical { return resizeColumn(by: delta) }
-        guard let focused, var path = root.path(of: focused) else { return false }
-        let layout = tiledLayout()
-        while let index = path.popLast() {
-            let parent = root.container(at: path)
-            let rect = rect(at: path, in: layout), along = parent.axis(in: rect)
-            guard parent.mode == .tiles, parent.children.count > 1, axis ?? along == along else { continue }
-            // The children share the container's extent less the gaps between them, as `tileRects` splits it.
-            let extent = (along == .horizontal ? rect.width : rect.height) - gaps.inner(along) * CGFloat(parent.children.count - 1)
-            let smallest = parent.children[index].minimumExtent(along, gap: gaps.inner(along), padding: accordionPadding, minimumSizes)
-            let old = parent.ratios[index]
-            let smallestOther = parent.ratios.enumerated().filter { $0.offset != index }.map(\.element).min()!
-            // A share may shrink to the larger of `minimumRatio` and its minimum size, and grow until the smallest
-            // sibling, scaled down with the others, reaches `minimumRatio`. Neither bound crosses the current share:
-            // eleven or more siblings, or a container spliced into its parent, sit below the minimum already, and
-            // must not be pushed further below it.
-            let lower = min(old, max(Self.minimumRatio, Double(smallest / extent)))
-            let upper = max(old, 1 - Self.minimumRatio * (1 - old) / smallestOther)
-            let new = min(max(old + Double(delta / extent), lower), upper)
-            guard abs(new - old) > 1e-9 else { return false }
-            let (oldRoot, oldFrame) = (root, tiledLayout().frames[focused])
-            let scale = (1 - new) / (1 - old)
-            root.modify(at: path) { c in c.setRatios(c.ratios.enumerated().map { $0.offset == index ? new : $0.element * scale }) }
-            // A step the minimum sizes swallow whole is undone, so the ratios do not drift out of sight.
-            if tiledLayout().frames[focused] == oldFrame { root = oldRoot; return false }
-            return true
-        }
-        return false
-    }
-
-    /// Remove the leaf at `path` without normalizing, shifting `other` if it pointed past the removed sibling.
-    private mutating func detach(_ path: [Int], adjusting other: inout [Int]) {
-        let level = path.count - 1
-        root.modify(at: Array(path.prefix(level))) { $0.remove(at: path[level]) }
-        if other.count > level, Array(other.prefix(level)) == Array(path.prefix(level)), other[level] > path[level] {
-            other[level] -= 1
-        }
+        return resizeColumn(by: delta)
     }
 }

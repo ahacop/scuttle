@@ -342,7 +342,6 @@ final class Coordinator {
     /// are reordered or displays come and go.
     private func configureWorkspaces() {
         for key in workspaces.keys {
-            workspaces[key]!.accordionPadding = CGFloat(config.accordion.padding)
             workspaces[key]!.columnWidth = config.scrolling.columnWidth
             workspaces[key]!.presetColumnWidths = config.scrolling.presetColumnWidths
             workspaces[key]!.fullscreenWidth = fullscreenWidth(for: key)
@@ -554,8 +553,7 @@ final class Coordinator {
         guard settings.tiling else { return nil }
         let key = window.spaceID
         if workspaces[key] == nil {
-            workspaces[key] = Workspace(bounds: area(of: display), gaps: gaps(on: display),
-                                        accordionPadding: CGFloat(config.accordion.padding))
+            workspaces[key] = Workspace(bounds: area(of: display), gaps: gaps(on: display))
             workspaces[key]!.columnWidth = config.scrolling.columnWidth
             workspaces[key]!.presetColumnWidths = config.scrolling.presetColumnWidths
             workspaces[key]!.fullscreenWidth = fullscreenWidth(for: key)

@@ -143,9 +143,6 @@ final class HoverFocus {
         let front = frontWindowID()
         if front != 0, coordinator.placements[front] == nil,
            coordinator.model.windows[front].map({ coordinator.isVisible($0.spaceID) }) ?? true { return nil }
-        // An accordion child other than the front one only peeks out; with `accordion-edges = false` it stays put.
-        if !config.accordionEdges, let container = coordinator.container(of: id), container.mode == .accordion,
-           container.children[container.activeIndex] != .window(id) { return nil }
         // A column scrolled partly or wholly out of view would scroll the strip under the pointer; a click does that.
         if !coordinator.isInView(id) { return nil }
         return id

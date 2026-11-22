@@ -18,18 +18,15 @@ prints it.
 | `workspace-back-and-forth` | Switch to the previous workspace. |
 | `move-window-to-workspace <n\|prev\|next> [--follow] [--window-id <id>]` | Move the focused window or the window with the given ID. With `--follow`, switch to the destination. |
 | `move-window-to-display <next\|prev> [--follow] [--window-id <id>]` | Move the focused or selected window to another display's workspace. |
-| `focus <left\|down\|up\|right> [--boundaries <b>] [--boundaries-action <a>]` | Focus the nearest window. `--boundaries` is `workspace` (default) or `all-monitors-outer-frame`, which continues onto the next display. `--boundaries-action` is `stop` (default), `fail`, `wrap-around-the-workspace` (`--wrap-around`) or `wrap-around-all-monitors`, which needs `all-monitors-outer-frame`. |
+| `focus <left\|down\|up\|right> [--boundaries <b>] [--boundaries-action <a>]` | Focus the column beside this one. Up and down only reach another display. `--boundaries` is `workspace` (default) or `all-monitors-outer-frame`, which continues onto the next display. `--boundaries-action` is `stop` (default), `fail`, `wrap-around-the-workspace` (`--wrap-around`) or `wrap-around-all-monitors`, which needs `all-monitors-outer-frame`. |
 | `focus-monitor <left\|down\|up\|right\|next\|prev\|n>` | Focus a display. |
-| `move <left\|down\|up\|right>` | Left and right swap the focused column with its neighbour, or take the window out of a shared column into a new one; up and down move it within its column. |
-| `join-with <left\|down\|up\|right>` | Left and right put the focused window into the neighbouring column. Up and down do nothing: columns only stack top to bottom. |
-| `resize <smart\|width\|height> <+n\|-n>` | Resize by n points: `smart` and `width` change the column's width, `height` the window's share of its column. |
+| `move <left\|right>` | Swap the focused column with its neighbour. |
+| `resize width <+n\|-n>` | Widen or narrow the focused column by n points. |
 | `switch-preset-column-width` | Give the focused column the next of [`preset-column-widths`](configuration.md#scrolling-1), the first wider than it is now, wrapping to the narrowest, as niri does. |
 | `maximize-column` | Widen the focused column to the whole display, or give a maximized column back its width. Its neighbours stay in the strip. |
-| `layout <tiles\|accordion\|floating\|tiling>... [--window-id <id>]` | Stack the focused or selected window's [column](configuration.md#scrolling) as tiles or an accordion, or float/tile the window. Given several, applies the one after the current one, so `layout floating tiling` and `layout tiles accordion` toggle. Tiles the window first if it floats, so it does nothing on an empty workspace without an ID. |
+| `layout <floating\|tiling>... [--window-id <id>]` | Float the focused or selected window, or tile it into a column of its own. `layout floating tiling` toggles. |
 | `fullscreen` | Toggle filling the workspace over the strip (not macOS full screen). [`fullscreen-width`](configuration.md#top-level) narrows and centres it. |
-| `flatten-workspace-tree` | Give every window a column of its own, in order, undoing tree edits. Column widths are kept. |
-| `balance-sizes` | Give every column the default width and every window an equal share of its column. |
-| `retile` | Re-read windows and re-apply every layout. |
+| `balance-sizes` | Give every column the default width. |
 | `clear-minimum-sizes` | Forget the minimum window sizes learned for every app and re-apply every layout. |
 | `mode <name>` | Switch binding mode. |
 | `reload-config` | Reload the config. |

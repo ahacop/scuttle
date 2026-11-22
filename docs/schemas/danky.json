@@ -106,19 +106,6 @@
         }
       }
     },
-    "accordion": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "A column switched to layout accordion.",
-      "properties": {
-        "padding": {
-          "type": "integer",
-          "minimum": 0,
-          "default": 30,
-          "description": "Maximum points by which neighbouring windows peek out; shrinks in narrow containers to leave content and respect recorded window minima."
-        }
-      }
-    },
     "gaps": { "$ref": "#/definitions/gaps" },
     "display": {
       "type": "object",
@@ -187,11 +174,6 @@
           "minimum": 0,
           "default": 100,
           "description": "How long the pointer must rest on a window before it takes focus. 0 focuses as soon as the pointer stops."
-        },
-        "accordion-edges": {
-          "type": "boolean",
-          "default": true,
-          "description": "Whether resting on the peeking edge of an accordion child focuses it."
         }
       }
     },
@@ -351,7 +333,7 @@
     },
     "command": {
       "type": "string",
-      "pattern": "^\\s*(workspace|workspace-back-and-forth|move-window-to-workspace|move-window-to-display|focus|focus-monitor|move|join-with|resize|layout|fullscreen|switch-preset-column-width|maximize-column|flatten-workspace-tree|balance-sizes|retile|clear-minimum-sizes|mode|reload-config|enable|list-workspaces|list-windows|list-monitors|list-displays|list-modes|debug-state|exec-and-forget)(\\s.*)?$",
+      "pattern": "^\\s*(workspace|workspace-back-and-forth|move-window-to-workspace|move-window-to-display|focus|focus-monitor|move|resize|layout|fullscreen|switch-preset-column-width|maximize-column|balance-sizes|clear-minimum-sizes|mode|reload-config|enable|list-workspaces|list-windows|list-monitors|list-displays|list-modes|debug-state|exec-and-forget)(\\s.*)?$",
       "description": "A danky command, as `danky help` lists them: `workspace 3`, `layout floating`, `exec-and-forget open -a Safari`. move-window-to-workspace, move-window-to-display and layout accept --window-id <id> to target a managed window on a numbered workspace."
     },
     "commands": {

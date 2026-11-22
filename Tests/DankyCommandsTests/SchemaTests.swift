@@ -74,8 +74,6 @@ struct SchemaTests {
         fullscreen-width = 0.9
         lone-window-width = 0.8
 
-        [accordion]
-        padding = 20
 
         [scrolling]
         column-width = 0.5
@@ -126,7 +124,6 @@ struct SchemaTests {
         [focus-follows-mouse]
         enabled = true
         delay-ms = 50
-        accordion-edges = false
 
         [swipe]
         enabled = true
@@ -168,7 +165,7 @@ struct SchemaTests {
         [mode.main]
         alt-1 = 'workspace 1'
         alt-r = 'mode resize'
-        ctrl-h = { command = ['focus left', 'retile'], exclude-apps = ['com.github.wez.wezterm'] }
+        ctrl-h = { command = ['focus left', 'balance-sizes'], exclude-apps = ['com.github.wez.wezterm'] }
 
         [mode.resize]
         esc = ['mode main']

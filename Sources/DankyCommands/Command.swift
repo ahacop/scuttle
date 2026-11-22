@@ -15,20 +15,18 @@ public enum Command: Equatable, Sendable {
     case focusMonitor(MonitorTarget)
     /// `focus-monitor N`: the display numbered N by `list-monitors`, from 1.
     case focusMonitorNumber(Int)
+    /// Swap the focused column with its neighbour, left or right.
     case move(Direction)
-    case joinWith(Direction)
-    case resize(ResizeDimension, by: Int)
-    /// One layout, or several to cycle through: the one after the last that describes the current state wins,
-    /// so `layout floating tiling` and `layout tiles accordion` toggle between the two.
+    /// Widen or narrow the focused column by N points.
+    case resize(by: Int)
+    /// Float or tile the window, or both to toggle: the one after the one that describes it now wins.
     case layout([LayoutName])
     case fullscreen
     /// Step the focused column through the preset widths, as niri's `switch-preset-column-width`.
     case switchPresetColumnWidth
     /// Widen the focused column to the whole screen, or give it back its width, as niri's `maximize-column`.
     case maximizeColumn
-    case flattenWorkspaceTree
     case balanceSizes
-    case retile
     case clearMinimumSizes
     case mode(String)
     case reloadConfig
@@ -76,10 +74,6 @@ public enum MonitorTarget: String, Equatable, Sendable {
     public var direction: Direction? { Direction(rawValue) }
 }
 
-public enum ResizeDimension: String, Equatable, Sendable {
-    case smart, width, height
-}
-
 /// The one of `names` to apply to a state `current` describes: the one after the last that describes it,
 /// wrapping, so a list cycles and two toggle; the first when none does.
 public func nextLayout<Name: Equatable>(in names: [Name], current: [Name]) -> Name {
@@ -87,24 +81,9 @@ public func nextLayout<Name: Equatable>(in names: [Name], current: [Name]) -> Na
     return names[(last + 1) % names.count]
 }
 
-/// A state for `layout`: tiles or accordion for the focused window's column, or floating or tiling for the window.
+/// A state for `layout`: floating or tiling for the window.
 public enum LayoutName: String, Equatable, Sendable {
-    case tiles, accordion
     case floating, tiling
-
-    /// The column mode this sets, nil for floating and tiling.
-    public var mode: LayoutMode? {
-        switch self {
-        case .tiles: .tiles
-        case .accordion: .accordion
-        case .floating, .tiling: nil
-        }
-    }
-
-    /// The state a tiled window's column is in.
-    public static func describing(_ mode: LayoutMode) -> LayoutName {
-        mode == .tiles ? .tiles : .accordion
-    }
 }
 
 public enum Toggle: String, Equatable, Sendable {

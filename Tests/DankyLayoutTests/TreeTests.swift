@@ -76,13 +76,6 @@ struct RemoveTests {
 }
 
 struct FlattenAndModeTests {
-    @Test func `Flatten collapses to one container`() {
-        var ws = workspace(5)
-        ws.flatten()
-        #expect(shape(ws.root) == "h[1 2 3 4 5]")
-        assertRatios(ws.root.ratios, Array(repeating: 0.2, count: 5))
-        #expect(ws.focused == 5)
-    }
 
 }
 

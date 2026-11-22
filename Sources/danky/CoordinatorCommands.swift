@@ -23,30 +23,16 @@ extension Coordinator {
         return target
     }
 
-    /// The container holding a tiled window.
-    func container(of id: WindowID) -> Container? {
-        placements[id]?.space.flatMap { workspaces[$0]?.container(of: id) }
-    }
-
     /// Whether the window shows whole: false only for a column scrolled partly or wholly out of view.
     func isInView(_ id: WindowID) -> Bool {
         placements[id]?.space.flatMap { workspaces[$0]?.isInView(id) } ?? true
     }
 
-    /// The container `layout` commands change for a tiled window, and the axis it runs along now: see
-    /// `Workspace.layoutContainer(of:)`.
-    func layoutContainer(of id: WindowID) -> (container: Container, axis: Orientation)? {
-        placements[id]?.space.flatMap { workspaces[$0]?.layoutContainer(of: id) }
-    }
-
-    /// AeroSpace's name for how a window is laid out: `h_tiles`, `v_tiles`, `h_accordion` or `v_accordion`
-    /// from its container (an `auto` one by the axis it follows now), `fullscreen` for danky's fullscreen,
+    /// How a window is laid out, for `%{window-layout}`: `tiling` in a column, `fullscreen` for danky's fullscreen,
     /// `floating` for any window that is not tiled.
     func layoutName(of id: WindowID) -> String {
-        guard let key = placements[id]?.space, let workspace = workspaces[key],
-              let container = workspace.container(of: id), let axis = workspace.containerAxis(of: id) else { return "floating" }
-        if workspace.fullscreen == id { return "fullscreen" }
-        return (axis == .horizontal ? "h_" : "v_") + (container.mode == .accordion ? "accordion" : "tiles")
+        guard let key = placements[id]?.space, let workspace = workspaces[key], workspace.contains(id) else { return "floating" }
+        return workspace.fullscreen == id ? "fullscreen" : "tiling"
     }
 
     /// The layout of the workspace on a Space, for `%{workspace-layout}`: always `scrolling`. Nil for a Space

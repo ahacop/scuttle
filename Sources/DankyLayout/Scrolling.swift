@@ -1,7 +1,7 @@
 import CoreGraphics
 
-// The scrolling layout, after Hyprland's (and niri's): the root is a row of columns, each a window or a stack of
-// windows, as wide as its own share of the screen whatever the number of columns, so the row runs past the
+// The scrolling layout, after niri's: the root is a row of columns, one window each and as tall as the screen,
+// each as wide as its own share of the screen whatever the number of columns, so the row runs past the
 // screen edges and scrolls to keep the focused column in view. Columns that fit, a lone one too, are centred, and focusing a column scrolls just far enough to show it whole.
 //
 // macOS cannot clip another app's window at the screen edge, so a window scrolled out of view is parked
@@ -56,7 +56,7 @@ extension Workspace {
         var start: CGFloat = 0
         return root.children.indices.map { i in
             let insets = (i > 0 ? gap / 2 : 0) + (i < count - 1 ? gap / 2 : 0)
-            let minimum = root.children[i].minimumExtent(.horizontal, gap: gap, padding: accordionPadding, minimumSizes)
+            let minimum = root.children[i].minimumExtent(.horizontal, gap: gap, padding: 0, minimumSizes)
             let width = max((area.width * CGFloat(width(ofColumn: i))).rounded(), minimum + insets)
             defer { start += width }
             return (start, width)
@@ -102,7 +102,8 @@ extension Workspace {
                 result.frames[id] = rect
                 result.order.append(id)
             case .container(let c):
-                c.layout(in: rect, gaps: gaps, padding: accordionPadding, minimums: minimumSizes, path: [i], into: &result)
+                // A column is one window; a container here is not made by any command, but lays out as tiles.
+                c.layout(in: rect, gaps: gaps, padding: 0, minimums: minimumSizes, path: [i], into: &result)
             }
         }
         return result
@@ -122,47 +123,6 @@ extension Workspace {
     public func isInView(_ id: WindowID) -> Bool {
         guard let frame = tiledLayout().frames[id] else { return true }
         return frame.minX >= bounds.minX - 1 && frame.maxX <= bounds.maxX + 1
-    }
-
-    /// `move` in the strip. Left and right take a window that shares its column out into a new column on that
-    /// side, and swap a column of its own with its neighbour. Up and down only move it within its column.
-    mutating func moveInStrip(_ direction: Direction) -> Bool {
-        guard let focused, let path = root.path(of: focused) else { return false }
-        let column = path[0], forward = direction.isForward
-        if direction.orientation == .horizontal {
-            if path.count > 1 {
-                let share = width(ofColumn: column)
-                root.modify(at: Array(path.dropLast())) { $0.remove(at: path.last!) }
-                root.insert(.window(focused), at: column + (forward ? 1 : 0))
-                columnWidths[focused] = share
-            } else {
-                let other = column + (forward ? 1 : -1)
-                guard root.children.indices.contains(other) else { return false }
-                let node = root.children[other]
-                root.replace(at: other, with: root.children[column])
-                root.replace(at: column, with: node)
-            }
-            normalize()
-            focus(focused)
-            return true
-        }
-        return path.count > 1 && moveInTree(direction)
-    }
-
-    /// `join-with` in the strip: left and right put the window into the neighbouring column, at that
-    /// column's width. Columns only stack top to bottom, so up and down do nothing.
-    mutating func joinInStrip(_ direction: Direction) -> Bool {
-        guard direction.orientation == .horizontal, let focused, let column = root.path(of: focused)?.first else {
-            return false
-        }
-        let neighbour = column + (direction.isForward ? 1 : -1)
-        guard root.children.indices.contains(neighbour) else { return false }
-        let share = width(ofColumn: neighbour)
-        // Joined at the root, so a window deep in its column still lands in the neighbouring column.
-        guard joinInTree(direction, atRoot: true), let joined = root.path(of: focused)?.first else { return false }
-        setWidth(ofColumn: joined, share)
-        reveal(focused)
-        return true
     }
 
     /// Grow (positive) or shrink the focused window's column by `delta` points. False when nothing visibly changed.

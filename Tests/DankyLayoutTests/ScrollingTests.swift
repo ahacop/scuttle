@@ -123,62 +123,6 @@ struct ScrollingGeometryTests {
         #expect(lefts(ws) == [0, 500])
     }
 
-    @Test func `The strip stays the root with one column left`() {
-        var ws = strip(2)
-        ws.join(.left)
-        #expect(shape(ws.root) == "h[v[1 2]]")
-        #expect(ws.layout().frames[1] == rect(238, 0, 525, 300))
-    }
-}
-
-struct ScrollingStackingTests {
-    /// The joined column and right-hand display from #84. The focused first column does not overlap anything;
-    /// both halves of the next column must stay above the two columns parked against the right edge.
-    private func joinedColumnLayout() -> Layout {
-        var ws = Workspace(bounds: rect(64, 30, 2944, 1662), gaps: Gaps(all: 24))
-        ws.columnWidth = 0.49
-        ws.walls = [.right]
-        ws.insert(94)
-        ws.insert(6063)
-        ws.insert(6172)
-        ws.join(.left)
-        ws.insert(6286)
-        ws.insert(5161)
-        ws.focus(94)
-        return ws.layout()
-    }
-
-    @Test func `Both windows in a joined column rise above parked columns`() {
-        let layout = joinedColumnLayout()
-        #expect(layout.order == [94, 6172, 6063, 6286, 5161])
-        #expect(layout.frames[6063] == rect(1513, 54, 1389, 795))
-        #expect(layout.frames[6172] == rect(1513, 873, 1389, 795))
-        #expect(layout.raises(current: [6286, 6172, 5161, 94, 6063]) == [6063, 6172])
-    }
-
-    @Test(arguments: [WindowID(6063), 6172])
-    func `One raised half does not leave the other behind parked columns`(raised: WindowID) {
-        let layout = joinedColumnLayout()
-        let covered: WindowID = raised == 6063 ? 6172 : 6063
-        var current: [WindowID] = [94, raised, 6286, 5161, covered]
-        let raises = layout.raises(current: current)
-        #expect(raises.contains(covered))
-        for id in raises {
-            current.removeAll { $0 == id }
-            current.insert(id, at: 0)
-        }
-        for visible: WindowID in [6063, 6172] {
-            for parked: WindowID in [6286, 5161] {
-                #expect(current.firstIndex(of: visible)! < current.firstIndex(of: parked)!)
-            }
-        }
-        #expect(layout.raises(current: current).isEmpty, "a repaired stack needs no more raises")
-    }
-
-    @Test func `Correct joined columns do not raise just to reorder parked windows`() {
-        let layout = joinedColumnLayout()
-        #expect(layout.raises(current: [94, 6063, 6172, 5161, 6286]).isEmpty)
-    }
 }
 
 struct ScrollingCommandTests {
@@ -193,60 +137,6 @@ struct ScrollingCommandTests {
         #expect(single.move(.right) == false)
     }
 
-    @Test func `Move left or right takes a window out of a shared column`() {
-        var ws = strip(3)
-        ws.focus(2)
-        ws.join(.left)
-        #expect(shape(ws.root) == "h[v[1 2] 3]")
-        #expect(ws.move(.right) == true)
-        #expect(shape(ws.root) == "h[1 2 3]")
-        ws.join(.left)
-        #expect(ws.move(.left) == true)
-        #expect(shape(ws.root) == "h[2 1 3]")
-    }
-
-    @Test func `Move up and down stay within the column`() {
-        var ws = strip(2)
-        ws.join(.left)
-        #expect(ws.move(.up) == true)
-        #expect(shape(ws.root) == "h[v[2 1]]")
-        #expect(ws.move(.up) == false)
-        #expect(shape(ws.root) == "h[v[2 1]]")
-        var lone = strip(2)
-        #expect(lone.move(.down) == false)
-    }
-
-    @Test func `Join takes the width of the column it joins`() {
-        var ws = strip(3)
-        ws.focus(3)
-        #expect(ws.resize(by: 200) == true)
-        ws.focus(2)
-        #expect(ws.join(.right) == true)
-        #expect(shape(ws.root) == "h[1 v[2 3]]")
-        #expect(ws.tiledLayout().frames[2]!.width == 700)
-    }
-
-    @Test func `Join from deep in a column goes into the neighbouring column`() {
-        var ws = strip(5)
-        let nested = Container(.horizontal, .tiles, [.window(3), .window(4)])
-        ws.root = Container(.horizontal, .tiles, [.window(1), .container(Container(.vertical, .tiles, [.window(2), .container(nested)])), .window(5)])
-        ws.columnWidths[1] = 0.3
-        ws.focus(4)
-        #expect(ws.join(.left) == true)
-        #expect(shape(ws.root) == "h[v[1 4] v[2 3] 5]")
-        #expect(ws.tiledLayout().frames[4]!.width == 300, "the width of the column it joined")
-    }
-
-    @Test func `Resizing width changes the column, height the stack`() {
-        var ws = strip(2)
-        #expect(ws.resize(by: 100, along: .horizontal) == true)
-        #expect(ws.tiledLayout().frames[2]!.width == 600)
-        #expect(ws.resize(by: 100, along: .vertical) == false, "a lone window has no stack")
-        ws.join(.left)
-        #expect(ws.resize(by: 60, along: .vertical) == true)
-        #expect(ws.tiledLayout().frames[2]!.height == 360)
-    }
-
     @Test func `A lone column resizes too`() {
         var ws = strip(1)
         #expect(ws.resize(by: 105) == true)
@@ -255,45 +145,11 @@ struct ScrollingCommandTests {
         #expect(ws.resize(by: 100) == false, "no wider than the screen")
     }
 
-    @Test func `Dragging an edge sets the column width`() {
-        var ws = strip(2)
-        #expect(ws.resize(2, to: CGSize(width: 400, height: 600), moving: [.left]) == true)
-        #expect(ws.tiledLayout().frames[2]!.width == 400)
-    }
-
     @Test func `Balance resets every column to the default width`() {
         var ws = strip(2)
         ws.resize(by: 200)
         ws.balanceSizes()
         #expect(lefts(ws) == [0, 500])
-    }
-
-    @Test func `Flatten gives every window a column of its own`() {
-        var ws = strip(3)
-        ws.join(.left)
-        ws.flatten()
-        #expect(shape(ws.root) == "h[1 2 3]")
-    }
-
-    @Test func `Layout commands leave the strip alone`() {
-        var ws = strip(2)
-        ws.setMode(.accordion)
-        #expect(shape(ws.root) == "h[1 2]")
-        ws.join(.left)
-        ws.setMode(.accordion)
-        #expect(shape(ws.root) == "h[av[1 2]]")
-    }
-
-    @Test func `Columns only stack top to bottom`() {
-        var ws = strip(3)
-        ws.join(.left)
-        #expect(shape(ws.root) == "h[1 v[2 3]]")
-        #expect(ws.join(.up) == false)
-        #expect(ws.join(.down) == false)
-        #expect(shape(ws.root) == "h[1 v[2 3]]", "no side-by-side split inside a column")
-        ws.setMode(.accordion)
-        ws.setMode(.tiles)
-        #expect(shape(ws.root) == "h[1 v[2 3]]")
     }
 
     @Test func `A swipe goes to the next column until the last`() {
@@ -307,15 +163,6 @@ struct ScrollingCommandTests {
         #expect(strip(1).swipeTarget(.left) == nil && strip(1).swipeTarget(.right) == nil)
     }
 
-    @Test func `A swipe leaves a stacked column for its neighbour, or moves within it`() {
-        var ws = strip(3)
-        ws.join(.left)
-        #expect(shape(ws.root) == "h[1 v[2 3]]")
-        #expect(ws.swipeTarget(.right) == nil)
-        #expect(ws.swipeTarget(.left) == 1)
-        #expect(ws.swipeTarget(.up) == 2)
-        #expect(ws.swipeTarget(.down) == nil, "past the bottom the swipe opens App Exposé")
-    }
 }
 
 struct ColumnWidthTests {
@@ -342,15 +189,25 @@ struct ColumnWidthTests {
         #expect(width(wide, 2) == 333)
     }
 
-    @Test func `Presets come from the workspace and apply to the whole column`() {
+    @Test func `Presets come from the workspace`() {
         var ws = strip(3)
         ws.presetColumnWidths = [0.25, 0.75]
-        ws.join(.left)
         ws.switchPresetColumnWidth()
-        #expect(width(ws, 2) == 750)
-        #expect(width(ws, 3) == 750, "every window of the column")
+        #expect(width(ws, 3) == 750)
         ws.presetColumnWidths = [0.75]
         #expect(ws.switchPresetColumnWidth() == false, "already the only preset")
+    }
+
+    @Test func `Columns are one window each and move only sideways`() {
+        var ws = strip(3)
+        #expect(shape(ws.root) == "h[1 2 3]")
+        #expect(ws.move(.up) == false)
+        #expect(ws.move(.down) == false)
+        #expect(ws.move(.left) == true)
+        #expect(shape(ws.root) == "h[1 3 2]")
+        #expect(ws.focused == 3)
+        ws.remove(3)
+        #expect(shape(ws.root) == "h[1 2]")
     }
 
     @Test func `Presets reveal the column they widen`() {

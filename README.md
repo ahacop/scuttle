@@ -19,7 +19,6 @@ Open danky and grant Accessibility when asked. Windows tile as they open.
 - `danky workspace 3`: Switch to workspace 3.
 - `danky switch-preset-column-width`: Step the focused column to the next preset width.
 - `danky maximize-column`: Widen the focused column to the whole display, and back.
-- `danky layout accordion`: Stack the focused column.
 - `danky doctor`: Check the config, the macOS settings danky needs, and that no other tiler is running.
 
 **macOS 26:** Create and remove desktops in Mission Control (Control–↑). danky

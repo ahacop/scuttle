@@ -30,7 +30,6 @@ public struct Config: Equatable {
     public var fullscreenWidth = 1.0
     /// A lone window's share, or nil to use the resolved fullscreen width.
     public var loneWindowWidth: Double?
-    public var accordion = Accordion()
     public var scrolling = Scrolling()
     public var gaps = Gaps()
     /// `[display.<pattern>]` overrides, in file order.
@@ -164,7 +163,6 @@ public struct Config: Equatable {
         blockNativeFullscreen = try t.bool("block-native-fullscreen") ?? blockNativeFullscreen
         fullscreenWidth = try t.windowWidth("fullscreen-width") ?? fullscreenWidth
         loneWindowWidth = try t.windowWidth("lone-window-width")
-        accordion = try t.table("accordion").map(Accordion.init) ?? accordion
         scrolling = try t.table("scrolling").map(Scrolling.init) ?? scrolling
         gaps = try t.table("gaps").map { try gaps.applying(GapsPatch($0)) } ?? gaps
         if let displayTable = try t.table("display") {
@@ -269,23 +267,6 @@ extension Table {
         guard let width = try double(key) else { return nil }
         guard (0.1...1).contains(width) else { throw ConfigError(path: path(key), "must be 0.1 to 1") }
         return width
-    }
-}
-
-public struct Accordion: Equatable {
-    /// Points by which neighbouring windows peek out.
-    public var padding = 30
-
-    public init() {}
-
-    init(_ t: Table) throws {
-        padding = try t.int("padding") ?? padding
-        if padding < 0 {
-            // Older danky loaded a negative padding as written, so it still does.
-            t.warn("padding", "should be 0 or more; still read as \(padding)",
-                   fix: ConfigFix(replace: String(padding), with: "0"))
-        }
-        try t.done()
     }
 }
 
@@ -408,8 +389,6 @@ public struct FocusFollowsMouse: Equatable {
     public var enabled = false
     /// How long the pointer must rest on a window before it takes focus.
     public var delayMs = 100
-    /// Whether resting on the peeking edge of an accordion child focuses it. Off, only the front child does.
-    public var accordionEdges = true
 
     public init() {}
 
@@ -417,7 +396,6 @@ public struct FocusFollowsMouse: Equatable {
         enabled = try t.bool("enabled") ?? enabled
         delayMs = try t.int("delay-ms") ?? delayMs
         guard delayMs >= 0 else { throw ConfigError(path: t.path("delay-ms"), "must be 0 or more") }
-        accordionEdges = try t.bool("accordion-edges") ?? accordionEdges
         try t.done()
     }
 }
