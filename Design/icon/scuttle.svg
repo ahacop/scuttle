@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Scuttle icon master. One shared 1024 coordinate space; each <g id> is one Icon Composer layer,
+       exported on its own with the same ink filter, so the layers register exactly. -->
+  <defs>
+    <filter id="ink" filterUnits="userSpaceOnUse" primitiveUnits="userSpaceOnUse" x="-40" y="-40" width="1104" height="1104">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fd3cf"/><stop offset="1" stop-color="#eefaf8"/></linearGradient>
+    <clipPath id="squircle"><rect width="1024" height="1024" rx="228"/></clipPath>
+  </defs>
+  <style>
+    .ink { stroke: #1d1b1a; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <!-- preview only: Icon Composer supplies the background as the document fill -->
+  <g id="preview-bg" clip-path="url(#squircle)"><rect width="1024" height="1024" fill="url(#bg)"/></g>
+  <g filter="url(#ink)">
+    <g id="motion" class="ink" fill="none" stroke-width="14">
+      <path d="M92 545 L178 545 M70 610 L170 610 M98 675 L172 675"/>
+    </g>
+    <g id="legs" class="ink" fill="none" stroke-width="17">
+      <path d="M318 700 C262 728 236 772 228 826"/>
+      <path d="M350 728 C312 780 300 830 302 878"/>
+      <path d="M392 748 C372 800 370 846 378 892"/>
+      <path d="M706 700 C762 728 788 772 796 826"/>
+      <path d="M674 728 C712 780 724 830 722 878"/>
+      <path d="M632 748 C652 800 654 846 646 892"/>
+    </g>
+    <g id="body" class="ink" stroke-width="16">
+      <!-- left arm up to the pincer under the window -->
+      <path d="M292 590 C246 560 236 500 251 444" fill="none" stroke-width="20"/>
+      <!-- right arm up to the raised claw -->
+      <path d="M732 590 C790 552 818 494 810 428" fill="none" stroke-width="20"/>
+      <!-- right claw, raised and open -->
+      <path d="M760 432 C728 360 776 296 840 304 C896 312 912 378 880 420 C858 448 816 450 794 428 C826 412 846 382 830 356 C808 384 784 404 760 432 Z" fill="#ef7457"/>
+      <!-- shell -->
+      <path d="M212 598 C212 466 358 418 512 418 C666 418 812 466 812 598 C812 722 680 772 512 772 C344 772 212 722 212 598 Z" fill="#ef7457"/>
+    </g>
+    <g id="window" class="ink" stroke-width="15">
+      <!-- a tall column, like the ones scuttle lays out -->
+      <rect x="156" y="146" width="190" height="222" rx="14" fill="#fbf8f1"/>
+      <path d="M156 194 L346 194" fill="none" stroke-width="11"/>
+      <circle cx="184" cy="170" r="8" fill="#1d1b1a" stroke="none"/>
+      <circle cx="210" cy="170" r="8" fill="#1d1b1a" stroke="none"/>
+      <!-- the pincer gripping the window's bottom edge, its prongs in front of the window -->
+      <path d="M251 448 C201 442 181 406 193 346 L225 342 C221 384 229 406 251 414 Z" fill="#ef7457"/>
+      <path d="M251 448 C301 442 321 406 309 346 L277 342 C281 384 273 406 251 414 Z" fill="#ef7457"/>
+    </g>
+    <g id="face" class="ink" stroke-width="15">
+      <path d="M440 468 L418 342 M584 468 L606 338" fill="none"/>
+      <circle cx="412" cy="298" r="62" fill="#fbf8f1"/>
+      <circle cx="612" cy="294" r="62" fill="#fbf8f1"/>
+      <circle cx="394" cy="309" r="21" fill="#1d1b1a" stroke="none"/>
+      <circle cx="594" cy="305" r="21" fill="#1d1b1a" stroke="none"/>
+      <!-- the right eye's lid, half closed: the smirk -->
+      <path d="M548 300 A64 64 0 0 1 676 300 Z" fill="#ef7457"/>
+      <!-- grin -->
+      <path d="M380 590 C440 702 600 702 660 585 C590 620 450 622 380 590 Z" fill="#1d1b1a"/>
+      <path d="M415 604 L420 636 L455 638 L452 610 M462 614 L465 648 L502 648 L500 616 M510 617 L512 650 L548 648 L546 616 M556 614 L558 645 L592 640 L588 610 M598 606 L605 632 L630 622 L624 598" fill="#fbf8f1" stroke-width="7"/>
+      <path d="M350 560 C340 590 345 615 362 635 M690 555 C702 585 698 612 680 632" fill="none" stroke-width="11"/>
+    </g>
+  </g>
+</svg>

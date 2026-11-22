@@ -5,7 +5,7 @@ description: A tiling window manager for macOS that leaves System Integrity Prot
 permalink: /
 ---
 
-<img class="app-icon" src="{{ '/assets/icon.png' | relative_url }}" alt="scuttle's icon: a sketched face, laughing" width="128" height="128">
+<img class="app-icon" src="{{ '/assets/icon.png' | relative_url }}" alt="scuttle's icon: a sketched crab scuttling sideways with a window held up in one claw" width="128" height="128">
 
 # Tiling on native Spaces, SIP left on.
 
