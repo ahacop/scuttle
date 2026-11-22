@@ -49,8 +49,17 @@ final class FrameApplier {
     }
 
     /// Utilities and apps can re-enable Enhanced UI, making apps animate and fight frame writes.
-    /// Leave it alone when built-in assistive technology depends on it.
+    /// Leave it alone when built-in assistive technology depends on it. Checked at most once a second per app:
+    /// it runs before every batch, an animation step is a batch every frame, and the check is a round trip to
+    /// the app on the same queue as the step's write.
     private static func suppressEnhancedUI(_ pid: pid_t) {
+        let now = CACurrentMediaTime()
+        let due = enhancedUILock.withLock { () -> Bool in
+            guard now - (enhancedUIChecked[pid] ?? -.infinity) >= 1 else { return false }
+            enhancedUIChecked[pid] = now
+            return true
+        }
+        guard due else { return }
         guard !NSWorkspace.shared.isVoiceOverEnabled, !NSWorkspace.shared.isSwitchControlEnabled else { return }
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, Self.timeout)
@@ -60,6 +69,9 @@ final class FrameApplier {
         let error = AXUIElementSetAttributeValue(app, "AXEnhancedUserInterface" as CFString, kCFBooleanFalse)
         print("\(stamp()) frames: pid \(pid) Enhanced UI re-enabled; disabling (error \(error.rawValue))")
     }
+
+    private static let enhancedUILock = NSLock()
+    nonisolated(unsafe) private static var enhancedUIChecked: [pid_t: CFTimeInterval] = [:]
 
     /// Sizes windows refused to shrink below, from readback.
     var minimumSizes: [WindowID: CGSize] { scheduler.minimumSizes }
@@ -275,7 +287,9 @@ final class FrameApplier {
         let sizeValue = AXValueCreate(.cgSize, &size)!, originValue = AXValueCreate(.cgPoint, &origin)!
         for (attribute, value) in [(kAXSizeAttribute, sizeValue), (kAXPositionAttribute, originValue), (kAXSizeAttribute, sizeValue)] {
             guard writes.allows(permit) else { return .success }
+            let start = CACurrentMediaTime()
             let error = AXUIElementSetAttributeValue(element, attribute as CFString, value)
+            Self.trace(attribute == kAXSizeAttribute ? "size" : "position", start)
             if error == .invalidUIElement { return error }
         }
         return .success
@@ -284,7 +298,23 @@ final class FrameApplier {
     private func move(_ origin: CGPoint, to element: AXUIElement, permit: Int) -> AXError {
         guard writes.allows(permit) else { return .success }
         var origin = origin
+        let start = CACurrentMediaTime()
+        defer { Self.trace("move", start) }
         return AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &origin)!)
+    }
+
+    /// With `SCUTTLE_AX_LOG` set to a path, each frame write's duration is appended there, for scripts/anim:
+    /// `ax,<time>,<kind>,<ms>`.
+    private static let axLog: FileHandle? = ProcessInfo.processInfo.environment["SCUTTLE_AX_LOG"].flatMap { path in
+        FileManager.default.createFile(atPath: path, contents: nil)
+        return FileHandle(forWritingAtPath: path)
+    }
+    private static let axLogLock = NSLock()
+
+    private static func trace(_ kind: String, _ start: CFTimeInterval) {
+        guard let axLog else { return }
+        let line = "ax,\(start),\(kind),\((CACurrentMediaTime() - start) * 1000)\n"
+        axLogLock.withLock { axLog.write(line.data(using: .utf8)!) }
     }
 
     private func frame(_ element: AXUIElement) -> (CGRect?, AXError) {

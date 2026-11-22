@@ -61,5 +61,28 @@ struct AnimationTests {
         a.retarget(rect(0, 0, 800, 600))
         #expect(a.frame.size == CGSize(width: 800, height: 600), "a new target's size is taken at once too")
     }
-}
 
+    @Test func `An ease arrives exactly when its duration ends`() {
+        let ease = Ease(duration: 0.2)
+        var a = FrameAnimation(from: rect(0, 0, 500, 500), to: rect(600, 0, 400, 500))
+        var frames: [CGRect] = []
+        while !a.step(ease, dt: 1.0 / 60, timeout: 5) { frames.append(a.frame) }
+        #expect(frames.count == 11, "12 steps of a 60 Hz frame in 0.2 s, the last on the target")
+        #expect(a.frame == rect(600, 0, 400, 500))
+        let xs = frames.map(\.minX)
+        #expect(zip(xs, xs.dropFirst()).allSatisfy { $0 <= $1 }, "never turns back")
+        #expect(xs.first! < 30, "eases in: the first frame moves little")
+    }
+
+    @Test func `An ease that is retargeted carries its speed`() {
+        let ease = Ease(duration: 0.2)
+        var a = FrameAnimation(from: rect(0, 0, 100, 100), to: rect(1000, 0, 100, 100))
+        for _ in 0..<6 { _ = a.step(ease, dt: 1.0 / 60, timeout: 5) }
+        let before = a.frame.minX
+        a.retarget(rect(0, 0, 100, 100))
+        _ = a.step(ease, dt: 1.0 / 60, timeout: 5)
+        #expect(a.frame.minX > before, "still moving right the frame after turning")
+        while !a.step(ease, dt: 1.0 / 60, timeout: 5) {}
+        #expect(a.frame == rect(0, 0, 100, 100))
+    }
+}

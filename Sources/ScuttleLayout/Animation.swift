@@ -24,6 +24,17 @@ public struct Spring: Equatable, Sendable {
     }
 }
 
+/// A fixed-length glide: a cubic Hermite curve from where a value is, at the speed it has, to its target at rest,
+/// `duration` seconds later. From rest it eases in and out. Unlike a spring it has no tail, so a window spends
+/// no frames creeping its last few points, each of which costs the app a redraw.
+public struct Ease: Equatable, Sendable {
+    public let duration: Double
+
+    public init(duration: Double) {
+        self.duration = max(duration, 0.001)
+    }
+}
+
 /// One window moving from where it is to its tile: x, y, width and height each on the same spring,
 /// so shared edges of neighbouring windows move together. With `snapsSize`, the size goes to the target's at
 /// once and only the position glides: an app redraws its contents for every new size, and most cannot keep up
@@ -35,11 +46,15 @@ public struct FrameAnimation: Equatable, Sendable {
     private var velocity: [Double] = [0, 0, 0, 0]
     /// Seconds since the target last changed, to give up on one that never settles.
     private var age: Double = 0
+    /// Where each value and its speed were when the target last changed: an ease starts from there.
+    private var origin: [Double]
+    private var originVelocity: [Double] = [0, 0, 0, 0]
 
     public init(from start: CGRect, to target: CGRect, snapsSize: Bool = false) {
         self.target = target
         self.snapsSize = snapsSize
         value = Self.components(start)
+        origin = value
         snapSize()
     }
 
@@ -49,6 +64,10 @@ public struct FrameAnimation: Equatable, Sendable {
         value[3] = Double(target.height)
         velocity[2] = 0
         velocity[3] = 0
+        origin[2] = value[2]
+        origin[3] = value[3]
+        originVelocity[2] = 0
+        originVelocity[3] = 0
     }
 
     /// The frame now, rounded to whole points so a pure move does not jitter the size.
@@ -61,6 +80,8 @@ public struct FrameAnimation: Equatable, Sendable {
         guard new != target else { return }
         target = new
         age = 0
+        origin = value
+        originVelocity = velocity
         snapSize()
     }
 
@@ -71,6 +92,26 @@ public struct FrameAnimation: Equatable, Sendable {
         for i in 0..<4 { spring.step(&value[i], &velocity[i], to: goal[i], dt: dt) }
         let settled = (0..<4).allSatisfy { abs(value[$0] - goal[$0]) < 0.5 && abs(velocity[$0]) < 10 }
         if settled || age >= timeout {
+            value = goal
+            velocity = [0, 0, 0, 0]
+            return true
+        }
+        return false
+    }
+
+    /// Advance along an ease by `dt` seconds. True once it has run its duration, on the target, or after `timeout`.
+    public mutating func step(_ ease: Ease, dt: Double, timeout: Double) -> Bool {
+        age += dt
+        let goal = Self.components(target), d = ease.duration
+        // Frame times add up with rounding error; a step within a microsecond of the end is the end.
+        let u = age >= d - 1e-6 ? 1 : age / d
+        let h00 = 2 * u * u * u - 3 * u * u + 1, h10 = u * u * u - 2 * u * u + u, h01 = -2 * u * u * u + 3 * u * u
+        let d00 = 6 * u * u - 6 * u, d10 = 3 * u * u - 4 * u + 1, d01 = -6 * u * u + 6 * u
+        for i in 0..<4 {
+            value[i] = h00 * origin[i] + h10 * d * originVelocity[i] + h01 * goal[i]
+            velocity[i] = (d00 * origin[i] + d10 * d * originVelocity[i] + d01 * goal[i]) / d
+        }
+        if u >= 1 || age >= timeout {
             value = goal
             velocity = [0, 0, 0, 0]
             return true

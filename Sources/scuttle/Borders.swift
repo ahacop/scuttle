@@ -116,8 +116,20 @@ final class BorderManager {
         let work = pending
         pending = (refocus: false, all: false, ids: [], moved: [])
         flushScheduled = false
+        let start = CACurrentMediaTime()
         if work.refocus { refocus() }
         if work.all { syncAll() } else { sync(work.ids); follow(work.moved.subtracting(work.ids)) }
+        if let log = Self.log {
+            let line = "border,\(start),\((CACurrentMediaTime() - start) * 1000),\(work.ids.count),\(work.moved.count),\(work.all)\n"
+            log.write(line.data(using: .utf8)!)
+        }
+    }
+
+    /// With `SCUTTLE_BORDER_LOG` set to a path, each flush's time is appended there, for scripts/anim:
+    /// `border,<time>,<ms>,<windows placed>,<windows moved>,<all>`.
+    private static let log: FileHandle? = ProcessInfo.processInfo.environment["SCUTTLE_BORDER_LOG"].flatMap { path in
+        FileManager.default.createFile(atPath: path, contents: nil)
+        return FileHandle(forWritingAtPath: path)
     }
 
     /// Borders of windows that only moved follow them. One that needs more than a move is placed in full.

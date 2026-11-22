@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Smoother animations: they run at the display's full frame rate, take the configured `duration-ms` instead of trailing on for twice as long, and neighbouring columns no longer pull apart while they move.
 - **Edit Config…** in the menu opens the config file in your text editor.
 - Borders stay visible and resize with their windows during animations, instead of disappearing until the window arrives.
 - `scuttle version` prints the app's version when run through Homebrew's `scuttle` command, instead of `dev (0)`.
