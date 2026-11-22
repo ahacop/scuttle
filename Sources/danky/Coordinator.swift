@@ -113,6 +113,7 @@ final class Coordinator {
             if Set(known.map(\.uuid)) != Set(before.map(\.uuid)) { snap.formUnion(workspaces.keys) }
             // Switching Space is not worth re-reading every window and re-applying every tree.
             if Self.onlySwitchedSpaces(from: before, to: known) { spacesShown(before: before) } else { reconcile() }
+            sweepNativeFullscreen()
         }
         // A hidden app's windows can read as shown when their hide event arrives; re-read them once it is hidden.
         let center = NSWorkspace.shared.notificationCenter
@@ -131,6 +132,7 @@ final class Coordinator {
         }
         update(config: config)
         reconcile()
+        sweepNativeFullscreen()
     }
 
     /// Returns whether the caller must also arrange native Spaces. A decoration-only reload must do neither.
