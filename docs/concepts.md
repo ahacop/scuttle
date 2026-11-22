@@ -1,58 +1,60 @@
 ---
 layout: default
 title: Concepts
-description: Workspaces, windows, the tree, displays, rules and modes. The nouns the rest of the manual uses.
+description: Workspaces, windows, the strip, displays, focus, rules and bindings.
 permalink: /concepts/
 ---
 
 # Concepts
 
-Six nouns. The rest of the manual is verbs.
-
 ## Workspace
 
-A numbered native Space. `workspaces = 5` gives you 1 to 5 across every display,
-and `workspace 3` switches there in about 70 ms. Each tiled workspace is its own
-[scrolling strip](layouts.md). On macOS 26, [add the desktops in Mission Control](configuration.md#desktop-setup-on-macos-26)
-first; automatic desktop creation and removal require macOS 27 or later.
+A workspace is a native Space with a number. `workspaces = 5` gives you
+workspaces 1 to 5, numbered across all displays. `workspace 3` switches to
+workspace 3 in about 70 ms. Each tiled workspace has its own
+[strip of columns](columns.md). On macOS 26, you have to
+[add the desktops in Mission Control](configuration.md#desktop-setup-on-macos-26)
+yourself. macOS 27 and later don't need this.
 
 <figure class="wide">
 {% include figures/workspaces.svg %}
-<figcaption>Two displays, five workspaces, two showing.</figcaption>
+<figcaption>Two displays and five workspaces. One workspace shows on each display.</figcaption>
 </figure>
 
-A workspace lives on one display: the main one, unless
-[`[workspace-to-display]`](configuration.md#workspace-to-display) says
-otherwise. When its display leaves, it moves to the main one, windows and all,
-and moves back when the display returns.
+Each workspace is on one display: the main display, unless
+[`[workspace-to-display]`](configuration.md#workspace-to-display) assigns it
+to another. If that display disconnects, the workspace and its windows move to
+the main display, and they move back when it reconnects.
 
 ## Window
 
-Tiled, floating or fullscreen.
+A window is tiled, floating or fullscreen.
 
 <figure>
 {% include figures/tiled.svg %}
 {% include figures/floating.svg %}
 {% include figures/fullscreen.svg %}
-<figcaption><code>layout floating tiling</code> toggles the first two, <code>fullscreen</code> the third.</figcaption>
+<figcaption>Tiled, floating and fullscreen. <code>layout floating tiling</code> switches between tiled and floating. <code>fullscreen</code> turns fullscreen on and off.</figcaption>
 </figure>
 
-Tiled windows share the workspace. A floating window sits where you put it,
-over the tiles. Fullscreen fills the workspace, above the tiles, or the share
-of its width `fullscreen-width` gives it; it is not macOS full screen. Dialogs, sheets and panels float on their own. A
-[rule](#rule) decides for anything else.
+A tiled window is a column in the workspace's strip. A floating window stays
+where you put it, above the columns. A fullscreen window covers the workspace,
+or the share of it `fullscreen-width` sets; this is scuttle's fullscreen, not
+macOS full screen. Dialogs, sheets and panels float on their own, and a
+[rule](#rule) can float anything else.
 
 ## Strip
 
-A tiled workspace is a row of columns, the strip. Each column is one window,
-as tall as the display, at its own width. `focus` and `move` walk and reorder
-it; [Layouts](layouts.md) has the widths.
+A tiled workspace is a row of columns called the strip. Each column holds one
+window, as tall as the display, at its own width. `focus` moves between
+columns and `move` reorders them. [Columns](columns.md) covers widths.
 
 ## Display
 
-A display is matched by pattern: `main`, `secondary`, or part of its name as
-`scuttle list-displays` prints it. Patterns choose where a workspace lives, a
-display's gaps, and a workspace's settings while it is on that display.
+The config refers to displays by pattern: `main`, `secondary`, or part of the
+display's name as `scuttle list-displays` prints it. Patterns set which display
+a workspace is on, a display's gaps, and a workspace's settings while it is on
+a particular display.
 
 ```toml
 [workspace-to-display]
@@ -67,39 +69,22 @@ fullscreen-width = 0.8
 
 ## Focus
 
-One window has focus, and its border says so. `focus left` and friends move it
-to the nearest window that way; with `--boundaries all-monitors-outer-frame`,
-across the display edge too. [`[focus-follows-mouse]`](configuration.md#focus-follows-mouse)
-moves it with the pointer instead. When the focused window closes or is minimized
-and macOS leaves no key window, focus goes to its workspace's next tile. A close
-also repairs a redirect of the same app's key window to another display. The next
-tile is the same one focused after moving a window away.
-This also applies when quitting the
-focused app removes its window and leaves no key window. A later key, click,
-focus command or Space switch takes precedence; dragging and merging tabs does not
-pull focus back. Another app's key window, or a key window on the original display,
-is left alone. Empty workspaces and native full-screen Spaces have no tile to focus.
+One window has focus, and its border shows it. `focus left` and `focus right`
+move it to the next column; with `--boundaries all-monitors-outer-frame`, they
+cross onto the next display. [`[focus-follows-mouse]`](configuration.md#focus-follows-mouse)
+focuses the window under the pointer instead.
 
-The input snapshot is taken when the departure is observed. A minimize that macOS
-redirects to the app's window on another display is left alone: a late minimize
-notification cannot distinguish that redirect from the user's click on that window.
-Minimize repair only replaces no key window or the still-reported leaving window.
-With a delayed notification, an earlier Escape or desktop click may not cancel that
-repair. Pointer movement and scrolling alone do not cancel it; focus-follows-mouse
-takes precedence when it actually focuses another window. Hiding an app does not
-trigger close/minimize repair.
-
-Known limits on macOS 27: when departure ownership cannot be established, a same-app
-cross-display close redirect and a close through a discard sheet or alert are left
-alone. The separate alert can own the key window rather than its document. Focus
-stays where macOS put it; scuttle does not infer ownership from an unconfirmed focus
-loss.
+When the focused window closes, is minimized or its app quits, and macOS
+doesn't pick another window, scuttle focuses the next column on that
+workspace. Anything you do first, such as a key, a click or a Space switch,
+wins. Hiding an app leaves focus to macOS.
 
 ## Rule
 
-When a window opens, every [`[[rules]]`](configuration.md#rules) entry that
-matches it runs, in order. `layout floating` and `layout tiling` decide before
-the window is placed. Any other command runs on it afterwards.
+A rule runs commands on new windows that match it. Every matching
+[`[[rules]]`](configuration.md#rules) entry runs, in order. `layout floating`
+and `layout tiling` decide how the window is placed. Other commands run after
+it is placed.
 
 ```toml
 [[rules]]
@@ -109,8 +94,8 @@ run = ['layout floating', 'move-window-to-workspace 5']
 
 ## Bindings
 
-One set of key bindings, in `[bindings]`. Each key runs a command or a list of
-them.
+Key bindings are in [`[bindings]`](configuration.md#bindings). Each key runs a
+command or a list of commands.
 
 ```toml
 [bindings]
@@ -118,4 +103,4 @@ alt-r = 'switch-preset-column-width'
 alt-shift-j = 'move-window-to-workspace next --follow'
 ```
 
-The menu bar menu lists each command with its key.
+The menu lists the common commands with their keys.

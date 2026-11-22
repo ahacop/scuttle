@@ -25,7 +25,7 @@ your configured workspaces; `scuttle doctor` reports shortages.
 
 Learn more:
 
-- [Concepts](docs/concepts.md) and [Layouts](docs/layouts.md)
+- [Concepts](docs/concepts.md) and [Columns](docs/columns.md)
 - [Configuration](docs/configuration.md)
 - [Commands](docs/commands.md)
 

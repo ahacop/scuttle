@@ -1,27 +1,49 @@
 @import url("preflight.css");
 
+/* The manual's look follows scuttle's menu bar: pages are numbered like workspaces in a top bar, the current one
+   highlighted, and key bindings are keycaps. Green marks links and what is on; nothing else is colored. */
+
 :root {
   color-scheme: light;
-  --paper: #f7f7f7;
-  --ink: #1b1b1b;
-  --accent: #c564f7;
-  --syntax: #c564f7;
-  --line: #c9c9c9;
-  --code: #eeeeee;
-  --measure: 86ch;
-  --leading: 1.66;
+  --bg: #f4f4f2;
+  --bar: #e6e6e3;
+  --fg: #222321;
+  --dim: #6c6d69;
+  --line: #d3d3cf;
+  --accent: #0e7c66;
+  --cap: #ffffff;
+  --cap-edge: #bdbdb8;
+  --code: #ebebe8;
+  --tile: #fbfbfa;
+  --measure: 74ch;
+  --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #19191a;
+    --bar: #232325;
+    --fg: #e8e8e5;
+    --dim: #9a9b96;
+    --line: #333335;
+    --accent: #3ccfac;
+    --cap: #2c2c2f;
+    --cap-edge: #4a4a4e;
+    --code: #222224;
+    --tile: #232325;
+  }
 }
 
 html {
-  line-height: var(--leading);
+  line-height: 1.65;
   scroll-behavior: smooth;
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family:
-    "SFMono-Regular", "Cascadia Code", "Roboto Mono", ui-monospace, monospace;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
   font-size: 14px;
 }
 
@@ -29,7 +51,7 @@ a {
   color: inherit;
   text-decoration: underline;
   text-decoration-color: var(--accent);
-  text-underline-offset: 0.2em;
+  text-underline-offset: 3px;
 }
 
 a:hover,
@@ -37,133 +59,189 @@ a:focus-visible {
   text-decoration-thickness: 2px;
 }
 
-.site-header {
-  min-height: 3lh;
-  padding: 1lh clamp(2ch, 4vw, 7ch);
-  border-bottom: 1px solid var(--line);
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Top bar */
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1lh;
+  gap: 6px 16px;
+  padding: 6px max(16px, 3vw);
+  background: var(--bar);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
 }
 
-.wordmark {
-  font-weight: 600;
-  letter-spacing: 0.08em;
+.bar .name {
+  font-weight: 500;
   text-decoration: none;
 }
 
-.wordmark span {
-  color: var(--accent);
-  margin-left: 1ch;
+.bar .repo {
+  text-decoration: none;
+  color: var(--dim);
 }
 
-.shell {
-  display: grid;
-  grid-template-columns: minmax(28ch, 32ch) minmax(0, 1fr);
-  min-height: calc(100vh - 3lh);
+.spaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 
-aside {
-  padding: 2lh 4ch 2lh clamp(2ch, 4vw, 7ch);
-  border-right: 1px solid var(--line);
-}
-
-aside a {
-  display: block;
-  margin: 1lh 0;
+.spaces a {
+  padding: 1px 8px;
+  border-radius: 4px;
   text-decoration: none;
 }
 
-aside a[aria-current="page"] {
-  font-weight: 700;
+.spaces a span {
+  margin-left: 0.6ch;
+  color: var(--dim);
 }
 
-aside a[aria-current="page"]::before {
-  content: "• ";
-  color: var(--accent);
-  margin-left: -2ch;
+.spaces a[aria-current="page"] {
+  background: var(--fg);
+  color: var(--bg);
 }
+
+.spaces a[aria-current="page"] span {
+  color: var(--bg);
+  opacity: 0.75;
+}
+
+/* Page */
 
 main {
-  padding: 2lh 7ch 5lh;
+  max-width: calc(var(--measure) + 2 * max(16px, 3vw));
+  padding: 36px max(16px, 3vw) 80px;
+}
+
+@media (min-width: 1000px) {
+  main {
+    margin-left: 10vw;
+  }
 }
 
 h1,
 h2,
 h3 {
+  font-weight: 500;
+  line-height: 1.35;
   text-wrap: balance;
+  scroll-margin-top: 64px;
 }
 
-h1,
-h2,
-h3,
+h1 {
+  margin: 0 0 1.2em;
+  font-size: 21px;
+}
+
+h2 {
+  margin: 2.4em 0 0.8em;
+  font-size: 14px;
+  color: var(--dim);
+}
+
+h2::before {
+  content: "## ";
+  color: var(--accent);
+}
+
+h3 {
+  margin: 2em 0 0.6em;
+  font-size: 14px;
+}
+
+h3::before {
+  content: "### ";
+  color: var(--accent);
+}
+
+h2 code,
+h3 code {
+  background: none;
+  color: var(--fg);
+}
+
 p,
 ul,
 ol,
 table,
-pre {
-  margin-block: 0;
-}
-
-p,
-ul,
-ol,
-table {
-  margin-bottom: 1lh;
+pre,
+blockquote {
+  margin: 0 0 1.15em;
+  max-width: var(--measure);
 }
 
 ul,
 ol {
-  padding-left: 4ch;
+  padding-left: 3ch;
 }
 
-h1 {
-  margin: 0 0 2lh;
-  font-weight: 800;
+li + li {
+  margin-top: 0.3em;
 }
 
-h2 {
-  margin: 3lh 0 1lh;
-  padding-top: 1lh;
-  border-top: 1px solid var(--line);
+blockquote {
+  padding-left: 2ch;
+  border-left: 2px solid var(--line);
+  color: var(--dim);
 }
 
-h3 {
-  margin: 2lh 0 1lh;
+blockquote strong {
+  color: var(--fg);
+  font-weight: 500;
 }
 
-p,
-ul,
-ol,
-table,
-pre {
-  max-width: var(--measure);
+strong {
+  font-weight: 500;
 }
 
 code {
-  background: var(--code);
   font: inherit;
+  padding: 0 0.25em;
+  border-radius: 3px;
+  background: var(--code);
 }
 
 pre {
   max-width: 100%;
-  margin: 1lh 0;
-  padding: 1lh 2ch;
+  padding: 12px 14px;
   overflow-x: auto;
-  /* overflow-wrap: anywhere; */
-  /* white-space: pre-wrap; */
+  border-radius: 4px;
   background: var(--code);
 }
 
 pre code {
   padding: 0;
-  background: transparent;
+  background: none;
 }
 
-.cursor {
-  color: var(--accent);
+kbd {
+  display: inline-block;
+  min-width: 2.2em;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  white-space: nowrap;
+  background: var(--cap);
+  border: 1px solid var(--cap-edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
 }
+
+/* Tables */
 
 table {
   width: 100%;
@@ -171,54 +249,49 @@ table {
 }
 
 .wide-table {
-  width: 100%;
-  max-width: 152ch;
+  max-width: 120ch;
+  margin-bottom: 1.15em;
   overflow-x: auto;
-  /* overscroll-behavior-inline: contain; */
 }
 
 .wide-table table {
-  min-width: var(--measure);
+  min-width: 64ch;
   max-width: none;
+  margin: 0;
 }
 
 th,
 td {
-  padding: 1lh 2ch;
+  padding: 8px 2ch 8px 0;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
 }
 
 th {
-  font-weight: 700;
+  font-weight: 500;
+  color: var(--dim);
 }
 
-.tagline {
-  margin: -1lh 0 2lh;
-  color: var(--accent);
-  font-style: italic;
+td:first-child {
+  white-space: nowrap;
 }
 
-.app-icon {
-  display: block;
-  width: 128px;
-  height: 128px;
-  margin: 0 0 1lh;
-}
+/* Figures */
 
 figure {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 0.5lh 2ch;
+  gap: 8px 2ch;
   max-width: var(--measure);
-  margin: 1lh 0 2lh;
+  margin: 0 0 1.6em;
 }
 
 figure svg {
   flex: none;
   width: 22ch;
+  max-width: 100%;
   height: auto;
   overflow: visible;
 }
@@ -227,21 +300,10 @@ figure.wide svg {
   width: 38ch;
 }
 
-figure.steps svg {
-  width: 18ch;
-}
-
-figure pre {
-  flex: 1 1 24ch;
-  margin: 0;
-  padding: 0;
-  background: none;
-}
-
 figcaption {
   flex-basis: 100%;
-  max-width: var(--measure);
-  font-style: italic;
+  color: var(--dim);
+  font-size: 13px;
 }
 
 figure .display {
@@ -250,8 +312,8 @@ figure .display {
 }
 
 figure .tile {
-  fill: var(--paper);
-  stroke: var(--ink);
+  fill: var(--tile);
+  stroke: var(--dim);
   vector-effect: non-scaling-stroke;
 }
 
@@ -264,12 +326,6 @@ figure .focus {
   stroke-width: 2;
 }
 
-figure .empty {
-  fill: none;
-  stroke: var(--line);
-  stroke-dasharray: 3 3;
-}
-
 figure text {
   fill: currentColor;
   font-size: 9px;
@@ -277,43 +333,21 @@ figure text {
   dominant-baseline: central;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --paper: #1b1b1b;
-    --ink: #f7f7f7;
-    --line: #333333;
-    --code: #222222;
-  }
-}
-
-@media (max-width: 760px) {
+@media (max-width: 600px) {
   body {
-    font-size: 12px;
+    font-size: 13px;
   }
 
-  .site-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .spaces a span {
+    display: none;
   }
 
-  .shell {
-    display: block;
-  }
-
-  aside {
-    padding: 1lh 2ch;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  aside a {
-    display: block;
-    margin: 1lh 2ch 1lh 0;
+  .spaces a[aria-current="page"] span {
+    display: inline;
   }
 
   main {
-    padding: 2lh 2ch 4lh;
+    padding-top: 24px;
   }
 }
 
