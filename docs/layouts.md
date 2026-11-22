@@ -47,7 +47,7 @@ Each column keeps its own width, a share of the display.
 Dragging a column's left or right edge sets its width too.
 
 macOS's own full screen would put the window on a Space of its own, outside
-every workspace, so danky brings it straight back and shows it with
+every workspace, so scuttle brings it straight back and shows it with
 `fullscreen` instead. `block-native-fullscreen = false` leaves it to macOS.
 
 Windows glide to their new places in `[animations] duration-ms`. An app has to

@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "danky",
+    name: "scuttle",
     platforms: [.macOS(.v15)],
     dependencies: [
         .package(url: "https://github.com/dduan/TOMLDecoder", exact: "0.4.4"),
@@ -11,7 +11,7 @@ let package = Package(
     targets: [
         // Private SkyLight and CGS calls. Objective-C, capability checked, nothing else lives here.
         .target(
-            name: "DankyPrivate",
+            name: "ScuttlePrivate",
             linkerSettings: [
                 .unsafeFlags(["-F/System/Library/PrivateFrameworks", "-framework", "SkyLight"]),
                 .linkedFramework("ApplicationServices"),
@@ -20,51 +20,51 @@ let package = Package(
         ),
         // Pure layout engine: trees, rectangles, no AppKit. Fully unit tested.
         .target(
-            name: "DankyLayout",
+            name: "ScuttleLayout",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "DankyLayoutTests",
-            dependencies: ["DankyLayout"],
+            name: "ScuttleLayoutTests",
+            dependencies: ["ScuttleLayout"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // The command vocabulary shared by bindings, CLI and menu: parsing and reference. Unit tested.
         .target(
-            name: "DankyCommands",
-            dependencies: ["DankyLayout", "DankyConfig"],
+            name: "ScuttleCommands",
+            dependencies: ["ScuttleLayout", "ScuttleConfig"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "DankyCommandsTests",
-            dependencies: ["DankyCommands", "DankyConfig", .product(name: "TOMLDecoder", package: "TOMLDecoder")],
+            name: "ScuttleCommandsTests",
+            dependencies: ["ScuttleCommands", "ScuttleConfig", .product(name: "TOMLDecoder", package: "TOMLDecoder")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // Config types and TOML loading. No AppKit; Carbon.HIToolbox for the key codes only. Unit tested.
         .target(
-            name: "DankyConfig",
+            name: "ScuttleConfig",
             dependencies: [.product(name: "TOMLDecoder", package: "TOMLDecoder")],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "DankyConfigTests",
-            dependencies: ["DankyConfig"],
+            name: "ScuttleConfigTests",
+            dependencies: ["ScuttleConfig"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // Reading and writing the CLI socket. Foundation only. Unit tested.
         .target(
-            name: "DankySocket",
+            name: "ScuttleSocket",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
-            name: "DankySocketTests",
-            dependencies: ["DankySocket"],
+            name: "ScuttleSocketTests",
+            dependencies: ["ScuttleSocket"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         // The app and CLI.
         .executableTarget(
-            name: "danky",
+            name: "scuttle",
             dependencies: [
-                "DankyPrivate", "DankyLayout", "DankyConfig", "DankyCommands", "DankySocket",
+                "ScuttlePrivate", "ScuttleLayout", "ScuttleConfig", "ScuttleCommands", "ScuttleSocket",
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             swiftSettings: [.swiftLanguageMode(.v5)],
@@ -72,8 +72,8 @@ let package = Package(
             linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]
         ),
         .testTarget(
-            name: "DankyAppTests",
-            dependencies: ["danky", "DankyConfig", "DankyPrivate"],
+            name: "ScuttleAppTests",
+            dependencies: ["scuttle", "ScuttleConfig", "ScuttlePrivate"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

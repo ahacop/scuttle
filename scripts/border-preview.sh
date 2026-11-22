@@ -1,8 +1,8 @@
 #!/bin/sh
-# Standalone native comparison. Does not start or replace Danky.
+# Standalone native comparison. Does not start or replace Scuttle.
 set -eu
 cd "$(dirname "$0")/.."
-app="$PWD/build/Danky Border Preview.app"
+app="$PWD/build/Scuttle Border Preview.app"
 mkdir -p "$app/Contents/MacOS" "$PWD/build/border-preview-cache"
 clang -fobjc-arc -fmodules-cache-path="$PWD/build/border-preview-cache" \
 	-framework AppKit -framework CoreGraphics \
@@ -12,8 +12,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0"><dict>
 	<key>CFBundleExecutable</key><string>border-preview</string>
-	<key>CFBundleIdentifier</key><string>local.danky.border-preview</string>
-	<key>CFBundleName</key><string>Danky Border Preview</string>
+	<key>CFBundleIdentifier</key><string>local.scuttle.border-preview</string>
+	<key>CFBundleName</key><string>Scuttle Border Preview</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
 	<key>NSHighResolutionCapable</key><true/>
 </dict></plist>

@@ -1,13 +1,13 @@
 ---
 layout: default
 title: Configuration
-description: danky's TOML config, every key and its default, and the key syntax.
+description: scuttle's TOML config, every key and its default, and the key syntax.
 permalink: /configuration/
 ---
 
 # Configuration
 
-`~/.config/danky/danky.toml`, written on first run and reloaded on save. A
+`~/.config/scuttle/scuttle.toml`, written on first run and reloaded on save. A
 symlink is followed, and replacing the link reloads too; a link to a missing
 file is left alone, with the read error shown in the menu.
 
@@ -15,8 +15,8 @@ file is left alone, with the read error shown in the menu.
   `[bindings]` there are no key bindings, without `[[rules]]` no rules.
 - Unknown keys are errors. A broken config does not load: the previous one
   stays and the error shows in the menu.
-- `danky doctor [--config <path>]` also checks commands and key names.
-- The [JSON Schema](schemas/danky.json) gives completion in editors that read
+- `scuttle doctor [--config <path>]` also checks commands and key names.
+- The [JSON Schema](schemas/scuttle.json) gives completion in editors that read
   Taplo's `#:schema` line, such as Zed or VS Code with Even Better TOML.
 
 ## Top level
@@ -26,11 +26,11 @@ file is left alone, with the read error shown in the menu.
 | Key | Default | |
 |---|---|---|
 | `start-at-login` | `true` | Register as a login item. |
-| `workspaces` | `5` | Workspaces across all displays, one native Space each. On macOS 27+, danky creates and removes Spaces to match. On macOS 26, manage desktops in Mission Control; see [desktop setup](#desktop-setup-on-macos-26). |
+| `workspaces` | `5` | Workspaces across all displays, one native Space each. On macOS 27+, scuttle creates and removes Spaces to match. On macOS 26, manage desktops in Mission Control; see [desktop setup](#desktop-setup-on-macos-26). |
 | `follow-space-order` | `false` | Set `true` to renumber workspaces when you reorder Spaces in Mission Control: on each display the leftmost Space becomes its lowest-numbered workspace, and windows stay where they are. Left `false`, a workspace keeps its number, and the next arrangement (a config reload, a display change, a Space removed) moves its windows back to that number's place. |
 | `default-tiling` | `true` | Set `false` to leave workspaces untiled unless overridden. |
 | `follow-app-activation` | `true` | Cmd-Tab and Dock clicks switch Spaces the fast way. Needs the macOS "switch to a Space with open windows" setting off. Write it as a [`[follow-app-activation]`](#follow-app-activation) table to leave some apps unfollowed. |
-| `block-native-fullscreen` | `true` | A window that enters macOS's native full screen (the green button, Control-Command-F) is brought straight back to its workspace, keeping its column, and shown with danky's `fullscreen` instead, so every window stays on a danky workspace. `false` leaves full-screen Spaces to macOS. |
+| `block-native-fullscreen` | `true` | A window that enters macOS's native full screen (the green button, Control-Command-F) is brought straight back to its workspace, keeping its column, and shown with scuttle's `fullscreen` instead, so every window stays on a scuttle workspace. `false` leaves full-screen Spaces to macOS. |
 | `float-windows-without-fullscreen` | `true` | Float windows that can't go full screen, such as Finder's copy progress, About This Mac and Calculator. Terminals and editors that can hide their title bar still tile. A `layout tiling` rule tiles a window anyway. |
 | `fullscreen-width` | `1.0` | The share of the width, inside the outer gaps, that a `fullscreen` window takes, centred. A window alone on a workspace takes it too unless `lone-window-width` is set. `0.1` to `1`. [`[display.<pattern>]`](#displaypattern) and [`[workspace.<number>]`](#workspacenumber) override it. |
 | `lone-window-width` | resolved `fullscreen-width` | The centred width of a window alone on a workspace, independently of `fullscreen`. `0.1` to `1`. Resolves from the workspace's tables, then the most specific matching display override, then the top level. If unset at every level, uses the resolved `fullscreen-width`. |
@@ -48,9 +48,9 @@ the current order.
 ## `[follow-app-activation]`
 
 The table form of `follow-app-activation`, in place of the top-level line.
-Following works only while danky is running and enabled. Turning it off does
+Following works only while scuttle is running and enabled. Turning it off does
 not restore macOS's persistent Space-switching preference; see
-[First run](index.md#first-run) to restore switching without danky.
+[First run](index.md#first-run) to restore switching without scuttle.
 
 <div class="wide-table" markdown="1">
 
@@ -64,7 +64,7 @@ not restore macOS's persistent Space-switching preference; see
 ## `[workspace.<number>]`
 
 Override the top-level `default-tiling` and widths for a globally
-numbered workspace. A table past `workspaces` does nothing; `danky doctor`
+numbered workspace. A table past `workspaces` does nothing; `scuttle doctor`
 warns about it.
 
 <div class="wide-table" markdown="1">
@@ -153,37 +153,37 @@ whole display and back; its neighbours stay in the strip, scrolled aside.
 
 ## Desktop setup on macOS 26
 
-danky can number, switch and tile existing desktops on macOS 26, but cannot
+scuttle can number, switch and tile existing desktops on macOS 26, but cannot
 create or remove them automatically. The native lifecycle operations can leave
 WindowServer and Mission Control disagreeing about which desktops exist, so
-danky does not call them on macOS versions before 27.
+scuttle does not call them on macOS versions before 27.
 
 Open Mission Control (Control–↑), move the pointer to the desktop strip at the
 top, and use **+** to add desktops. Create enough on each display for the
 workspaces assigned to it by `[workspace-to-display]`; unassigned workspaces
 need desktops on the main display. Full-screen apps do not count as desktops.
-`danky doctor` reports how many are needed on each connected display.
+`scuttle doctor` reports how many are needed on each connected display.
 
 If there are too few desktops, the remaining workspaces have no Space and cannot
 be switched to. A workspace waiting to move to a display without a free desktop
-stays on its old Space. Adding a desktop in Mission Control lets danky bind it
+stays on its old Space. Adding a desktop in Mission Control lets scuttle bind it
 automatically. Lowering `workspaces` leaves extra desktops untouched; remove them
 in Mission Control if you no longer want them.
 
-danky explains this once at startup on macOS 26. You can reopen the explanation
+scuttle explains this once at startup on macOS 26. You can reopen the explanation
 from **Desktop Setup…** in its menu. Missing workspaces also appear in that menu
 and add **!** to the workspace number. Automatic desktop management remains
 available on macOS 27 and later.
 
-If an earlier danky version has already left unreachable desktops, quit danky,
+If an earlier scuttle version has already left unreachable desktops, quit scuttle,
 restart the Dock once (`killall Dock`), and check the desktop strip in Mission
-Control before reopening danky. danky does not restart the Dock to manage desktops.
+Control before reopening scuttle. scuttle does not restart the Dock to manage desktops.
 
 ## `[workspace-to-display]`
 
 Which display a workspace lives on, by number from 1 to `workspaces`. A
 display pattern is `main`, `secondary` (the other one, when there are two), or
-part of the name from `danky list-displays`. A list tries each in turn.
+part of the name from `scuttle list-displays`. A list tries each in turn.
 Unlisted workspaces, and listed ones whose display isn't connected, live on
 the main display. Keys are plain workspace numbers; `01` or `+1` is still read
 as workspace 1, with a warning; when two keys name one workspace, the last
@@ -195,11 +195,11 @@ wins and the other is ignored, with a warning.
 4 = ['dell', 'lg']
 ```
 
-When a display comes or goes, danky moves the workspace's windows, layout
+When a display comes or goes, scuttle moves the workspace's windows, layout
 included, to a Space on its display. On macOS 27+, it removes the empty Space
 left behind and other empty leftover Spaces; ones with windows are left alone,
 unnumbered. On macOS 26, existing desktops are reused but never created or removed
-by danky; [add enough desktops yourself](#desktop-setup-on-macos-26). A
+by scuttle; [add enough desktops yourself](#desktop-setup-on-macos-26). A
 display with no workspaces keeps one unnumbered Space. Windows macOS piles onto
 another workspace when a display goes away, as around sleep, go back to their
 own workspace once the displays settle.
@@ -207,20 +207,20 @@ own workspace once the displays settle.
 Workspaces already on a display that stays connected keep their Space IDs, even
 when macOS merges the departing display's Spaces after or between them. This can
 leave workspace numbers out of Mission Control order. That preservation survives
-config reloads. Danky captures the old workspace/Space/display identities before
+config reloads. Scuttle captures the old workspace/Space/display identities before
 waiting for the new snapshot to settle. Chained callbacks share that original
 ownership snapshot rather than recapturing temporary hosts. Temporarily unlisted
 Spaces can still be preserved when they reappear on their old display. If macOS
-removes a Space itself, danky reuses a replacement for that workspace, or creates
+removes a Space itself, scuttle reuses a replacement for that workspace, or creates
 one on macOS 27+.
 Changing a workspace's display assignment still moves it. A later reorder of the
 display's existing Spaces restores the usual numeric-order policy
 (or renumbers them with `follow-space-order`). On macOS 27+, a visible leftover Space is removed
 only after WindowServer confirms a switch to another numbered Space; an unknown
-current Space, failed switch or timeout leaves it alone. While disabled, danky
+current Space, failed switch or timeout leaves it alone. While disabled, scuttle
 also waits for transiently unlisted Spaces before numbering them without taking
 any actions; that finishes the topology transition so later deliberate reorders
-are followed normally, without needing to enable danky first.
+are followed normally, without needing to enable scuttle first.
 
 Display connect/disconnect and arrangement logs include millisecond timestamps
 and before/after snapshots: display name/UUID, main status, current native Space
@@ -282,7 +282,7 @@ enabled = false
 This hides just the auxiliary window's border and keeps document borders, whether
 either window floats or tiles. `window-identifier` is the Accessibility
 **AXIdentifier**, not the numeric WindowServer ID. Discover it with
-`danky list-windows --all --format '%{app-name} | %{window-identifier}'`.
+`scuttle list-windows --all --format '%{app-name} | %{window-identifier}'`.
 Regexes are case-insensitive searches; use anchors for an exact match. A missing
 identifier never matches a positive selector and never triggers an exclusion.
 
@@ -316,7 +316,7 @@ when AX is unavailable.
 
 With `enabled = true`, the trackpad swipe that switches Spaces also moves focus
 between a tiled workspace's columns.
-In `'instant'` mode on macOS before 27, danky keeps the swipe from the Dock and
+In `'instant'` mode on macOS before 27, scuttle keeps the swipe from the Dock and
 switches Space only past the last window. In `'native'` mode, macOS receives the
 whole swipe: a short swipe can move focus, and a full, quick swipe can both move
 focus and switch Space, even before the last window.
@@ -332,11 +332,11 @@ To turn off the down swipe's App Exposé action, use **System
 Settings › Trackpad › More Gestures › App Exposé**. Mission Control keeps the
 swipe up.
 
-danky reads the swipe from the Dock's private events, as it already switches
+scuttle reads the swipe from the Dock's private events, as it already switches
 Spaces with them, so a macOS update can break it. This feature is off by default.
-On macOS 27 and later, `'instant'` falls back to `'native'`: danky does not suppress
+On macOS 27 and later, `'instant'` falls back to `'native'`: scuttle does not suppress
 swipes with attached IOHID payloads. Each swipe moves at most one window.
-On a workspace with one window or none tiled, or while danky is disabled, the
+On a workspace with one window or none tiled, or while scuttle is disabled, the
 swipe is macOS's own.
 
 <div class="wide-table" markdown="1">
@@ -369,7 +369,7 @@ including when you follow a window with `move-window-to-workspace --follow`.
 Drag a tiled window's left or right edge to resize its column; the top or
 bottom edge changes its share of the column. Drag the window itself and drop it
 on another tile to swap the two; dropped anywhere else, it goes back.
-While danky is off, dragging neither swaps nor resizes tiles and shows no drop
+While scuttle is off, dragging neither swaps nor resizes tiles and shows no drop
 outlines.
 
 <div class="wide-table" markdown="1">
@@ -406,15 +406,15 @@ environment `exec-and-forget` gets.
 
 | Key | Runs |
 |---|---|
-| `startup` | Once, after danky has read the windows and displays. |
-| `workspace-changing` | When a danky switch starts, before it lands, and again when a burst of switches changes the target. |
+| `startup` | Once, after scuttle has read the windows and displays. |
+| `workspace-changing` | When a scuttle switch starts, before it lands, and again when a burst of switches changes the target. |
 | `workspace-changed` | When a display's workspace changes, or a switch gives up. With `follow-space-order`, also when a reorder renumbers a display's workspaces, even if the number it shows stays the same, so a bar listing workspaces redraws. |
 | `focus-changed` | When focus changes, debounced 50 ms. |
-| `display-changed` | When a display connects or disconnects, once the displays have settled and danky has moved the workspaces to them, about a second later. Sets `DANKY_DISPLAYS` and `DANKY_PREV_DISPLAYS`, how many displays there are now and were before. |
+| `display-changed` | When a display connects or disconnects, once the displays have settled and scuttle has moved the workspaces to them, about a second later. Sets `SCUTTLE_DISPLAYS` and `SCUTTLE_PREV_DISPLAYS`, how many displays there are now and were before. |
 
 </div>
 
-During a danky switch, `workspace-changed` reports the destination or where the switch
+During a scuttle switch, `workspace-changed` reports the destination or where the switch
 gives up, not intermediate Spaces. A reorder during the switch is included in that
 final notification.
 
@@ -424,14 +424,14 @@ Every rule whose conditions all match a new window runs, in order. Dialogs,
 sheets, panels and fixed-size windows always float. Windows that can't go full
 screen float too while `float-windows-without-fullscreen` is on, unless a
 `layout tiling` rule tiles them. A window an app keeps above all others, like a
-browser's picture-in-picture, is left alone and never takes danky's focus.
+browser's picture-in-picture, is left alone and never takes scuttle's focus.
 
 A rule that is exactly `layout floating` or `layout tiling` decides before the
 window is placed, the last one winning. Every other rule command runs once the
 window is placed, on that window.
 
 New windows that have not yet exposed their Accessibility window or resize
-capability get up to a second to settle before danky decides. This lets Finder
+capability get up to a second to settle before scuttle decides. This lets Finder
 folders opened from the Desktop tile normally. Rules run once, after that wait;
 fixed-size windows still float. A `layout floating` or `layout tiling` command
 during the wait is remembered and takes precedence over the rule's layout choice.
@@ -490,7 +490,7 @@ reloading the config does not reclassify an existing window.
 Discover identifiers with:
 
 ```sh
-danky list-windows --all --format '%{app-name} | %{window-id} | %{window-identifier}'
+scuttle list-windows --all --format '%{app-name} | %{window-id} | %{window-identifier}'
 ```
 
 `debug-state` also includes `window-identifier` for each window. These values
@@ -504,7 +504,7 @@ usual floating behavior.
 
 Key bindings. Each key maps to a command or a list of commands. Bound keys are swallowed. A key can also map
 to a table with `command` and `exclude-apps`, a list of bundle IDs: while one
-of those apps is frontmost, danky leaves the key to it. Terminals that use
+of those apps is frontmost, scuttle leaves the key to it. Terminals that use
 `ctrl-hjkl` for their own panes keep it that way.
 
 ```toml
@@ -532,8 +532,8 @@ The default `alt-` bindings take over Option-letter characters; set
 ## Default config
 
 ```toml
-#:schema https://ahacop.github.io/danky/schemas/danky.json
-# ~/.config/danky/danky.toml. Saved changes take effect at once.
+#:schema https://ahacop.github.io/danky/schemas/scuttle.json
+# ~/.config/scuttle/scuttle.toml. Saved changes take effect at once.
 # A key you leave out keeps the value shown here.
 # Every key and command: https://ahacop.github.io/danky/configuration/
 
@@ -543,7 +543,7 @@ follow-space-order = false      # true renumbers workspaces when you reorder Spa
 default-tiling = true           # false leaves workspaces untiled unless overridden
 follow-app-activation = true    # Cmd-Tab and Dock clicks switch Spaces the fast way
 float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like float
-block-native-fullscreen = true  # macOS full screen becomes danky's fullscreen on the window's workspace
+block-native-fullscreen = true  # macOS full screen becomes scuttle's fullscreen on the window's workspace
 fullscreen-width = 1.0          # share of the width a fullscreen window, or a window alone, takes, centred
 # lone-window-width = 0.75      # lone windows only; omitted uses the resolved fullscreen-width
 
@@ -568,7 +568,7 @@ preset-column-widths = [0.33333, 0.5, 0.66667]   # what switch-preset-column-wid
 inner = 8                       # or { horizontal = 8, vertical = 8 }
 outer = 8                       # or { top = 8, bottom = 8, left = 8, right = 8 }
 
-# Display patterns: main, secondary, or part of a name as `danky list-displays` prints it.
+# Display patterns: main, secondary, or part of a name as `scuttle list-displays` prints it.
 # A workspace lives on the first display its patterns match, else on the main display.
 # [workspace-to-display]
 # 5 = 'secondary'
@@ -620,8 +620,8 @@ ctrl = 'both'
 cmd = 'both'
 shift = 'both'
 
-# danky commands run on events. exec-and-forget gets $DANKY_WORKSPACE, $DANKY_PREV_WORKSPACE and $DANKY_DISPLAY
-# in the workspace hooks, and $DANKY_DISPLAYS, $DANKY_PREV_DISPLAYS (how many displays) in display-changed.
+# scuttle commands run on events. exec-and-forget gets $SCUTTLE_WORKSPACE, $SCUTTLE_PREV_WORKSPACE and $SCUTTLE_DISPLAY
+# in the workspace hooks, and $SCUTTLE_DISPLAYS, $SCUTTLE_PREV_DISPLAYS (how many displays) in display-changed.
 # [hooks]
 # startup = ['exec-and-forget brew services restart sketchybar']
 # workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']

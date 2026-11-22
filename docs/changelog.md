@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Changelog
-description: What changed in each danky release.
+description: What changed in each scuttle release.
 permalink: /changelog/
 ---
 

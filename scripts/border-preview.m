@@ -1,6 +1,6 @@
 #import <AppKit/AppKit.h>
-#import "../Sources/DankyPrivate/border_path.h"
-#import "../Sources/DankyPrivate/skylight.h"
+#import "../Sources/ScuttlePrivate/border_path.h"
+#import "../Sources/ScuttlePrivate/skylight.h"
 
 extern CFArrayRef SLSWindowIteratorGetCornerRadii(CFTypeRef iterator) __attribute__((weak_import));
 
@@ -14,7 +14,7 @@ extern CFArrayRef SLSWindowIteratorGetCornerRadii(CFTypeRef iterator) __attribut
 {
 	CGContextRef context = NSGraphicsContext.currentContext.CGContext;
 	CGContextClearRect(context, self.bounds);
-	CGPathRef ring = danky_border_path(self.bounds, self.radius, self.width, self.correction);
+	CGPathRef ring = scuttle_border_path(self.bounds, self.radius, self.width, self.correction);
 	CGContextSetRGBFillColor(context, 0, 122.0 / 255, 1, 1);
 	CGContextAddPath(context, ring);
 	CGContextEOFillPath(context);
@@ -40,9 +40,9 @@ extern CFArrayRef SLSWindowIteratorGetCornerRadii(CFTypeRef iterator) __attribut
 	self.window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 640, 480)
 		styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
 		backing:NSBackingStoreBuffered defer:NO];
-	self.window.title = @"Danky border comparison";
+	self.window.title = @"Scuttle border comparison";
 	self.window.contentMinSize = NSMakeSize(640, 480);
-	// A floating test window stays outside Danky's normal-window tiling and borders.
+	// A floating test window stays outside Scuttle's normal-window tiling and borders.
 	self.window.level = NSFloatingWindowLevel;
 	self.window.delegate = self;
 	self.window.releasedWhenClosed = NO;
@@ -50,7 +50,7 @@ extern CFArrayRef SLSWindowIteratorGetCornerRadii(CFTypeRef iterator) __attribut
 	self.label.font = [NSFont systemFontOfSize:24];
 	self.label.frame = NSMakeRect(32, 350, 570, 40);
 	[self.window.contentView addSubview:self.label];
-	NSTextField *help = [NSTextField wrappingLabelWithString:@"Choose a correction below. Space toggles it against 0%.\nAdjust the border width and inspect the corners.\n\nYour running Danky is unchanged. Close this window to finish."];
+	NSTextField *help = [NSTextField wrappingLabelWithString:@"Choose a correction below. Space toggles it against 0%.\nAdjust the border width and inspect the corners.\n\nYour running Scuttle is unchanged. Close this window to finish."];
 	help.frame = NSMakeRect(32, 230, 570, 110);
 	[self.window.contentView addSubview:help];
 	self.widthLabel = [NSTextField labelWithString:@"Border width: 4 pt"];
@@ -89,7 +89,7 @@ extern CFArrayRef SLSWindowIteratorGetCornerRadii(CFTypeRef iterator) __attribut
 }
 - (void)update
 {
-	// Read the same first integer corner radius used by Danky, for this actual native window.
+	// Read the same first integer corner radius used by Scuttle, for this actual native window.
 	NSArray *ids = @[@(self.window.windowNumber)];
 	CFTypeRef query = SLSWindowQueryWindows(SLSMainConnectionID(), (__bridge CFArrayRef)ids, 1);
 	CFTypeRef iterator = query ? SLSWindowQueryResultCopyWindows(query) : NULL;

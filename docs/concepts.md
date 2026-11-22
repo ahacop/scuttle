@@ -51,7 +51,7 @@ it; [Layouts](layouts.md) has the widths.
 ## Display
 
 A display is matched by pattern: `main`, `secondary`, or part of its name as
-`danky list-displays` prints it. Patterns choose where a workspace lives, a
+`scuttle list-displays` prints it. Patterns choose where a workspace lives, a
 display's gaps, and a workspace's settings while it is on that display.
 
 ```toml
@@ -92,7 +92,7 @@ trigger close/minimize repair.
 Known limits on macOS 27: when departure ownership cannot be established, a same-app
 cross-display close redirect and a close through a discard sheet or alert are left
 alone. The separate alert can own the key window rather than its document. Focus
-stays where macOS put it; danky does not infer ownership from an unconfirmed focus
+stays where macOS put it; scuttle does not infer ownership from an unconfirmed focus
 loss.
 
 ## Rule

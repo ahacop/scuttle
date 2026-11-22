@@ -15,7 +15,7 @@ class NativeBorderPathTests(unittest.TestCase):
             executable = Path(directory) / "border-path-test"
             compiled = subprocess.run([
                 "xcrun", "clang", "-Wall", "-Wextra", "-Werror",
-                "-I", str(ROOT / "Sources/DankyPrivate"),
+                "-I", str(ROOT / "Sources/ScuttlePrivate"),
                 str(Path(__file__).with_name("border_path_test.m")),
                 "-framework", "CoreGraphics", "-framework", "Foundation", "-o", str(executable),
             ], capture_output=True, text=True)

@@ -29,7 +29,7 @@ if name == "swift":
         print(path.resolve())
     else:
         path.mkdir(parents=True, exist_ok=True)
-        (path / "danky").write_text("arm64 x86_64" if universal else "arm64")
+        (path / "scuttle").write_text("arm64 x86_64" if universal else "arm64")
 elif name == "lipo":
     if args[0] == "-archs":
         archs = pathlib.Path(args[1]).read_text().split()
@@ -47,7 +47,7 @@ elif name == "plutil":
 elif name == "xcrun":
     if args[0] == "actool":
         out = pathlib.Path(args[args.index("--compile") + 1])
-        for filename in ["Assets.car", "Danky.icns"]:
+        for filename in ["Assets.car", "Scuttle.icns"]:
             (out / filename).touch()
     elif args[0] not in ["notarytool", "stapler"]:
         sys.exit(2)
@@ -62,7 +62,7 @@ elif name == "ditto":
         with zipfile.ZipFile(args[-2]) as archive:
             archive.extractall(args[-1])
         if os.environ.get("THIN_ARCHIVE"):
-            (pathlib.Path(args[-1]) / "danky.app/Contents/MacOS/danky").write_text("arm64")
+            (pathlib.Path(args[-1]) / "scuttle.app/Contents/MacOS/scuttle").write_text("arm64")
     else:
         shutil.copytree(args[0], args[1])
 elif name == "git":
@@ -76,11 +76,11 @@ elif name not in ["codesign", "spctl"]:
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="danky-packaging-")
+        self.temp = tempfile.TemporaryDirectory(prefix="scuttle-packaging-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         shutil.copytree(ROOT / "scripts", self.root / "scripts")
-        (self.root / "Resources/Danky.icon").mkdir(parents=True)
+        (self.root / "Resources/Scuttle.icon").mkdir(parents=True)
         (self.root / "Resources/Info.plist").write_bytes(plistlib.dumps({
             "CFBundleShortVersionString": "0.0", "CFBundleVersion": "1",
             "LSMinimumSystemVersion": "15.0",
@@ -147,12 +147,12 @@ class PackagingTests(unittest.TestCase):
         app = self.root / "thin.app/Contents/MacOS"
         app.mkdir(parents=True)
         shutil.copytree(self.framework, app.parent / "Frameworks/Sparkle.framework/Versions/Current")
-        (app / "danky").write_text("arm64 x86_64")
+        (app / "scuttle").write_text("arm64 x86_64")
         result = self.run_script("check-universal.sh", str(app.parent.parent))
         self.assertEqual(result.returncode, 0, result.stderr)
         for archs in ["arm64", "x86_64"]:
             with self.subTest(archs=archs):
-                (app / "danky").write_text(archs)
+                (app / "scuttle").write_text(archs)
                 self.assertNotEqual(self.run_script("check-universal.sh", str(app.parent.parent)).returncode, 0)
 
 if __name__ == "__main__":

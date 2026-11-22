@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Fail before signing/notarizing if the app or any bundled Sparkle executable loses a slice.
 set -euo pipefail
-app="${1:?Usage: scripts/check-universal.sh path/to/danky.app}"
+app="${1:?Usage: scripts/check-universal.sh path/to/scuttle.app}"
 sparkle="$app/Contents/Frameworks/Sparkle.framework/Versions/Current"
 for binary in \
-  "$app/Contents/MacOS/danky" \
+  "$app/Contents/MacOS/scuttle" \
   "$sparkle/Sparkle" \
   "$sparkle/Autoupdate" \
   "$sparkle/Updater.app/Contents/MacOS/Updater" \

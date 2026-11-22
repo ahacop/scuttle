@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Forked from [dinky](https://github.com/mikker/Dinky) 0.30 and renamed danky.
+Forked from [dinky](https://github.com/mikker/Dinky) 0.30 and renamed scuttle.
 
 - Scrolling is the only layout. The dwindle, fixed and master layouts, `workspace-layout`, `swap-with-master`, `default-layout`, per-workspace `layout`, `[master]` and drag-to-split (`[drag] split-trigger`, `split-delay-ms`) are gone.
 - `switch-preset-column-width` (Alt-R) steps the focused column through `[scrolling] preset-column-widths`, niri's thirds by default.

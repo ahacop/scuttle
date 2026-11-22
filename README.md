@@ -1,6 +1,6 @@
-<img src="docs/assets/icon.png" alt="danky" width="128">
+<img src="docs/assets/icon.png" alt="scuttle" width="128">
 
-# danky
+# scuttle
 
 > oh wow. you moved a rectangle.
 
@@ -14,17 +14,17 @@ two thirds by default) and `Alt-F` maximizes it.
 
 ## Quick start
 
-Open danky and grant Accessibility when asked. Windows tile as they open.
+Open scuttle and grant Accessibility when asked. Windows tile as they open.
 
-- `danky workspace 3`: Switch to workspace 3.
-- `danky switch-preset-column-width`: Step the focused column to the next preset width.
-- `danky maximize-column`: Widen the focused column to the whole display, and back.
-- `danky doctor`: Check the config, the macOS settings danky needs, and that no other tiler is running.
+- `scuttle workspace 3`: Switch to workspace 3.
+- `scuttle switch-preset-column-width`: Step the focused column to the next preset width.
+- `scuttle maximize-column`: Widen the focused column to the whole display, and back.
+- `scuttle doctor`: Check the config, the macOS settings scuttle needs, and that no other tiler is running.
 
-**macOS 26:** Create and remove desktops in Mission Control (Control–↑). danky
+**macOS 26:** Create and remove desktops in Mission Control (Control–↑). scuttle
 numbers, switches and tiles existing desktops, but automatic desktop creation
 and removal require macOS 27 or later. Add enough desktops on each display for
-your configured workspaces; `danky doctor` reports shortages.
+your configured workspaces; `scuttle doctor` reports shortages.
 
 Learn more:
 
