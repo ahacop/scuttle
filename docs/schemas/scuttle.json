@@ -231,8 +231,14 @@
     "modifiers": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Which key of each modifier pair bindings answer to. The other key types as usual.",
+      "description": "mod, the modifier mod stands for in bindings, and which key of each modifier pair bindings answer to. The other key types as usual.",
       "properties": {
+        "mod": {
+          "type": "string",
+          "pattern": "^(alt|ctrl|cmd|shift|hyper|meh)(-(alt|ctrl|cmd|shift|hyper|meh))*$",
+          "default": "alt",
+          "description": "The modifier mod stands for in bindings: alt, ctrl, cmd, shift, hyper or meh, or several joined by '-', such as 'ctrl-alt'."
+        },
         "alt": { "enum": ["both", "left", "right"], "default": "both", "description": "Which Option key is alt in bindings." },
         "ctrl": { "enum": ["both", "left", "right"], "default": "both", "description": "Which Control key is ctrl in bindings." },
         "cmd": { "enum": ["both", "left", "right"], "default": "both", "description": "Which Command key is cmd in bindings." },
@@ -375,8 +381,8 @@
     },
     "keyCombo": {
       "type": "string",
-      "pattern": "^((alt|ctrl|cmd|shift|hyper|meh)-)*([a-z0-9]|f[1-9]|f1[0-9]|f20|keypad-([0-9]|clear|decimal|divide|enter|equal|minus|multiply|plus)|section|minus|equal|left-bracket|right-bracket|backslash|semicolon|quote|comma|period|slash|backtick|page-up|page-down|home|end|forward-delete|space|enter|esc|backspace|tab|left|down|up|right)$",
-      "description": "Zero or more modifiers (alt, ctrl, cmd, shift, or the shorthands hyper and meh) and one key name, joined by '-': alt-shift-h, ctrl-left, alt-page-up, hyper-1, f5."
+      "pattern": "^((mod|alt|ctrl|cmd|shift|hyper|meh)-)*([a-z0-9]|f[1-9]|f1[0-9]|f20|keypad-([0-9]|clear|decimal|divide|enter|equal|minus|multiply|plus)|section|minus|equal|left-bracket|right-bracket|backslash|semicolon|quote|comma|period|slash|backtick|page-up|page-down|home|end|forward-delete|space|enter|esc|backspace|tab|left|down|up|right)$",
+      "description": "Zero or more modifiers (mod, alt, ctrl, cmd, shift, or the shorthands hyper and meh) and one key name, joined by '-': mod-shift-h, ctrl-left, alt-page-up, hyper-1, f5. mod is [modifiers] mod, alt by default."
     }
   }
 }

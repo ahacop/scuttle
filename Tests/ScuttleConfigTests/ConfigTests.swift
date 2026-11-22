@@ -614,6 +614,37 @@ struct ConfigTests {
         assertError("[modifiers]\nfn = 'left'\n", path: "modifiers.fn", line: 2, contains: "unknown key")
     }
 
+    @Test func `mod stands for the modifiers [modifiers] mod names, alt by default`() throws {
+        #expect(Config.default.modifiers.mod == .alt)
+        #expect(Config.default.bindings.bindings[KeyCombo(modifiers: .alt, key: "h")] == KeyBinding(["focus left"]))
+
+        let config = try Config.parse("""
+            [modifiers]
+            mod = 'ctrl-alt'
+
+            [bindings]
+            mod-h = 'focus left'
+            mod-shift-l = 'move right'
+            alt-1 = 'workspace 1'
+            """)
+        let bindings = config.bindings.bindings
+        #expect(bindings[KeyCombo(modifiers: [.ctrl, .alt], key: "h")] == KeyBinding(["focus left"]))
+        #expect(bindings[KeyCombo(modifiers: [.ctrl, .alt, .shift], key: "l")] == KeyBinding(["move right"]))
+        #expect(bindings[KeyCombo(modifiers: .alt, key: "1")] == KeyBinding(["workspace 1"]), "alt- bindings ignore mod")
+        #expect(bindings[KeyCombo(modifiers: .alt, key: "h")] == nil)
+
+        #expect(try Config.parse("[modifiers]\nmod = 'hyper'\n[bindings]\nmod-1 = 'workspace 1'\n")
+            .bindings.bindings[KeyCombo(modifiers: [.alt, .ctrl, .cmd, .shift], key: "1")] != nil)
+        // The default bindings follow mod.
+        let moved = try Config.parse(Config.defaultTOML.replacing("mod = 'alt'", with: "mod = 'cmd'"))
+        #expect(moved.bindings.bindings[KeyCombo(modifiers: .cmd, key: "r")] == KeyBinding(["switch-preset-column-width"]))
+
+        assertError("[modifiers]\nmod = 'super'\n", path: "modifiers.mod", line: 2, contains: "not a modifier")
+        assertError("[modifiers]\nmod = 'alt-'\n", path: "modifiers.mod", line: 2, contains: "not a modifier")
+        // mod and the modifier it stands for name the same key.
+        assertError("[bindings]\nmod-h = 'focus left'\nalt-h = 'focus right'\n", path: "bindings.alt-h", line: 3, contains: "bound twice")
+    }
+
     @Test func `Load from missing file fails`() {
         let error = #expect(throws: ConfigError.self) {
             try Config.load(from: URL(fileURLWithPath: "/nonexistent/scuttle.toml"))

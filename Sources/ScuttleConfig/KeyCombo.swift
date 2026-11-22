@@ -2,8 +2,8 @@ import Carbon.HIToolbox
 
 /// A key binding such as `alt-shift-h`: modifiers plus a key name, joined by `-`. The leading words that
 /// name modifiers are the modifiers; the rest is the key, so `alt-page-up` is `alt` and `page-up`.
-/// `hyper` and `meh` name the usual combinations, all four modifiers and all but `cmd`.
-/// Key names map to keycodes through `keyCodes`.
+/// `hyper` and `meh` name the usual combinations, all four modifiers and all but `cmd`, and `mod` names
+/// whatever `[modifiers] mod` is set to, `alt` by default. Key names map to keycodes through `keyCodes`.
 public struct KeyCombo: Hashable, CustomStringConvertible {
     public struct Modifiers: OptionSet, Hashable {
         public let rawValue: Int
@@ -29,19 +29,33 @@ public struct KeyCombo: Hashable, CustomStringConvertible {
         self.key = key
     }
 
-    public init(_ combo: String) throws(ConfigError) {
+    /// `mod` in the combo stands for `mod`, the modifiers `[modifiers] mod` names.
+    public init(_ combo: String, mod: Modifiers = .alt) throws(ConfigError) {
         var parts = combo.split(separator: "-", omittingEmptySubsequences: false).map(String.init)[...]
         var modifiers: Modifiers = []
         while let first = parts.first, parts.count > 1,
-              let modifier = (Modifiers.names + Modifiers.aliases).first(where: { $0.0 == first })?.1 {
+              let modifier = first == "mod" ? mod : (Modifiers.names + Modifiers.aliases).first(where: { $0.0 == first })?.1 {
             modifiers.insert(modifier)
             parts.removeFirst()
         }
         let key = parts.joined(separator: "-")
         guard KeyCombo.keyCodes[key] != nil else {
-            throw ConfigError("unknown key '\(key)' in '\(combo)', expected modifiers (alt, ctrl, cmd, shift, hyper, meh) and a key name")
+            throw ConfigError("unknown key '\(key)' in '\(combo)', expected modifiers (mod, alt, ctrl, cmd, shift, hyper, meh) and a key name")
         }
         self.init(modifiers: modifiers, key: key)
+    }
+
+    /// The modifiers a `[modifiers] mod` value names: one or more of alt, ctrl, cmd, shift, hyper and meh, joined
+    /// by `-`, such as `ctrl-alt`.
+    public static func modifiers(named value: String) throws(ConfigError) -> Modifiers {
+        var modifiers: Modifiers = []
+        for name in value.split(separator: "-", omittingEmptySubsequences: false) {
+            guard let modifier = (Modifiers.names + Modifiers.aliases).first(where: { $0.0 == name })?.1 else {
+                throw ConfigError("'\(value)' is not a modifier: expected alt, ctrl, cmd, shift, hyper or meh, or several joined by '-', such as 'ctrl-alt'")
+            }
+            modifiers.insert(modifier)
+        }
+        return modifiers
     }
 
     /// Canonical form, e.g. `alt-shift-h`, whatever order the config wrote the modifiers in.

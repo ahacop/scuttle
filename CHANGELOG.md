@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `[modifiers] mod` sets the modifier for every default binding at once, `alt` by default. Write `mod` in a binding, as in `mod-h`, to use it: `mod = 'ctrl-alt'` makes `mod-h` Control-Option-H. New configs write their default bindings with `mod`; bindings written with `alt` keep working.
+
 ## 0.1
 
 Forked from [dinky](https://github.com/mikker/Dinky) 0.30 and renamed scuttle.

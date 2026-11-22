@@ -113,11 +113,12 @@ public struct Bindings: Equatable {
 
     public init() {}
 
-    init(_ t: Table) throws {
+    /// `mod` is what a key's `mod` modifier stands for, from `[modifiers] mod`.
+    init(_ t: Table, mod: KeyCombo.Modifiers = .alt) throws {
         for key in t.keys {
             let combo: KeyCombo
             do {
-                combo = try KeyCombo(key)
+                combo = try KeyCombo(key, mod: mod)
             } catch {
                 throw ConfigError(path: t.path(key), error.message)
             }

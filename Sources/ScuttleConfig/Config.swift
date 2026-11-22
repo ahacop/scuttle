@@ -178,7 +178,7 @@ public struct Config: Equatable {
         modifiers = try t.table("modifiers").map(ModifierSides.init) ?? modifiers
         hooks = try t.table("hooks").map(Hooks.init) ?? hooks
         rules = try t.tables("rules")?.map(WindowRule.init) ?? []
-        bindings = try t.table("bindings").map(Bindings.init) ?? bindings
+        bindings = try t.table("bindings").map { try Bindings($0, mod: modifiers.mod) } ?? bindings
         if t.isTable("mode") {
             throw ConfigError(path: "mode", "binding modes are gone: put the keys of [mode.main] under [bindings]")
         }
@@ -469,9 +469,11 @@ public enum ModifierSide: String, CaseIterable {
     case both, left, right
 }
 
-/// `[modifiers]`: a modifier limited to one side is only a binding's modifier from that side's key; the other
-/// key types as usual, so right Option can still make special characters while left Option drives scuttle.
+/// `[modifiers]`: `mod`, the modifiers a binding's `mod` stands for, and which side's key counts for each modifier.
+/// A modifier limited to one side is only a binding's modifier from that side's key; the other key types as usual,
+/// so right Option can still make special characters while left Option drives scuttle.
 public struct ModifierSides: Equatable {
+    public var mod: KeyCombo.Modifiers = .alt
     public var alt = ModifierSide.both
     public var ctrl = ModifierSide.both
     public var cmd = ModifierSide.both
@@ -480,6 +482,13 @@ public struct ModifierSides: Equatable {
     public init() {}
 
     init(_ t: Table) throws {
+        if let value = try t.string("mod") {
+            do {
+                mod = try KeyCombo.modifiers(named: value)
+            } catch {
+                throw ConfigError(path: t.path("mod"), error.message)
+            }
+        }
         alt = try t.choice("alt") ?? alt
         ctrl = try t.choice("ctrl") ?? ctrl
         cmd = try t.choice("cmd") ?? cmd

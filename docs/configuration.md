@@ -340,14 +340,21 @@ disabled, dragging does neither.
 
 ## `[modifiers]`
 
-Which key of each modifier pair counts in bindings. If you limit `alt` to one
-side, the other Option key types special characters as usual. With
-`alt = 'left'`, left Option-H focuses left and right Option-H types `˙`.
+`mod` is the modifier that `mod` stands for in a binding. Every default binding
+uses `mod`, so changing it moves all of them to another modifier at once. For
+example, with `mod = 'ctrl-alt'`, `mod-h` is Control-Option-H. Bindings you
+write with `alt`, `ctrl` and so on are not affected.
+
+The other keys set which key of each modifier pair counts in bindings. If you
+limit `alt` to one side, the other Option key types special characters as
+usual. With `alt = 'left'`, left Option-H focuses left and right Option-H types
+`˙`.
 
 <div class="wide-table" markdown="1">
 
 | Key | Default | |
 |---|---|---|
+| `mod` | `'alt'` | `'alt'`, `'ctrl'`, `'cmd'`, `'shift'`, `'hyper'` or `'meh'`, or several joined by `-`, such as `'ctrl-alt'`. |
 | `alt` | `'both'` | `'both'`, `'left'` or `'right'`: which Option key is `alt`. |
 | `ctrl` | `'both'` | The same for Control. |
 | `cmd` | `'both'` | The same for Command. |
@@ -458,8 +465,10 @@ one.
 
 ## `[bindings]`
 
-Key bindings. Each key maps to a command or a list of commands. scuttle takes
-the key, so the app in front doesn't get it.
+Key bindings. Each key maps to a command or a list of commands, and any
+command can go on any key. Your `[bindings]` table replaces the default
+bindings completely, so it has only the keys you list. scuttle takes a bound
+key, so the app in front doesn't get it.
 
 A key can also map to a table with `command` and `exclude-apps`, a list of
 bundle IDs. While one of those apps is in front, scuttle leaves the key to it.
@@ -472,10 +481,11 @@ ctrl-h = { command = 'focus left --wrap-around', exclude-apps = ['com.github.wez
 
 ### Keys
 
-A binding is any modifiers (`alt`, `ctrl`, `cmd`, `shift`) and one key, joined
-with `-`: `alt-shift-h`, `ctrl-left`, `f5`. Key names follow the US keyboard
-layout. `hyper` means all four modifiers and `meh` means all but `cmd`, so
-`hyper-1` is `alt-ctrl-cmd-shift-1`.
+A binding is any modifiers (`mod`, `alt`, `ctrl`, `cmd`, `shift`) and one key,
+joined with `-`: `mod-shift-h`, `ctrl-left`, `f5`. Key names follow the US
+keyboard layout. `mod` is whatever [`[modifiers] mod`](#modifiers) is set to,
+`alt` by default. `hyper` means all four modifiers and `meh` means all but
+`cmd`, so `hyper-1` is `alt-ctrl-cmd-shift-1`.
 
 - `a`–`z`, `0`–`9`, `f1`–`f20`
 - `minus` `equal` `left-bracket` `right-bracket` `backslash` `semicolon`
@@ -485,9 +495,10 @@ layout. `hyper` means all four modifiers and `meh` means all but `cmd`, so
 - `keypad-0`–`keypad-9`, `keypad-clear` `keypad-decimal` `keypad-divide`
   `keypad-enter` `keypad-equal` `keypad-minus` `keypad-multiply` `keypad-plus`
 
-The default bindings use `alt`, so Option can no longer type special
-characters with those letters. Set `[modifiers] alt = 'left'` to keep right
-Option for typing them.
+With the default `mod`, the default bindings use Option, so Option can no
+longer type special characters with those letters. Set
+`[modifiers] alt = 'left'` to keep right Option for typing them, or set `mod`
+to another modifier.
 
 ## Default config
 
@@ -572,9 +583,11 @@ resize = 'instant'              # instant: sizes jump, positions glide (smooth e
 [drag]
 placeholders = true             # outline where a dragged tile came from and the tile it will swap with
 
-# Which key of each pair bindings answer to: both | left | right. With alt = 'left',
-# right Option still types special characters.
+# mod is the modifier a binding's mod- stands for: alt, ctrl, cmd, shift, hyper, meh, or several
+# joined by -, such as 'ctrl-alt'. alt, ctrl, cmd and shift: which key of each pair bindings answer
+# to, both | left | right. With alt = 'left', right Option still types special characters.
 [modifiers]
+mod = 'alt'
 alt = 'both'
 ctrl = 'both'
 cmd = 'both'
@@ -594,30 +607,30 @@ app-id = 'com.apple.systempreferences'   # also: app-name, title (regexes), kind
 run = 'layout floating'
 
 [bindings]
-alt-1 = 'workspace 1'
-alt-2 = 'workspace 2'
-alt-3 = 'workspace 3'
-alt-4 = 'workspace 4'
-alt-5 = 'workspace 5'
-alt-shift-1 = 'move-window-to-workspace 1'
-alt-shift-2 = 'move-window-to-workspace 2'
-alt-shift-3 = 'move-window-to-workspace 3'
-alt-shift-4 = 'move-window-to-workspace 4'
-alt-shift-5 = 'move-window-to-workspace 5'
-alt-tab = 'workspace-back-and-forth'
-alt-h = 'focus left'
-alt-l = 'focus right'
-alt-shift-h = 'move left'
-alt-shift-l = 'move right'
+mod-1 = 'workspace 1'
+mod-2 = 'workspace 2'
+mod-3 = 'workspace 3'
+mod-4 = 'workspace 4'
+mod-5 = 'workspace 5'
+mod-shift-1 = 'move-window-to-workspace 1'
+mod-shift-2 = 'move-window-to-workspace 2'
+mod-shift-3 = 'move-window-to-workspace 3'
+mod-shift-4 = 'move-window-to-workspace 4'
+mod-shift-5 = 'move-window-to-workspace 5'
+mod-tab = 'workspace-back-and-forth'
+mod-h = 'focus left'
+mod-l = 'focus right'
+mod-shift-h = 'move left'
+mod-shift-l = 'move right'
 # Workspaces stack top to bottom, as in niri: up and down go between them.
-alt-j = 'workspace next'
-alt-k = 'workspace prev'
-alt-shift-j = 'move-window-to-workspace next --follow'
-alt-shift-k = 'move-window-to-workspace prev --follow'
-alt-minus = 'resize width -50'
-alt-equal = 'resize width +50'
-alt-r = 'switch-preset-column-width'
-alt-f = 'maximize-column'
-alt-shift-f = 'fullscreen'
-alt-v = 'layout floating tiling'
+mod-j = 'workspace next'
+mod-k = 'workspace prev'
+mod-shift-j = 'move-window-to-workspace next --follow'
+mod-shift-k = 'move-window-to-workspace prev --follow'
+mod-minus = 'resize width -50'
+mod-equal = 'resize width +50'
+mod-r = 'switch-preset-column-width'
+mod-f = 'maximize-column'
+mod-shift-f = 'fullscreen'
+mod-v = 'layout floating tiling'
 ```

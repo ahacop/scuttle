@@ -39,7 +39,7 @@ struct SchemaTests {
             #expect(matches(name), "\(name)")
             #expect(matches("alt-shift-\(name)"), "\(name)")
         }
-        #expect(matches("hyper-1") && matches("meh-cmd-h"))
+        #expect(matches("hyper-1") && matches("meh-cmd-h") && matches("mod-shift-h"))
         for bad in ["", "alt-", "super-a", "alt-hh", "pageUp", "f21", "keypad-", "alt--", "A"] {
             #expect(!matches(bad), "\(bad)")
         }
@@ -139,6 +139,7 @@ struct SchemaTests {
         placeholders = false
 
         [modifiers]
+        mod = 'ctrl-alt'
         alt = 'left'
         ctrl = 'right'
         cmd = 'both'
@@ -163,6 +164,7 @@ struct SchemaTests {
 
         [bindings]
         alt-1 = 'workspace 1'
+        mod-2 = 'workspace 2'
         alt-r = ['switch-preset-column-width', 'balance-sizes']
         ctrl-h = { command = ['focus left', 'balance-sizes'], exclude-apps = ['com.github.wez.wezterm'] }
         h = 'resize width -50'

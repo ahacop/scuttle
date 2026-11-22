@@ -38,6 +38,8 @@ preset-column-widths = [0.33333, 0.5, 0.66667]
 
 Each column has its own width, as a share of the display.
 
+The keys are the default bindings, with [`mod`](configuration.md#modifiers) set to Alt.
+
 | Command | Key | |
 |---|---|---|
 | `switch-preset-column-width` | <kbd>Alt-R</kbd> | Set the column to the next width in `preset-column-widths` that is wider than it is now. After the widest, go back to the narrowest. |

@@ -83,9 +83,11 @@ extension Config {
     [drag]
     placeholders = true             # outline where a dragged tile came from and the tile it will swap with
 
-    # Which key of each pair bindings answer to: both | left | right. With alt = 'left',
-    # right Option still types special characters.
+    # mod is the modifier a binding's mod- stands for: alt, ctrl, cmd, shift, hyper, meh, or several
+    # joined by -, such as 'ctrl-alt'. alt, ctrl, cmd and shift: which key of each pair bindings answer
+    # to, both | left | right. With alt = 'left', right Option still types special characters.
     [modifiers]
+    mod = 'alt'
     alt = 'both'
     ctrl = 'both'
     cmd = 'both'
@@ -105,31 +107,31 @@ extension Config {
     run = 'layout floating'
 
     [bindings]
-    alt-1 = 'workspace 1'
-    alt-2 = 'workspace 2'
-    alt-3 = 'workspace 3'
-    alt-4 = 'workspace 4'
-    alt-5 = 'workspace 5'
-    alt-shift-1 = 'move-window-to-workspace 1'
-    alt-shift-2 = 'move-window-to-workspace 2'
-    alt-shift-3 = 'move-window-to-workspace 3'
-    alt-shift-4 = 'move-window-to-workspace 4'
-    alt-shift-5 = 'move-window-to-workspace 5'
-    alt-tab = 'workspace-back-and-forth'
-    alt-h = 'focus left'
-    alt-l = 'focus right'
-    alt-shift-h = 'move left'
-    alt-shift-l = 'move right'
+    mod-1 = 'workspace 1'
+    mod-2 = 'workspace 2'
+    mod-3 = 'workspace 3'
+    mod-4 = 'workspace 4'
+    mod-5 = 'workspace 5'
+    mod-shift-1 = 'move-window-to-workspace 1'
+    mod-shift-2 = 'move-window-to-workspace 2'
+    mod-shift-3 = 'move-window-to-workspace 3'
+    mod-shift-4 = 'move-window-to-workspace 4'
+    mod-shift-5 = 'move-window-to-workspace 5'
+    mod-tab = 'workspace-back-and-forth'
+    mod-h = 'focus left'
+    mod-l = 'focus right'
+    mod-shift-h = 'move left'
+    mod-shift-l = 'move right'
     # Workspaces stack top to bottom, as in niri: up and down go between them.
-    alt-j = 'workspace next'
-    alt-k = 'workspace prev'
-    alt-shift-j = 'move-window-to-workspace next --follow'
-    alt-shift-k = 'move-window-to-workspace prev --follow'
-    alt-minus = 'resize width -50'
-    alt-equal = 'resize width +50'
-    alt-r = 'switch-preset-column-width'
-    alt-f = 'maximize-column'
-    alt-shift-f = 'fullscreen'
-    alt-v = 'layout floating tiling'
+    mod-j = 'workspace next'
+    mod-k = 'workspace prev'
+    mod-shift-j = 'move-window-to-workspace next --follow'
+    mod-shift-k = 'move-window-to-workspace prev --follow'
+    mod-minus = 'resize width -50'
+    mod-equal = 'resize width +50'
+    mod-r = 'switch-preset-column-width'
+    mod-f = 'maximize-column'
+    mod-shift-f = 'fullscreen'
+    mod-v = 'layout floating tiling'
     """
 }
