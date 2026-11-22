@@ -18,7 +18,14 @@ whole. Columns that fit, a lone one too, are centred.
 </figure>
 
 Each column is one window, as tall as the display. `focus` and `move` go left
-and right between columns.
+and right between columns (Alt-H / Alt-L, with Shift to move).
+
+Workspaces stack top to bottom, as in niri. Alt-J and Alt-K go to the
+workspace below and above (`workspace next` and `prev`), and Alt-Shift-J and
+Alt-Shift-K take the focused column there and follow it
+(`move-window-to-workspace next --follow`). They stop at the first and last
+workspace. Each workspace is a native Space, so macOS's own overview still
+shows them side by side.
 
 ```toml
 [scrolling]

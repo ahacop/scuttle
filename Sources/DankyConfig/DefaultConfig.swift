@@ -132,6 +132,11 @@ extension Config {
     alt-l = 'focus right'
     alt-shift-h = 'move left'
     alt-shift-l = 'move right'
+    # Workspaces stack top to bottom, as in niri: up and down go between them.
+    alt-j = 'workspace next'
+    alt-k = 'workspace prev'
+    alt-shift-j = 'move-window-to-workspace next --follow'
+    alt-shift-k = 'move-window-to-workspace prev --follow'
     alt-minus = 'resize width -50'
     alt-equal = 'resize width +50'
     alt-r = 'switch-preset-column-width'
