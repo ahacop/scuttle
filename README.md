@@ -2,13 +2,10 @@
 
 # scuttle
 
-> oh wow. you moved a rectangle.
-
-A scrolling tiling window manager for macOS, after niri, that leaves System
-Integrity Protection on. Forked from [dinky](https://github.com/mikker/Dinky) by
-Mikkel Malmberg and cut down to its scrolling layout, with niri's column
-widths: `Alt-R` steps the focused column through preset widths (a third, a half,
-two thirds by default) and `Alt-F` maximizes it.
+A scrolling tiling window manager for macOS that leaves System Integrity
+Protection on. Windows open as columns on a strip you scroll through, one window
+per column at full height. `Alt-R` steps the focused column through preset
+widths (a third, a half, two thirds by default) and `Alt-F` maximizes it.
 
 [Documentation](docs/index.md)
 
@@ -41,5 +38,15 @@ tapering back to the configured width at the straight edges.
 Per-window [`[[borders.rules]]`](docs/configuration.md#bordersrules) can hide auxiliary-window borders independently of floating/tiling, including by Accessibility `AXIdentifier`. Border-only reloads update existing windows without changing their placement.
 
 See [border development](docs/border-development.md) for the native comparison preview and regression tests.
+
+## Inspiration
+
+- [niri](https://github.com/YaLTeR/niri), the scrollable-tiling Wayland
+  compositor. scuttle's layout, column widths and workspace stacking follow it.
+- [dinky](https://github.com/mikker/Dinky) by Mikkel Malmberg. scuttle is a fork
+  of dinky 0.30 with everything I didn't want removed: the dwindle, fixed and
+  master layouts, drag-to-split, binding modes, and default bindings that shadow
+  macOS shortcuts. What's left is dinky's scrolling layout, native Spaces
+  workspaces and SIP-on approach.
 
 MIT licensed.
