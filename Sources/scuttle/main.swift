@@ -12,6 +12,16 @@ func stdoutIsDiscarded() -> Bool {
     return out.st_mode & S_IFMT == S_IFCHR && out.st_rdev == null.st_rdev
 }
 
+/// The app bundle this binary is in. Run through a symlink, as Homebrew's `scuttle` command is,
+/// `Bundle.main` is the symlink's folder, so the link is resolved first. Nil for a bare build product.
+func appBundle() -> Bundle? {
+    guard let path = Bundle.main.executablePath else { return nil }
+    let binary = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+    let contents = binary.deletingLastPathComponent().deletingLastPathComponent()
+    guard contents.lastPathComponent == "Contents" else { return nil }
+    return Bundle(url: contents.deletingLastPathComponent())
+}
+
 let args = Array(CommandLine.arguments.dropFirst())
 guard let command = args.first else {
     // Launched from the app bundle with no arguments: run the menu bar app. Started by Finder, `open` or the
@@ -38,7 +48,7 @@ case "debug": exit(runDebug(rest))
 case "doctor": exit(runDoctor(rest))
 case "help", "--help", "-h": exit(runHelp())
 case "version", "--version", "-v":
-    let info = Bundle.main.infoDictionary
+    let info = appBundle()?.infoDictionary
     print("scuttle \(info?["CFBundleShortVersionString"] ?? "dev") (\(info?["CFBundleVersion"] ?? "0"))")
     exit(0)
 default: exit(runCli(args))

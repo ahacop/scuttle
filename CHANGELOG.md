@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `scuttle version` prints the app's version when run through Homebrew's `scuttle` command, instead of `dev (0)`.
+
 ## 0.3
 
 - Columns that fit on the display start at the left edge instead of being centered, so the first column stays in place when a width change makes the strip fit.
