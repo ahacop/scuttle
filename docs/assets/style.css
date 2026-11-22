@@ -282,6 +282,13 @@ kbd {
   border-radius: 4px;
 }
 
+.app-icon {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 0 16px;
+}
+
 /* Tables */
 
 table {

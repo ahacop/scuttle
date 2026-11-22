@@ -5,6 +5,8 @@ description: A scrolling tiling window manager for macOS that leaves System Inte
 permalink: /
 ---
 
+<img class="app-icon" src="{{ '/assets/icon.png' | relative_url }}" alt="scuttle's app icon: a red crab carrying a window" width="96" height="96">
+
 # scuttle: scrolling tiling on native Spaces, with SIP left on
 
 ```

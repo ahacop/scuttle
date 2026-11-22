@@ -1,4 +1,4 @@
-<img src="docs/assets/icon.png" alt="scuttle" width="128">
+<img src="docs/assets/icon.png" alt="scuttle's app icon: a red crab carrying a window" width="128">
 
 # scuttle
 
