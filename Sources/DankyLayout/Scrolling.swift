@@ -180,7 +180,8 @@ extension Workspace {
     }
 
     /// `switch-preset-column-width`: give the focused window's column the first preset wider than it is now, or
-    /// the first preset when it is as wide as the widest already, as niri does. False when nothing changed.
+    /// the first preset when it is as wide as the widest already, as niri does. Ends fullscreen. False when nothing
+    /// changed.
     @discardableResult
     public mutating func switchPresetColumnWidth() -> Bool {
         guard let focused, let column = root.path(of: focused)?.first, let first = presetColumnWidths.first else {
@@ -188,7 +189,10 @@ extension Workspace {
         }
         let current = width(ofColumn: column)
         let next = presetColumnWidths.first { $0 > current + 0.001 } ?? first
-        guard abs(next - current) > 1e-9 else { return false }
+        // Ending fullscreen counts as a change: the column's width shows again.
+        let wasFullscreen = isFullscreen
+        isFullscreen = false
+        guard abs(next - current) > 1e-9 else { return wasFullscreen }
         for id in root.children[column].windows { maximizedFrom[id] = nil }
         setWidth(ofColumn: column, next)
         reveal(focused)
@@ -196,12 +200,18 @@ extension Workspace {
     }
 
     /// `maximize-column`: widen the focused window's column to the whole screen, or give a column already that
-    /// wide back the width it had before. The column stays in the strip. False when there is no column.
+    /// wide back the width it had before. The column stays in the strip. From fullscreen, it ends fullscreen and
+    /// maximizes. False when there is no column.
     @discardableResult
     public mutating func toggleMaximizedColumn() -> Bool {
         guard let focused, let column = root.path(of: focused)?.first else { return false }
         let windows = root.children[column].windows
         let current = width(ofColumn: column)
+        // From fullscreen, which hides the column's width, maximizing is what the window is asked for.
+        if isFullscreen {
+            isFullscreen = false
+            if current >= 1 - 1e-9 { reveal(focused); return true }
+        }
         if current >= 1 - 1e-9 {
             let saved = maximizedFrom, restored = windows.lazy.compactMap { saved[$0] }.first ?? columnWidth
             for id in windows { maximizedFrom[id] = nil }

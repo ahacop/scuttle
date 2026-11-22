@@ -405,6 +405,26 @@ struct ColumnWidthTests {
         #expect(ws.fullscreen == nil, "not the fullscreen command")
     }
 
+    @Test func `Width commands end fullscreen so the width shows`() {
+        var ws = strip(2)
+        ws.toggleFullscreen()
+        #expect(ws.switchPresetColumnWidth() == true)
+        #expect(ws.fullscreen == nil)
+        #expect(width(ws, 2) == 667)
+        ws.toggleFullscreen()
+        ws.presetColumnWidths = [0.66667]
+        #expect(ws.switchPresetColumnWidth() == true, "ending fullscreen is a change even at the only preset")
+        ws.toggleFullscreen()
+        #expect(ws.toggleMaximizedColumn() == true)
+        #expect(ws.fullscreen == nil)
+        #expect(width(ws, 2) == 1000, "fullscreen to maximized")
+        ws.toggleFullscreen()
+        ws.toggleMaximizedColumn()
+        #expect(width(ws, 2) == 1000, "already maximized: only fullscreen ends")
+        ws.toggleMaximizedColumn()
+        #expect(width(ws, 2) == 667)
+    }
+
     @Test func `Nothing to widen without a focused window`() {
         var ws = Workspace(bounds: rect(0, 0, 1000, 600))
         #expect(ws.switchPresetColumnWidth() == false)
