@@ -8,22 +8,22 @@ test:
 bundle *flags:
     scripts/bundle.sh {{flags}}
 
-# Debug bundle, replace any running dinky, and run attached so logs stream here (fut's run extension uses this).
+# Debug bundle, replace any running danky, and run attached so logs stream here (fut's run extension uses this).
 run: kill
     scripts/bundle.sh --debug
-    ./build/dinky.app/Contents/MacOS/dinky
+    ./build/danky.app/Contents/MacOS/danky
 
 kill:
-    pkill -f "dinky.app/Contents/MacOS/dinky" || true
+    pkill -f "danky.app/Contents/MacOS/danky" || true
 
 vm-install: bundle
     scripts/vm-install.sh
 
-# Symlink the bundled CLI into ~/.local/bin so `dinky <command>` works from any shell.
+# Symlink the bundled CLI into ~/.local/bin so `danky <command>` works from any shell.
 install: bundle
     mkdir -p ~/.local/bin
-    ln -sf "$PWD/build/dinky.app/Contents/MacOS/dinky" ~/.local/bin/dinky
-    ls -l ~/.local/bin/dinky
+    ln -sf "$PWD/build/danky.app/Contents/MacOS/danky" ~/.local/bin/danky
+    ls -l ~/.local/bin/danky
 
 # Serve the manual at http://localhost:4000, on every interface, and rebuild it as docs/ changes.
 docs:
@@ -32,12 +32,3 @@ docs:
 # Fuzz the debug build in the Tart VM: random actions, layout invariants checked after each. See scripts/fuzz.py.
 fuzz seed="1" steps="150": build
     scripts/vm-fuzz.sh {{seed}} {{steps}}
-
-# Build, sign with Developer ID, notarize and staple into dist/, without publishing.
-package version:
-    scripts/package-release.sh {{quote(version)}}
-
-# Prepare, test, package, tag and publish a GitHub release from a clean, pushed main. The version defaults
-# to the latest tag plus 0.1.
-release version="":
-    scripts/release.sh {{quote(version)}}

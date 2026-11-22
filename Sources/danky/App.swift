@@ -1,0 +1,300 @@
+import AppKit
+import DankyConfig
+import DankyPrivate
+import Sparkle
+
+// `danky app`: a menu bar item showing the focused display's workspace number, with commands as menu
+// items, and the socket the CLI talks to.
+func runApp() -> Int32 {
+    guard !appIsRunning() else {
+        fputs("danky: already running (\(socketPath))\n", stderr)
+        return 1
+    }
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    let delegate = DankyApp()
+    app.delegate = delegate
+    app.run()
+    return 0
+}
+
+final class DankyApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private var statusItem: NSStatusItem!
+    /// Other tiling window managers seen running at the last check.
+    private var otherTilers: [String] = []
+    /// Whether the key bindings' event tap exists. Creating it can fail right after Accessibility is granted.
+    private var hotkeysActive = true
+    private var socket: SocketServer?
+    private let onboarding = Onboarding()
+    private var signals: [DispatchSourceSignal] = []
+    // Only a bundle carries the feed URL; a bare debug binary would otherwise show an "Unable to Check
+    // For Updates" alert at launch that blocks the socket until dismissed.
+    private let updater = SPUStandardUpdaterController(startingUpdater: Bundle.main.infoDictionary?["SUFeedURL"] != nil,
+                                                       updaterDelegate: nil, userDriverDelegate: nil)
+
+    func applicationDidFinishLaunching(_ note: Notification) {
+        AppState.shared.loadConfig()
+        socket = SocketServer(path: socketPath, handle: handleCommand)
+        // `kill` and logout quit through NSApplication, so windows are restored on the way out.
+        for sig in [SIGTERM, SIGINT] {
+            signal(sig, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
+            source.setEventHandler { NSApp.terminate(nil) }
+            source.resume()
+            signals.append(source)
+        }
+        onboarding.run { [weak self] in self?.start() }
+    }
+
+    func applicationWillTerminate(_ note: Notification) {
+        AppState.shared.quit()
+        socket?.stop()
+    }
+
+    private func start() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.button?.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .bold)
+        statusItem.menu = NSMenu()
+        statusItem.menu?.delegate = self
+        // First, so the follower sees every Space change from here on, the first arrangement's included.
+        installActivationFollower()
+        AppState.shared.startCoordinator()
+        if let windows = AppState.shared.coordinator?.model { noteGoneWindows(in: windows) }
+        AppState.shared.numbers.start()
+        AppState.shared.numbers.observe { [weak self] _ in self?.refresh() }
+        AppState.shared.displays.observe { [weak self] _ in self?.refresh() }
+        // Nothing publishes the enabled state, the config error or other tilers starting and quitting. Listing
+        // every process costs more than the rest of a refresh together, so tilers are looked for less often.
+        Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.refresh() }
+        Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.checkOtherTilers() }
+        checkOtherTilers()
+        refresh()
+        print("app: status item up, listening on \(socketPath)")
+        print("STATUS:READY")  // fut's run extension watches for this line
+        fflush(stdout)
+    }
+
+    /// The next refresh shows the result.
+    private func checkOtherTilers() {
+        let tilers = runningOtherTilers()
+        guard tilers != otherTilers else { return }
+        otherTilers = tilers
+        if !tilers.isEmpty { print("app: \(otherTilersWarning(tilers))") }
+    }
+
+    private func refresh() {
+        let state = AppState.shared
+        let workspace = state.displays.focusedDisplay().flatMap(state.numbers.current(on:))
+        // Tries again on every refresh until the tap exists; once it does, this returns at once.
+        let keys = state.hotkeys.start()
+        if keys != hotkeysActive {
+            hotkeysActive = keys
+            print(keys ? "app: key bindings on" : "app: key bindings off, could not create the keyboard event tap (Accessibility?)")
+        }
+        let missingDesktops = !danky_can_manage_spaces() && !state.numbers.missing.isEmpty
+        let trouble = state.configError != nil || !state.config.warnings.isEmpty || !otherTilers.isEmpty || !hotkeysActive || missingDesktops
+        guard let button = statusItem.button else { return }
+        let title = (workspace.map { "\($0)" } ?? "?") + (trouble ? "!" : "")
+        let disabled = !state.enabled
+        // Only on change: every set redraws the status item, which kept danky and WindowServer busy while idle.
+        if button.title != title { button.title = title }
+        if button.appearsDisabled != disabled { button.appearsDisabled = disabled }
+    }
+
+    /// The focused mode's bindings while the menu is built, so each item shows its key.
+    private var bindings = MenuBindings(nil)
+
+    // Every action is a command string, run exactly as `danky <command>` would run it, and shows the key
+    // bound to that command in the current mode.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let state = AppState.shared
+        let mode = state.hotkeys.currentMode
+        bindings = MenuBindings(state.config.modes[mode])
+        let count = state.numbers.count
+        let current = state.displays.focusedDisplay().flatMap(state.numbers.current(on:))
+        menu.addItem(withTitle: "Workspace \(current.map { "\($0)" } ?? "?") of \(count)", action: nil, keyEquivalent: "")
+        if !danky_can_manage_spaces() {
+            let missing = state.numbers.missing
+            if !missing.isEmpty {
+                let subject = missing.count == 1 ? "Workspace" : "Workspaces"
+                let requirement = missing.count == 1 ? "needs a desktop" : "need desktops"
+                menu.addItem(withTitle: "\(subject) \(missing.map(String.init).joined(separator: ", ")) \(requirement)",
+                             action: nil, keyEquivalent: "")
+            }
+            let setup = NSMenuItem(title: "Desktop Setup…", action: #selector(showDesktopSetup(_:)), keyEquivalent: "")
+            setup.target = self
+            menu.addItem(setup)
+        }
+        if mode != "main" {
+            menu.addItem(withTitle: "Mode: \(mode)", action: nil, keyEquivalent: "")
+        }
+        if let error = state.configError {
+            menu.addItem(withTitle: "Config error: \(error)", action: nil, keyEquivalent: "")
+        }
+        for warning in state.config.warnings {
+            menu.addItem(withTitle: "Config warning: \(warning)", action: nil, keyEquivalent: "")
+        }
+        if !otherTilers.isEmpty {
+            menu.addItem(withTitle: otherTilersWarning(otherTilers), action: nil, keyEquivalent: "")
+        }
+        if !hotkeysActive {
+            menu.addItem(withTitle: "Key bindings are off: danky can't read the keyboard. Check Accessibility in System Settings.",
+                         action: nil, keyEquivalent: "")
+        }
+        menu.addItem(.separator())
+
+        let go = NSMenu()
+        let moveTo = NSMenu()
+        let moveFollow = NSMenu()
+        // These commands exist even when their workspace has no desktop. Honor explicit availability
+        // rather than AppKit's action-based validation, which would enable them again.
+        for menu in [go, moveTo, moveFollow] { menu.autoenablesItems = false }
+        for n in 1...max(count, 1) {
+            let title = "Workspace \(n)" + (n == current ? " (current)" : "")
+            let available = n != current && state.numbers.space(of: n) != nil
+            go.addItem(item(title, "workspace \(n)", enabled: available))
+            moveTo.addItem(item(title, "move-window-to-workspace \(n)", enabled: available))
+            moveFollow.addItem(item(title, "move-window-to-workspace \(n) --follow", enabled: available))
+        }
+        for menu in [go, moveTo, moveFollow] { menu.addItem(.separator()) }
+        go.addItem(item("Previous", "workspace prev"))
+        go.addItem(item("Next", "workspace next"))
+        go.addItem(item("Back and Forth", "workspace-back-and-forth"))
+        moveTo.addItem(item("Previous", "move-window-to-workspace prev"))
+        moveTo.addItem(item("Next", "move-window-to-workspace next"))
+        moveFollow.addItem(item("Previous", "move-window-to-workspace prev --follow"))
+        moveFollow.addItem(item("Next", "move-window-to-workspace next --follow"))
+        menu.addItem(submenu("Go to Workspace", go))
+        menu.addItem(submenu("Move Window to Workspace", moveTo))
+        menu.addItem(submenu("Move Window and Follow", moveFollow))
+        menu.addItem(.separator())
+
+        menu.addItem(submenu("Focus", directions("focus")))
+        menu.addItem(submenu("Move Window", directions("move")))
+        menu.addItem(submenu("Join With", directions("join-with")))
+        menu.addItem(submenu("Resize", items([
+            ("Grow", "resize smart +50"), ("Shrink", "resize smart -50"),
+            ("Wider", "resize width +50"), ("Narrower", "resize width -50"),
+            ("Taller", "resize height +50"), ("Shorter", "resize height -50"), nil,
+            ("Next Preset Width", "switch-preset-column-width"), ("Maximize Column", "maximize-column"),
+        ])))
+        menu.addItem(submenu("Layout", items([
+            ("Tiles", "layout tiles"), ("Accordion", "layout accordion"), nil,
+            ("Horizontal", "layout horizontal"), ("Vertical", "layout vertical"),
+            ("Follow Longer Side", "layout auto"), nil,
+            ("Toggle Floating", "layout floating tiling"),
+        ])))
+        menu.addItem(item("Fullscreen", "fullscreen"))
+        menu.addItem(item("Balance Sizes", "balance-sizes"))
+        menu.addItem(item("Flatten Workspace Tree", "flatten-workspace-tree"))
+        menu.addItem(.separator())
+
+        menu.addItem(submenu("Display", items([
+            ("Focus Left", "focus-monitor left"), ("Focus Down", "focus-monitor down"),
+            ("Focus Up", "focus-monitor up"), ("Focus Right", "focus-monitor right"),
+            ("Focus Next", "focus-monitor next"), ("Focus Previous", "focus-monitor prev"), nil,
+            ("Move Window to Next", "move-window-to-display next"),
+            ("Move Window to Previous", "move-window-to-display prev"),
+            ("Move Window to Next and Follow", "move-window-to-display next --follow"),
+            ("Move Window to Previous and Follow", "move-window-to-display prev --follow"),
+        ])))
+        let modes = NSMenu()
+        let names = state.config.modes.keys.sorted()
+        for name in names.filter({ $0 == "main" }) + names.filter({ $0 != "main" }) {
+            let it = item(name, "mode \(name)")
+            it.state = name == mode ? .on : .off
+            modes.addItem(it)
+        }
+        menu.addItem(submenu("Mode", modes))
+        // Bindings no item above runs, such as several commands at once or exec-and-forget.
+        let others = bindings.unshown
+        if !others.isEmpty {
+            let other = NSMenu()
+            for binding in others {
+                other.addItem(item(binding.commands.joined(separator: "; "), binding.commands, key: binding.combo))
+            }
+            menu.addItem(submenu("Other Key Bindings", other))
+        }
+        menu.addItem(.separator())
+
+        menu.addItem(item("Re-tile", "retile"))
+        menu.addItem(item("Clear Saved Minimum Sizes", "clear-minimum-sizes"))
+        menu.addItem(item("Reload Config", "reload-config"))
+        let enabled = item("Enabled", "enable toggle")
+        enabled.state = state.enabled ? .on : .off
+        menu.addItem(enabled)
+        let recoverable = state.recovery.recoverable
+        if recoverable > 0 {
+            menu.addItem(item("Restore \(recoverable) windows from the previous session", "recover"))
+        }
+        menu.addItem(.separator())
+        // Only a build with a Sparkle feed in its Info.plist can update itself.
+        if Bundle.main.infoDictionary?["SUFeedURL"] != nil {
+            let updates = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates(_:)), keyEquivalent: "")
+            updates.target = self
+            menu.addItem(updates)
+        }
+        menu.addItem(NSMenuItem(title: "Quit danky", action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
+    }
+
+    @objc private func showDesktopSetup(_ sender: NSMenuItem) {
+        onboarding.showSpaceManagementStep()
+    }
+
+    private func item(_ title: String, _ command: String, enabled: Bool = true) -> NSMenuItem {
+        item(title, [command], key: bindings.combo(for: command), enabled: enabled)
+    }
+
+    private func item(_ title: String, _ commands: [String], key: KeyCombo?, enabled: Bool = true) -> NSMenuItem {
+        let it = NSMenuItem(title: title, action: #selector(runCommand(_:)), keyEquivalent: "")
+        it.target = self
+        it.representedObject = commands
+        it.toolTip = commands.map { "danky \($0)" }.joined(separator: "\n")
+        it.isEnabled = enabled
+        if let (equivalent, mask) = key?.menuKey {
+            it.keyEquivalent = equivalent
+            it.keyEquivalentModifierMask = mask
+        }
+        return it
+    }
+
+    /// A menu of titled commands, nil for a separator.
+    private func items(_ entries: [(String, String)?]) -> NSMenu {
+        let menu = NSMenu()
+        for entry in entries {
+            menu.addItem(entry.map { item($0.0, $0.1) } ?? .separator())
+        }
+        return menu
+    }
+
+    private func directions(_ command: String) -> NSMenu {
+        items(["left", "down", "up", "right"].map { ($0.capitalized, "\(command) \($0)") })
+    }
+
+    private func submenu(_ title: String, _ menu: NSMenu) -> NSMenuItem {
+        let it = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        it.submenu = menu
+        return it
+    }
+
+    @objc private func checkForUpdates(_ sender: Any?) {
+        updater.checkForUpdates(sender)
+    }
+
+    @objc private func runCommand(_ sender: NSMenuItem) {
+        guard let commands = sender.representedObject as? [String] else { return }
+        for command in commands {
+            let reply = handleCommand(command)
+            if !reply.ok {
+                fputs("\(command): \(reply.text)\n", stderr)
+                NSSound.beep()
+            }
+        }
+    }
+}
+
+/// A command from the menu or the CLI. `recover` belongs to the app rather than the command vocabulary.
+private func handleCommand(_ line: String) -> Reply {
+    line == "recover" ? AppState.shared.recover() : Dispatcher.run(line)
+}

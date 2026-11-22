@@ -29,7 +29,7 @@ if name == "swift":
         print(path.resolve())
     else:
         path.mkdir(parents=True, exist_ok=True)
-        (path / "dinky").write_text("arm64 x86_64" if universal else "arm64")
+        (path / "danky").write_text("arm64 x86_64" if universal else "arm64")
 elif name == "lipo":
     if args[0] == "-archs":
         archs = pathlib.Path(args[1]).read_text().split()
@@ -47,7 +47,7 @@ elif name == "plutil":
 elif name == "xcrun":
     if args[0] == "actool":
         out = pathlib.Path(args[args.index("--compile") + 1])
-        for filename in ["Assets.car", "Dinky.icns"]:
+        for filename in ["Assets.car", "Danky.icns"]:
             (out / filename).touch()
     elif args[0] not in ["notarytool", "stapler"]:
         sys.exit(2)
@@ -62,7 +62,7 @@ elif name == "ditto":
         with zipfile.ZipFile(args[-2]) as archive:
             archive.extractall(args[-1])
         if os.environ.get("THIN_ARCHIVE"):
-            (pathlib.Path(args[-1]) / "dinky.app/Contents/MacOS/dinky").write_text("arm64")
+            (pathlib.Path(args[-1]) / "danky.app/Contents/MacOS/danky").write_text("arm64")
     else:
         shutil.copytree(args[0], args[1])
 elif name == "git":
@@ -76,11 +76,11 @@ elif name not in ["codesign", "spctl"]:
 
 class PackagingTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="dinky-packaging-")
+        self.temp = tempfile.TemporaryDirectory(prefix="danky-packaging-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         shutil.copytree(ROOT / "scripts", self.root / "scripts")
-        (self.root / "Resources/Dinky.icon").mkdir(parents=True)
+        (self.root / "Resources/Danky.icon").mkdir(parents=True)
         (self.root / "Resources/Info.plist").write_bytes(plistlib.dumps({
             "CFBundleShortVersionString": "0.0", "CFBundleVersion": "1",
             "LSMinimumSystemVersion": "15.0",
@@ -147,53 +147,13 @@ class PackagingTests(unittest.TestCase):
         app = self.root / "thin.app/Contents/MacOS"
         app.mkdir(parents=True)
         shutil.copytree(self.framework, app.parent / "Frameworks/Sparkle.framework/Versions/Current")
-        (app / "dinky").write_text("arm64 x86_64")
+        (app / "danky").write_text("arm64 x86_64")
         result = self.run_script("check-universal.sh", str(app.parent.parent))
         self.assertEqual(result.returncode, 0, result.stderr)
         for archs in ["arm64", "x86_64"]:
             with self.subTest(archs=archs):
-                (app / "dinky").write_text(archs)
+                (app / "danky").write_text(archs)
                 self.assertNotEqual(self.run_script("check-universal.sh", str(app.parent.parent)).returncode, 0)
-
-    def test_package_checks_archive_before_unrestricted_cask(self):
-        result = self.run_script("package-release.sh", "0.24")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        cask = (self.root / "dist/dinky.rb").read_text()
-        self.assertNotIn("depends_on arch:", cask)
-        self.assertNotIn("@VERSION@", cask)
-        commands = self.commands()
-        self.assertEqual(len([c for c in commands if c[0] == "lipo" and "-verify_arch" in c]), 36)
-        self.assertIn(["codesign", "--verify", "--strict", "--verbose=1", "build/dinky.app"], commands)
-        self.assertTrue(any(c[:2] == ["xcrun", "notarytool"] for c in commands))
-        self.assertTrue(any(c[:2] == ["xcrun", "stapler"] for c in commands))
-        self.assertTrue(any(c[0] == "spctl" for c in commands))
-        self.assertFalse(any("hardwareRequirements" in e.tag for e in ET.parse(self.root / "dist/appcast.xml").iter()))
-
-    def test_thin_archive_fails_before_sparkle_signing_and_cask(self):
-        self.env["THIN_ARCHIVE"] = "1"
-        result = self.run_script("package-release.sh", "0.24")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertFalse((self.root / "dist/dinky.rb").exists())
-        self.assertFalse(any(c[0] == "sign_update" for c in self.commands()))
-
-    def test_appcast_keeps_architecture_safeguard(self):
-        app = self.root / "build/dinky.app/Contents/MacOS"
-        app.mkdir(parents=True)
-        shutil.copy(self.root / "Resources/Info.plist", app.parent / "Info.plist")
-        dist = self.root / "dist"
-        dist.mkdir()
-        (dist / "dinky.app.zip").write_bytes(b"archive")
-        (dist / "signature.txt").write_text("A" * 86 + "==")
-        for archs, expected in [("arm64", "arm64"), ("arm64 x86_64", None), ("x86_64", None)]:
-            with self.subTest(archs=archs):
-                (app / "dinky").write_text(archs)
-                result = subprocess.run(["python3", "scripts/appcast.py", "0.0"],
-                                        cwd=self.root, env=self.env, capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                requirement = ET.parse(dist / "appcast.xml").findtext(
-                    ".//{http://www.andymatuschak.org/xml-namespaces/sparkle}hardwareRequirements")
-                self.assertEqual(requirement, expected)
-
 
 if __name__ == "__main__":
     unittest.main()

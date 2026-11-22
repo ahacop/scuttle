@@ -1,0 +1,402 @@
+import CoreGraphics
+import Testing
+@testable import DankyLayout
+
+/// The gutter parked windows show in, either side of the columns.
+private let peek = Workspace.peek
+
+/// A scrolling workspace with windows 1...n inserted in order, so n is focused and in view. Its columns go
+/// between 0 and 1000, inside the gutters, when it has no gaps or walls.
+private func strip(_ n: Int, width: Double = 0.5, gaps: Gaps = .zero, walls: Set<Direction> = []) -> Workspace {
+    var ws = Workspace(bounds: rect(-peek, 0, 1000 + 2 * peek, 600), gaps: gaps)
+    ws.columnWidth = width
+    ws.walls = walls
+    for id in 0..<n { ws.insert(WindowID(id + 1)) }
+    return ws
+}
+
+/// Left edges of the windows as the strip lays them out, on screen or not.
+private func lefts(_ ws: Workspace) -> [CGFloat] {
+    let frames = ws.tiledLayout().frames
+    return ws.windows.map { frames[$0]!.minX }
+}
+
+struct ScrollingGeometryTests {
+    @Test func `A lone column keeps its width, centred`() {
+        #expect(strip(1).layout().frames[1] == rect(238, 0, 525, 600), "half the screen, as niri opens it")
+        #expect(strip(1, width: 1).layout().frames[1] == rect(-peek, 0, 1000 + 2 * peek, 600), "a full-width one fills it")
+    }
+
+    @Test func `Columns that fit are centred`() {
+        let ws = strip(2, width: 0.49)
+        #expect(ws.layout().frames[1] == rect(10, 0, 490, 600))
+        #expect(ws.layout().frames[2] == rect(500, 0, 490, 600))
+    }
+
+    @Test func `Inner and outer gaps match on both sides`() {
+        let ws = strip(2, width: 0.49, gaps: Gaps(all: 10))
+        #expect(ws.layout().frames[1] == rect(15, 10, 480, 580))
+        #expect(ws.layout().frames[2] == rect(505, 10, 480, 580))
+    }
+
+    @Test func `A new column opens right of the focused one and scrolls into view`() {
+        var ws = strip(3)
+        #expect(lefts(ws) == [-475, 25, 525], "the last column reaches into the empty gutter")
+        ws.focus(1)
+        ws.insert(4)
+        #expect(ws.windows == [1, 4, 2, 3])
+        #expect(lefts(ws) == [-25, 475, 975, 1475])
+    }
+
+    @Test func `Focusing scrolls as little as shows the column`() {
+        var ws = strip(4)
+        #expect(lefts(ws) == [-975, -475, 25, 525])
+        ws.focus(.left)
+        #expect(lefts(ws) == [-975, -475, 25, 525], "already in view")
+        ws.focus(.left)
+        #expect(lefts(ws) == [-500, 0, 500, 1000])
+        ws.focus(.right)
+        #expect(lefts(ws) == [-500, 0, 500, 1000], "already in view")
+    }
+
+    @Test func `Scrolled out windows hang off the edge with a sliver showing`() {
+        var ws = strip(4)
+        ws.focus(2)
+        let frames = ws.layout().frames
+        #expect(frames[1]!.maxX == 0, "peek showing, in the left gutter")
+        #expect(frames[2]!.minX == 0)
+        #expect(frames[4]!.minX == 1000, "peek showing, in the right gutter")
+    }
+
+    @Test func `Columns keep an inner gap from the slivers`() {
+        var ws = strip(4, gaps: Gaps(all: 10))
+        ws.focus(2)
+        let frames = ws.layout().frames
+        #expect(frames[1]!.maxX == 0)
+        #expect(frames[2]!.minX == 10)
+        #expect(frames[3]!.maxX == 990)
+        #expect(frames[4]!.minX == 1000)
+    }
+
+    @Test func `The columns in view stay a gap from their neighbours, slack or not`() {
+        var ws = strip(3, width: 0.49, gaps: Gaps(all: 10))
+        var frames = ws.layout().frames
+        #expect(frames[1]!.maxX == 40, "the slack widens the sliver")
+        #expect(frames[2]!.minX == 50)
+        #expect(frames[3]!.maxX == 1015, "the end column reaches the outer gap")
+        ws.focus(1)
+        frames = ws.layout().frames
+        #expect(frames[1]!.minX == -15)
+        #expect(frames[3]!.minX - frames[2]!.maxX == 10)
+    }
+
+    @Test func `At a wall scrolled out windows stay on screen behind the ones in view`() {
+        var ws = strip(4, walls: [.left, .right])
+        ws.focus(2)
+        let layout = ws.layout()
+        #expect(layout.frames[2]!.minX == -peek, "no gutter at a wall")
+        #expect(layout.frames[1]!.minX == -peek)
+        #expect(layout.frames[4]!.minX == 500)
+        #expect(layout.order == [2, 1, 3, 4])
+    }
+
+    @Test func `Partly visible columns stay where the strip puts them`() {
+        var ws = strip(3, width: 0.4)
+        ws.focus(1)
+        #expect(ws.layout().frames[3]!.minX == 775)
+        #expect(!ws.isInView(3))
+        #expect(ws.isInView(2))
+    }
+
+    @Test func `A column grows to its windows minimum width`() {
+        var ws = strip(2)
+        ws.minimumSizes[1] = CGSize(width: 700, height: 0)
+        ws.focus(1)
+        #expect(ws.layout().frames[1]!.width == 700)
+        #expect(lefts(ws) == [-25, 675])
+    }
+
+    @Test func `Closing the last column scrolls back`() {
+        var ws = strip(3)
+        ws.remove(3)
+        #expect(ws.focused == 2)
+        #expect(lefts(ws) == [0, 500])
+    }
+
+    @Test func `The strip stays the root with one column left`() {
+        var ws = strip(2)
+        ws.join(.left)
+        #expect(shape(ws.root) == "h[v[1 2]]")
+        #expect(ws.layout().frames[1] == rect(238, 0, 525, 300))
+    }
+}
+
+struct ScrollingStackingTests {
+    /// The joined column and right-hand display from #84. The focused first column does not overlap anything;
+    /// both halves of the next column must stay above the two columns parked against the right edge.
+    private func joinedColumnLayout() -> Layout {
+        var ws = Workspace(bounds: rect(64, 30, 2944, 1662), gaps: Gaps(all: 24))
+        ws.columnWidth = 0.49
+        ws.walls = [.right]
+        ws.insert(94)
+        ws.insert(6063)
+        ws.insert(6172)
+        ws.join(.left)
+        ws.insert(6286)
+        ws.insert(5161)
+        ws.focus(94)
+        return ws.layout()
+    }
+
+    @Test func `Both windows in a joined column rise above parked columns`() {
+        let layout = joinedColumnLayout()
+        #expect(layout.order == [94, 6172, 6063, 6286, 5161])
+        #expect(layout.frames[6063] == rect(1513, 54, 1389, 795))
+        #expect(layout.frames[6172] == rect(1513, 873, 1389, 795))
+        #expect(layout.raises(current: [6286, 6172, 5161, 94, 6063]) == [6063, 6172])
+    }
+
+    @Test(arguments: [WindowID(6063), 6172])
+    func `One raised half does not leave the other behind parked columns`(raised: WindowID) {
+        let layout = joinedColumnLayout()
+        let covered: WindowID = raised == 6063 ? 6172 : 6063
+        var current: [WindowID] = [94, raised, 6286, 5161, covered]
+        let raises = layout.raises(current: current)
+        #expect(raises.contains(covered))
+        for id in raises {
+            current.removeAll { $0 == id }
+            current.insert(id, at: 0)
+        }
+        for visible: WindowID in [6063, 6172] {
+            for parked: WindowID in [6286, 5161] {
+                #expect(current.firstIndex(of: visible)! < current.firstIndex(of: parked)!)
+            }
+        }
+        #expect(layout.raises(current: current).isEmpty, "a repaired stack needs no more raises")
+    }
+
+    @Test func `Correct joined columns do not raise just to reorder parked windows`() {
+        let layout = joinedColumnLayout()
+        #expect(layout.raises(current: [94, 6063, 6172, 5161, 6286]).isEmpty)
+    }
+}
+
+struct ScrollingCommandTests {
+    @Test func `Move swaps a lone window's column with its neighbour, width and all`() {
+        var ws = strip(3)
+        ws.focus(1)
+        #expect(ws.resize(by: 100) == true)
+        #expect(ws.move(.right) == true)
+        #expect(ws.windows == [2, 1, 3])
+        #expect(ws.tiledLayout().frames[1]!.width == 600)
+        var single = strip(1)
+        #expect(single.move(.right) == false)
+    }
+
+    @Test func `Move left or right takes a window out of a shared column`() {
+        var ws = strip(3)
+        ws.focus(2)
+        ws.join(.left)
+        #expect(shape(ws.root) == "h[v[1 2] 3]")
+        #expect(ws.move(.right) == true)
+        #expect(shape(ws.root) == "h[1 2 3]")
+        ws.join(.left)
+        #expect(ws.move(.left) == true)
+        #expect(shape(ws.root) == "h[2 1 3]")
+    }
+
+    @Test func `Move up and down stay within the column`() {
+        var ws = strip(2)
+        ws.join(.left)
+        #expect(ws.move(.up) == true)
+        #expect(shape(ws.root) == "h[v[2 1]]")
+        #expect(ws.move(.up) == false)
+        #expect(shape(ws.root) == "h[v[2 1]]")
+        var lone = strip(2)
+        #expect(lone.move(.down) == false)
+    }
+
+    @Test func `Join takes the width of the column it joins`() {
+        var ws = strip(3)
+        ws.focus(3)
+        #expect(ws.resize(by: 200) == true)
+        ws.focus(2)
+        #expect(ws.join(.right) == true)
+        #expect(shape(ws.root) == "h[1 v[2 3]]")
+        #expect(ws.tiledLayout().frames[2]!.width == 700)
+    }
+
+    @Test func `Join from deep in a column goes into the neighbouring column`() {
+        var ws = strip(5)
+        let nested = Container(.horizontal, .tiles, [.window(3), .window(4)])
+        ws.root = Container(.horizontal, .tiles, [.window(1), .container(Container(.vertical, .tiles, [.window(2), .container(nested)])), .window(5)])
+        ws.columnWidths[1] = 0.3
+        ws.focus(4)
+        #expect(ws.join(.left) == true)
+        #expect(shape(ws.root) == "h[v[1 4] v[2 3] 5]")
+        #expect(ws.tiledLayout().frames[4]!.width == 300, "the width of the column it joined")
+    }
+
+    @Test func `Resizing width changes the column, height the stack`() {
+        var ws = strip(2)
+        #expect(ws.resize(by: 100, along: .horizontal) == true)
+        #expect(ws.tiledLayout().frames[2]!.width == 600)
+        #expect(ws.resize(by: 100, along: .vertical) == false, "a lone window has no stack")
+        ws.join(.left)
+        #expect(ws.resize(by: 60, along: .vertical) == true)
+        #expect(ws.tiledLayout().frames[2]!.height == 360)
+    }
+
+    @Test func `A lone column resizes too`() {
+        var ws = strip(1)
+        #expect(ws.resize(by: 105) == true)
+        #expect(ws.tiledLayout().frames[1]!.width == 630)
+        #expect(ws.resize(by: 1000) == true)
+        #expect(ws.resize(by: 100) == false, "no wider than the screen")
+    }
+
+    @Test func `Dragging an edge sets the column width`() {
+        var ws = strip(2)
+        #expect(ws.resize(2, to: CGSize(width: 400, height: 600), moving: [.left]) == true)
+        #expect(ws.tiledLayout().frames[2]!.width == 400)
+    }
+
+    @Test func `Balance resets every column to the default width`() {
+        var ws = strip(2)
+        ws.resize(by: 200)
+        ws.balanceSizes()
+        #expect(lefts(ws) == [0, 500])
+    }
+
+    @Test func `Flatten gives every window a column of its own`() {
+        var ws = strip(3)
+        ws.join(.left)
+        ws.flatten()
+        #expect(shape(ws.root) == "h[1 2 3]")
+    }
+
+    @Test func `Layout commands leave the strip alone`() {
+        var ws = strip(2)
+        ws.setMode(.accordion)
+        ws.setOrientation(.vertical)
+        #expect(shape(ws.root) == "h[1 2]")
+        ws.join(.left)
+        ws.setMode(.accordion)
+        #expect(shape(ws.root) == "h[av[1 2]]")
+    }
+
+    @Test func `A swipe goes to the next column until the last`() {
+        var ws = strip(3)
+        #expect(ws.swipeTarget(.left) == 2)
+        #expect(ws.swipeTarget(.right) == nil, "past the last column the swipe switches Space")
+        ws.focus(1)
+        #expect(ws.swipeTarget(.left) == nil)
+        #expect(ws.swipeTarget(.right) == 2)
+        #expect(ws.swipeTarget(.up) == nil && ws.swipeTarget(.down) == nil, "a column of one window")
+        #expect(strip(1).swipeTarget(.left) == nil && strip(1).swipeTarget(.right) == nil)
+    }
+
+    @Test func `A swipe leaves a stacked column for its neighbour, or moves within it`() {
+        var ws = strip(3)
+        ws.join(.left)
+        #expect(shape(ws.root) == "h[1 v[2 3]]")
+        #expect(ws.swipeTarget(.right) == nil)
+        #expect(ws.swipeTarget(.left) == 1)
+        #expect(ws.swipeTarget(.up) == 2)
+        #expect(ws.swipeTarget(.down) == nil, "past the bottom the swipe opens App Exposé")
+    }
+}
+
+struct ColumnWidthTests {
+    private func width(_ ws: Workspace, _ id: WindowID) -> CGFloat { ws.tiledLayout().frames[id]!.width }
+
+    @Test func `Presets step to the next wider one and wrap`() {
+        var ws = strip(3)
+        #expect(ws.presetColumnWidths == [0.33333, 0.5, 0.66667], "niri's defaults")
+        #expect(ws.switchPresetColumnWidth() == true)
+        #expect(width(ws, 3) == 667)
+        #expect(ws.switchPresetColumnWidth() == true)
+        #expect(width(ws, 3) == 333, "past the widest it wraps to the narrowest")
+        #expect(ws.switchPresetColumnWidth() == true)
+        #expect(width(ws, 3) == 500)
+        #expect(width(ws, 2) == 500, "only the focused column changes")
+    }
+
+    @Test func `A width between presets goes to the next wider one`() {
+        var ws = strip(2, width: 0.4)
+        ws.switchPresetColumnWidth()
+        #expect(width(ws, 2) == 500)
+        var wide = strip(2, width: 0.9)
+        wide.switchPresetColumnWidth()
+        #expect(width(wide, 2) == 333)
+    }
+
+    @Test func `Presets come from the workspace and apply to the whole column`() {
+        var ws = strip(3)
+        ws.presetColumnWidths = [0.25, 0.75]
+        ws.join(.left)
+        ws.switchPresetColumnWidth()
+        #expect(width(ws, 2) == 750)
+        #expect(width(ws, 3) == 750, "every window of the column")
+        ws.presetColumnWidths = [0.75]
+        #expect(ws.switchPresetColumnWidth() == false, "already the only preset")
+    }
+
+    @Test func `Presets reveal the column they widen`() {
+        var ws = strip(3)
+        ws.focus(1)
+        ws.focus(3)
+        ws.switchPresetColumnWidth()
+        #expect(ws.isInView(3))
+    }
+
+    @Test func `A lone column steps through the presets too`() {
+        var ws = strip(1)
+        ws.switchPresetColumnWidth()
+        #expect(width(ws, 1) == 700)
+    }
+
+    @Test func `Maximize widens the column to the screen and back`() {
+        var ws = strip(2)
+        #expect(ws.toggleMaximizedColumn() == true)
+        #expect(width(ws, 2) == 1000)
+        #expect(ws.isInView(2))
+        #expect(ws.contains(1), "the other column stays in the strip")
+        #expect(ws.toggleMaximizedColumn() == true)
+        #expect(width(ws, 2) == 500)
+    }
+
+    @Test func `Maximize restores a preset width, and a preset ends it`() {
+        var ws = strip(2)
+        ws.switchPresetColumnWidth()
+        ws.toggleMaximizedColumn()
+        ws.toggleMaximizedColumn()
+        #expect(width(ws, 2) == 667)
+        ws.toggleMaximizedColumn()
+        ws.switchPresetColumnWidth()
+        #expect(width(ws, 2) == 333, "from full width the presets wrap")
+        ws.toggleMaximizedColumn()
+        ws.toggleMaximizedColumn()
+        #expect(width(ws, 2) == 333)
+    }
+
+    @Test func `A column opened full width restores to the default width`() {
+        var ws = strip(2, width: 1)
+        ws.columnWidth = 0.5
+        ws.toggleMaximizedColumn()
+        #expect(width(ws, 2) == 500)
+    }
+
+    @Test func `Maximizing a lone column fills the screen`() {
+        var ws = strip(1)
+        ws.toggleMaximizedColumn()
+        #expect(ws.layout().frames[1] == rect(-peek, 0, 1000 + 2 * peek, 600))
+        #expect(ws.fullscreen == nil, "not the fullscreen command")
+    }
+
+    @Test func `Nothing to widen without a focused window`() {
+        var ws = Workspace(bounds: rect(0, 0, 1000, 600))
+        #expect(ws.switchPresetColumnWidth() == false)
+        #expect(ws.toggleMaximizedColumn() == false)
+    }
+}

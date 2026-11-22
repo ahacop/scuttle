@@ -1,13 +1,13 @@
 ---
 layout: default
 title: Configuration
-description: dinky's TOML config, every key and its default, and the key syntax.
+description: danky's TOML config, every key and its default, and the key syntax.
 permalink: /configuration/
 ---
 
 # Configuration
 
-`~/.config/dinky/dinky.toml`, written on first run and reloaded on save. A
+`~/.config/danky/danky.toml`, written on first run and reloaded on save. A
 symlink is followed, and replacing the link reloads too; a link to a missing
 file is left alone, with the read error shown in the menu.
 
@@ -15,12 +15,8 @@ file is left alone, with the read error shown in the menu.
   `[mode.main]` there are no bindings, without `[[rules]]` no rules.
 - Unknown keys are errors. A broken config does not load: the previous one
   stays and the error shows in the menu.
-- `dinky doctor [--config <path>]` also checks commands, modes and key names.
-- Renamed keys keep working under their old name, with a warning naming the new
-  key in `dinky doctor` and the menu. For example, `[master] orientation` was
-  renamed to `side` in 0.23. The schema lists old names as deprecated, so
-  editors don't mark them as unknown and don't offer them in completion.
-- The [JSON Schema](schemas/dinky.json) gives completion in editors that read
+- `danky doctor [--config <path>]` also checks commands, modes and key names.
+- The [JSON Schema](schemas/danky.json) gives completion in editors that read
   Taplo's `#:schema` line, such as Zed or VS Code with Even Better TOML.
 
 ## Top level
@@ -30,9 +26,8 @@ file is left alone, with the read error shown in the menu.
 | Key | Default | |
 |---|---|---|
 | `start-at-login` | `true` | Register as a login item. |
-| `workspaces` | `5` | Workspaces across all displays, one native Space each. On macOS 27+, dinky creates and removes Spaces to match. On macOS 26, manage desktops in Mission Control; see [desktop setup](#desktop-setup-on-macos-26). |
+| `workspaces` | `5` | Workspaces across all displays, one native Space each. On macOS 27+, danky creates and removes Spaces to match. On macOS 26, manage desktops in Mission Control; see [desktop setup](#desktop-setup-on-macos-26). |
 | `follow-space-order` | `false` | Set `true` to renumber workspaces when you reorder Spaces in Mission Control: on each display the leftmost Space becomes its lowest-numbered workspace, and windows stay where they are. Left `false`, a workspace keeps its number, and the next arrangement (a config reload, a display change, a Space removed) moves its windows back to that number's place. |
-| `default-layout` | `'tiles'` | `'tiles'` (the existing dwindle layout), `'dwindle'`, `'accordion'`, `'fixed'`, `'scrolling'`, or `'master'`. |
 | `default-tiling` | `true` | Set `false` to leave workspaces untiled unless overridden. |
 | `follow-app-activation` | `true` | Cmd-Tab and Dock clicks switch Spaces the fast way. Needs the macOS "switch to a Space with open windows" setting off. Write it as a [`[follow-app-activation]`](#follow-app-activation) table to leave some apps unfollowed. |
 | `float-windows-without-fullscreen` | `true` | Float windows that can't go full screen, such as Finder's copy progress, About This Mac and Calculator. Terminals and editors that can hide their title bar still tile. A `layout tiling` rule tiles a window anyway. |
@@ -52,9 +47,9 @@ the current order.
 ## `[follow-app-activation]`
 
 The table form of `follow-app-activation`, in place of the top-level line.
-Following works only while dinky is running and enabled. Turning it off does
+Following works only while danky is running and enabled. Turning it off does
 not restore macOS's persistent Space-switching preference; see
-[First run](index.md#first-run) to restore switching without dinky.
+[First run](index.md#first-run) to restore switching without danky.
 
 <div class="wide-table" markdown="1">
 
@@ -67,8 +62,8 @@ not restore macOS's persistent Space-switching preference; see
 
 ## `[workspace.<number>]`
 
-Override the top-level `default-tiling` and `default-layout` for a globally
-numbered workspace. A table past `workspaces` does nothing; `dinky doctor`
+Override the top-level `default-tiling` and widths for a globally
+numbered workspace. A table past `workspaces` does nothing; `danky doctor`
 warns about it.
 
 <div class="wide-table" markdown="1">
@@ -76,26 +71,10 @@ warns about it.
 | Key | Default | |
 |---|---|---|
 | `tiling` | `default-tiling` | Whether the workspace tiles. |
-| `layout` | `default-layout` | Its layout, with the same values. |
-| `columns`, `rows` | `1` | A fixed layout's template. |
-| `expand` | `'columns'` | What a fixed layout does when every cell is taken. |
 | `fullscreen-width` | top-level `fullscreen-width` | The share of the width a `fullscreen` window takes on this workspace, over the top-level and display values. Lone windows use it unless `lone-window-width` is set. |
 | `lone-window-width` | display or top-level `lone-window-width`, else resolved `fullscreen-width` | The centred width of a lone window on this workspace, over the top-level and display values. |
 
 </div>
-
- `layout = 'fixed'` reserves every cell in its template from the start.
-`rows` and `columns` each default to `1`; with two columns and three rows, one
-window occupies one sixth of the workspace, and an empty cell stays empty when
-another window closes. New windows fill holes first, left to right, top to bottom.
-
-When all cells are occupied, `expand` chooses what happens next: `'columns'`
-(default) adds a column, `'rows'` adds a row, or `'accordion'` stacks overflow
-windows in the last cell. Expansion resizes existing cells but does not rearrange
-their positions. An overflow row or column disappears once empty; reserved
-template cells remain. A tree command can still edit the layout; if it changes the
-template structure, new windows split the focused tile instead of resetting
-those edits. Changing template settings in the config rebuilds the tree once.
 
 For example, to tile only workspace 2 (and send new Ghostty windows there using a rule):
 
@@ -104,10 +83,6 @@ default-tiling = false
 
 [workspace.2]
 tiling = true
-layout = 'fixed'
-columns = 2
-rows = 3
-# expand = 'columns' # or 'rows' or 'accordion'
 
 [[rules]]
 app-id = 'com.mitchellh.ghostty'
@@ -121,32 +96,20 @@ The workspace's settings while it is on one display, with the
 left out come from the workspace's own table. When several patterns match,
 the most specific wins, as in [`[display.<pattern>]`](#displaypattern).
 
-When a workspace moves to a display with other settings, as when you dock or
-undock, its tree is rebuilt once in the new layout, keeping the windows'
-order and focus.
-
 ```toml
-[workspace.2]           # two columns on the ultrawide
-layout = 'fixed'
-columns = 2
-
-[workspace.2.display.built-in]   # an accordion on the laptop screen
-layout = 'accordion'
+[workspace.2.display.built-in]   # narrower fullscreen on the laptop screen
+fullscreen-width = 0.8
 ```
 
-`rows`, `columns`, and `expand` are only allowed with a fixed layout; with any
-other they are a config error. `layout = 'accordion'`
-remains available; conceptually it resembles a 1×1 fixed template with accordion
-overflow, but keeps the existing accordion orientation behavior. Workspace
-numbering starts at 1.
+Workspace numbering starts at 1.
 
 ## Scrolling
 
-`layout = 'scrolling'` lays a workspace out as a row of columns that runs past
-the edges of the display, as niri and Hyprland's scrolling layout do. Each new
-window opens as a column right of the focused one, `column-width` wide whatever
-the number of columns. A lone column fills the display; columns that fit are
-centred; focusing a column scrolls just far enough to show it whole.
+Every tiled workspace is a row of columns that runs past the edges of the
+display, as in niri. Each new window opens as a column right of the focused
+one, `column-width` wide whatever the number of columns. Columns that fit,
+a lone one too, are centred; focusing a column scrolls just far enough to show
+it whole.
 
 macOS can't hide part of another app's window, so a column scrolled out of view
 is parked: it hangs off the display edge with a sliver of at least 25 points
@@ -161,15 +124,12 @@ neighbour, or take a window that shares its column out into a new column.
 window's share of its column; `balance-sizes` resets them all. Hover focus
 leaves columns that are not wholly in view alone; a click scrolls to them.
 
-```toml
-[workspace.1]
-layout = 'scrolling'
-```
+`switch-preset-column-width` (Alt-R) steps the focused column through
+`preset-column-widths`, to the first one wider than it is now, wrapping to the
+narrowest, as niri's does. `maximize-column` (Alt-F) widens the column to the
+whole display and back; its neighbours stay in the strip, scrolled aside.
+`fullscreen` (Alt-Shift-F) instead shows the window over the strip.
 
-`workspace-layout scrolling` switches the focused window's workspace to
-scrolling on the fly, and `workspace-layout dwindle` switches it back to its
-tree. The switch holds until you switch again, so
-`workspace-layout dwindle scrolling` toggles. In a scrolling workspace,
 `layout tiles` and `layout accordion` set the focused window's column, so they
 do nothing while it holds one window.
 
@@ -179,67 +139,8 @@ do nothing while it holds one window.
 
 | Key | Default | |
 |---|---|---|
-| `column-width` | `0.49` | A new column's width, as a share of the display inside the outer gaps, from `0.1` to `1`. Omarchy's `0.49` fits two columns side by side. |
-
-</div>
-
-## Master
-
-`layout = 'master'` gives one window, the master, a share of the display on one
-side and stacks the others beside it, as Hyprland's master layout does. The
-first window fills the display alone; the second opens the stack and later ones
-join its bottom. When the master closes, the top of the stack takes its place;
-when the stack empties, the master fills the display again.
-
-With `side = 'center'`, the second stacked window moves the master to the
-middle of the display and opens a stack on its left. Later windows join the
-shorter stack, the right one on a tie, so they alternate right and left; when
-one closes, the bottom of the longer stack moves over to keep them even, with
-any extra window on the right. Flattening or switching sides and back preserves
-this arrangement. With one window stacked, the master takes the left, as Hyprland's does. `layout`
-changes both stacks. With the master focused, `swap-with-master` trades it with
-the top of the right stack; with a stacked window focused, that window swaps
-with the master. `resize width` on the master widens it evenly into both stacks.
-
-A workspace that switches to the master layout, such as after you change its
-`layout`, makes the focused window the master and stacks the others beside it
-in their order: as an accordion if most of them were in one, else as tiles.
-
-`layout tiles` and `layout accordion` switch the stack between tiles and an
-accordion running top to bottom, whichever window is focused, so
-`layout tiles accordion` toggles it. The stack keeps its mode while it is
-closed.
-
-`workspace-layout master` switches the focused window's workspace to the master
-layout on the fly, and `workspace-layout dwindle` switches it back to its tree:
-the one its config gives it, or tiles. The windows keep the stack's mode, so an
-accordion stack comes back as an accordion whatever the config says. The switch
-holds until you switch again, so `workspace-layout dwindle master` toggles.
-
-`swap-with-master` swaps the focused window with the master, or the master with
-the top of the stack. `move` swaps the focused window with its neighbour, so the
-master and the stack keep their places. `resize width` changes the master's share, `resize height`
-a window's share of the stack, and `balance-sizes` gives the master its `size`
-back and the stack equal shares. A command that changes the shape, such as
-`join-with`, leaves the layout until `flatten-workspace-tree` rebuilds it, as
-with a fixed template.
-
-```toml
-[workspace.2]
-layout = 'master'
-```
-
-## `[master]`
-
-One table for every master workspace, on every display; a workspace can't have
-its own.
-
-<div class="wide-table" markdown="1">
-
-| Key | Default | |
-|---|---|---|
-| `size` | `0.6` | The master's share of the display inside the outer gaps while windows are stacked beside it, from `0.1` to `0.9`. Hyprland calls it `mfact`. It applies to a stack opened later and to `balance-sizes`. |
-| `side` | `'left'` | The side the master takes: `'left'`, `'right'` or `'center'`. The stack goes on the other; with `'center'`, for wide displays, the master takes the middle once two windows are stacked and they split between a stack on each side. Hyprland calls it `orientation`. |
+| `column-width` | `0.5` | A new column's width, as a share of the display inside the outer gaps, from `0.1` to `1`. |
+| `preset-column-widths` | `[0.33333, 0.5, 0.66667]` | The widths `switch-preset-column-width` steps through, as shares of the display, each `0.1` to `1`. niri's thirds by default. |
 
 </div>
 
@@ -267,37 +168,37 @@ its own.
 
 ## Desktop setup on macOS 26
 
-dinky can number, switch and tile existing desktops on macOS 26, but cannot
+danky can number, switch and tile existing desktops on macOS 26, but cannot
 create or remove them automatically. The native lifecycle operations can leave
 WindowServer and Mission Control disagreeing about which desktops exist, so
-dinky does not call them on macOS versions before 27.
+danky does not call them on macOS versions before 27.
 
 Open Mission Control (Control–↑), move the pointer to the desktop strip at the
 top, and use **+** to add desktops. Create enough on each display for the
 workspaces assigned to it by `[workspace-to-display]`; unassigned workspaces
 need desktops on the main display. Full-screen apps do not count as desktops.
-`dinky doctor` reports how many are needed on each connected display.
+`danky doctor` reports how many are needed on each connected display.
 
 If there are too few desktops, the remaining workspaces have no Space and cannot
 be switched to. A workspace waiting to move to a display without a free desktop
-stays on its old Space. Adding a desktop in Mission Control lets dinky bind it
+stays on its old Space. Adding a desktop in Mission Control lets danky bind it
 automatically. Lowering `workspaces` leaves extra desktops untouched; remove them
 in Mission Control if you no longer want them.
 
-dinky explains this once at startup on macOS 26. You can reopen the explanation
+danky explains this once at startup on macOS 26. You can reopen the explanation
 from **Desktop Setup…** in its menu. Missing workspaces also appear in that menu
 and add **!** to the workspace number. Automatic desktop management remains
 available on macOS 27 and later.
 
-If an earlier dinky version has already left unreachable desktops, quit dinky,
+If an earlier danky version has already left unreachable desktops, quit danky,
 restart the Dock once (`killall Dock`), and check the desktop strip in Mission
-Control before reopening dinky. dinky does not restart the Dock to manage desktops.
+Control before reopening danky. danky does not restart the Dock to manage desktops.
 
 ## `[workspace-to-display]`
 
 Which display a workspace lives on, by number from 1 to `workspaces`. A
 display pattern is `main`, `secondary` (the other one, when there are two), or
-part of the name from `dinky list-displays`. A list tries each in turn.
+part of the name from `danky list-displays`. A list tries each in turn.
 Unlisted workspaces, and listed ones whose display isn't connected, live on
 the main display. Keys are plain workspace numbers; `01` or `+1` is still read
 as workspace 1, with a warning; when two keys name one workspace, the last
@@ -309,11 +210,11 @@ wins and the other is ignored, with a warning.
 4 = ['dell', 'lg']
 ```
 
-When a display comes or goes, dinky moves the workspace's windows, layout
+When a display comes or goes, danky moves the workspace's windows, layout
 included, to a Space on its display. On macOS 27+, it removes the empty Space
 left behind and other empty leftover Spaces; ones with windows are left alone,
 unnumbered. On macOS 26, existing desktops are reused but never created or removed
-by dinky; [add enough desktops yourself](#desktop-setup-on-macos-26). A
+by danky; [add enough desktops yourself](#desktop-setup-on-macos-26). A
 display with no workspaces keeps one unnumbered Space. Windows macOS piles onto
 another workspace when a display goes away, as around sleep, go back to their
 own workspace once the displays settle.
@@ -321,20 +222,20 @@ own workspace once the displays settle.
 Workspaces already on a display that stays connected keep their Space IDs, even
 when macOS merges the departing display's Spaces after or between them. This can
 leave workspace numbers out of Mission Control order. That preservation survives
-config reloads. Dinky captures the old workspace/Space/display identities before
+config reloads. Danky captures the old workspace/Space/display identities before
 waiting for the new snapshot to settle. Chained callbacks share that original
 ownership snapshot rather than recapturing temporary hosts. Temporarily unlisted
 Spaces can still be preserved when they reappear on their old display. If macOS
-removes a Space itself, dinky reuses a replacement for that workspace, or creates
+removes a Space itself, danky reuses a replacement for that workspace, or creates
 one on macOS 27+.
 Changing a workspace's display assignment still moves it. A later reorder of the
 display's existing Spaces restores the usual numeric-order policy
 (or renumbers them with `follow-space-order`). On macOS 27+, a visible leftover Space is removed
 only after WindowServer confirms a switch to another numbered Space; an unknown
-current Space, failed switch or timeout leaves it alone. While disabled, dinky
+current Space, failed switch or timeout leaves it alone. While disabled, danky
 also waits for transiently unlisted Spaces before numbering them without taking
 any actions; that finishes the topology transition so later deliberate reorders
-are followed normally, without needing to enable dinky first.
+are followed normally, without needing to enable danky first.
 
 Display connect/disconnect and arrangement logs include millisecond timestamps
 and before/after snapshots: display name/UUID, main status, current native Space
@@ -396,7 +297,7 @@ enabled = false
 This hides just the auxiliary window's border and keeps document borders, whether
 either window floats or tiles. `window-identifier` is the Accessibility
 **AXIdentifier**, not the numeric WindowServer ID. Discover it with
-`dinky list-windows --all --format '%{app-name} | %{window-identifier}'`.
+`danky list-windows --all --format '%{app-name} | %{window-identifier}'`.
 Regexes are case-insensitive searches; use anchors for an exact match. A missing
 identifier never matches a positive selector and never triggers an exclusion.
 
@@ -431,7 +332,7 @@ when AX is unavailable.
 
 With `enabled = true`, the trackpad swipe that switches Spaces also moves focus
 between a tiled workspace's windows: scrolling columns, accordion children or tiles.
-In `'instant'` mode on macOS before 27, dinky keeps the swipe from the Dock and
+In `'instant'` mode on macOS before 27, danky keeps the swipe from the Dock and
 switches Space only past the last window. In `'native'` mode, macOS receives the
 whole swipe: a short swipe can move focus, and a full, quick swipe can both move
 focus and switch Space, even before the last window.
@@ -447,11 +348,11 @@ To turn off the down swipe's App Exposé action, use **System
 Settings › Trackpad › More Gestures › App Exposé**. Mission Control keeps the
 swipe up.
 
-dinky reads the swipe from the Dock's private events, as it already switches
+danky reads the swipe from the Dock's private events, as it already switches
 Spaces with them, so a macOS update can break it. This feature is off by default.
-On macOS 27 and later, `'instant'` falls back to `'native'`: dinky does not suppress
+On macOS 27 and later, `'instant'` falls back to `'native'`: danky does not suppress
 swipes with attached IOHID payloads. Each swipe moves at most one window.
-On a workspace with one window or none tiled, or while dinky is disabled, the
+On a workspace with one window or none tiled, or while danky is disabled, the
 swipe is macOS's own.
 
 <div class="wide-table" markdown="1">
@@ -480,15 +381,10 @@ including when you follow a window with `move-window-to-workspace --follow`.
 
 ## `[drag]`
 
-Drag a tiled window's edge to resize it; the other tiles make room, and in the
-scrolling layout its column takes the new width. Drag the window itself and
-drop it on another tile to swap the two; dropped anywhere else, it goes back.
-With `split-trigger = 'hold'`, hold it still over a tile for `split-delay-ms`
-before dropping, or with a key like `split-trigger = 'ctrl'`, hold that key,
-and it splits that tile instead: the outline shrinks to the half the pointer is
-in, left, right, top or bottom, and the window lands there. The fixed, master
-and scrolling layouts only swap.
-While dinky is off, dragging neither swaps nor resizes tiles and shows no drop
+Drag a tiled window's left or right edge to resize its column; the top or
+bottom edge changes its share of the column. Drag the window itself and drop it
+on another tile to swap the two; dropped anywhere else, it goes back.
+While danky is off, dragging neither swaps nor resizes tiles and shows no drop
 outlines.
 
 <div class="wide-table" markdown="1">
@@ -496,8 +392,6 @@ outlines.
 | Key | Default | |
 |---|---|---|
 | `placeholders` | `true` | While you drag a tiled window, outline the tile it came from and the tile it will swap with. |
-| `split-trigger` | `'off'` | What makes a drop split the tile instead of swapping: `'hold'` to rest the pointer on it for `split-delay-ms`, or `'alt'`, `'ctrl'`, `'cmd'` or `'shift'` to hold that key. |
-| `split-delay-ms` | `500` | With `split-trigger = 'hold'`, how long the pointer must rest on the tile before the drop splits it. |
 
 </div>
 
@@ -527,16 +421,16 @@ environment `exec-and-forget` gets.
 
 | Key | Runs |
 |---|---|
-| `startup` | Once, after dinky has read the windows and displays. |
-| `workspace-changing` | When a dinky switch starts, before it lands, and again when a burst of switches changes the target. |
+| `startup` | Once, after danky has read the windows and displays. |
+| `workspace-changing` | When a danky switch starts, before it lands, and again when a burst of switches changes the target. |
 | `workspace-changed` | When a display's workspace changes, or a switch gives up. With `follow-space-order`, also when a reorder renumbers a display's workspaces, even if the number it shows stays the same, so a bar listing workspaces redraws. |
 | `focus-changed` | When focus changes, debounced 50 ms. |
-| `mode-changed` | When the binding mode changes, including back to `main` when the config reloads. Sets `DINKY_MODE` and `DINKY_PREV_MODE`. |
-| `display-changed` | When a display connects or disconnects, once the displays have settled and dinky has moved the workspaces to them, about a second later. Sets `DINKY_DISPLAYS` and `DINKY_PREV_DISPLAYS`, how many displays there are now and were before. |
+| `mode-changed` | When the binding mode changes, including back to `main` when the config reloads. Sets `DANKY_MODE` and `DANKY_PREV_MODE`. |
+| `display-changed` | When a display connects or disconnects, once the displays have settled and danky has moved the workspaces to them, about a second later. Sets `DANKY_DISPLAYS` and `DANKY_PREV_DISPLAYS`, how many displays there are now and were before. |
 
 </div>
 
-During a dinky switch, `workspace-changed` reports the destination or where the switch
+During a danky switch, `workspace-changed` reports the destination or where the switch
 gives up, not intermediate Spaces. A reorder during the switch is included in that
 final notification.
 
@@ -546,14 +440,14 @@ Every rule whose conditions all match a new window runs, in order. Dialogs,
 sheets, panels and fixed-size windows always float. Windows that can't go full
 screen float too while `float-windows-without-fullscreen` is on, unless a
 `layout tiling` rule tiles them. A window an app keeps above all others, like a
-browser's picture-in-picture, is left alone and never takes dinky's focus.
+browser's picture-in-picture, is left alone and never takes danky's focus.
 
 A rule that is exactly `layout floating` or `layout tiling` decides before the
 window is placed, the last one winning. Every other rule command runs once the
 window is placed, on that window.
 
 New windows that have not yet exposed their Accessibility window or resize
-capability get up to a second to settle before dinky decides. This lets Finder
+capability get up to a second to settle before danky decides. This lets Finder
 folders opened from the Desktop tile normally. Rules run once, after that wait;
 fixed-size windows still float. A `layout floating` or `layout tiling` command
 during the wait is remembered and takes precedence over the rule's layout choice.
@@ -612,7 +506,7 @@ reloading the config does not reclassify an existing window.
 Discover identifiers with:
 
 ```sh
-dinky list-windows --all --format '%{app-name} | %{window-id} | %{window-identifier}'
+danky list-windows --all --format '%{app-name} | %{window-id} | %{window-identifier}'
 ```
 
 `debug-state` also includes `window-identifier` for each window. These values
@@ -624,10 +518,10 @@ usual floating behavior.
 
 ## `[mode.<name>]`
 
-Key bindings. dinky starts in `main`; `mode <name>` switches. Each key maps to
+Key bindings. danky starts in `main`; `mode <name>` switches. Each key maps to
 a command or a list of commands. Bound keys are swallowed. A key can also map
 to a table with `command` and `exclude-apps`, a list of bundle IDs: while one
-of those apps is frontmost, dinky leaves the key to it. Terminals that use
+of those apps is frontmost, danky leaves the key to it. Terminals that use
 `ctrl-hjkl` for their own panes keep it that way.
 
 ```toml
@@ -655,15 +549,14 @@ The default `alt-` bindings take over Option-letter characters; set
 ## Default config
 
 ```toml
-#:schema https://dinky.rodeo/schemas/dinky.json
-# ~/.config/dinky/dinky.toml. Saved changes take effect at once.
+#:schema https://ahacop.github.io/danky/schemas/danky.json
+# ~/.config/danky/danky.toml. Saved changes take effect at once.
 # A key you leave out keeps the value shown here.
-# Every key and command: https://dinky.rodeo/configuration/
+# Every key and command: https://ahacop.github.io/danky/configuration/
 
 start-at-login = true
 workspaces = 5                  # across all displays, one native Space each
 follow-space-order = false      # true renumbers workspaces when you reorder Spaces in Mission Control
-default-layout = 'tiles'        # tiles (dwindle) | dwindle | accordion | fixed | scrolling | master
 default-tiling = true           # false leaves workspaces untiled unless overridden
 follow-app-activation = true    # Cmd-Tab and Dock clicks switch Spaces the fast way
 float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like float
@@ -675,34 +568,26 @@ fullscreen-width = 1.0          # share of the width a fullscreen window, or a w
 # enabled = true
 # exclude-apps = ['com.synology.SynologyDrive']   # its menu bar popover counts as a window
 
-# Example: only tile workspace 2 in a fixed 2x3 template.
-# Empty cells stay empty; a seventh window adds a column by default.
+# Example: only tile workspace 2.
 # default-tiling = false
 # [workspace.2]
 # tiling = true
-# layout = 'fixed'
-# columns = 2
-# rows = 3
-# expand = 'columns'           # columns | rows | accordion (overflow in last cell)
 # [workspace.2.display.built-in]   # its settings while on the laptop screen
-# layout = 'accordion'
-
-[accordion]
-padding = 30                    # maximum points the neighbours peek out by
-orientation = 'auto'            # auto: run along the container's longer side | keep
+# fullscreen-width = 0.8
 
 [scrolling]
-column-width = 0.49             # a new column's share of the display; a lone column fills it
+column-width = 0.5              # a new column's share of the display
+preset-column-widths = [0.33333, 0.5, 0.66667]   # what switch-preset-column-width steps through
 
-[master]
-size = 0.6                      # the master's share of the display beside the stack; alone it fills it
-side = 'left'                   # left | right | center: the master's side
+[accordion]                     # a column switched to `layout accordion`
+padding = 30                    # maximum points the neighbours peek out by
+orientation = 'auto'            # auto: run along the container's longer side | keep
 
 [gaps]
 inner = 8                       # or { horizontal = 8, vertical = 8 }
 outer = 8                       # or { top = 8, bottom = 8, left = 8, right = 8 }
 
-# Display patterns: main, secondary, or part of a name as `dinky list-displays` prints it.
+# Display patterns: main, secondary, or part of a name as `danky list-displays` prints it.
 # A workspace lives on the first display its patterns match, else on the main display.
 # [workspace-to-display]
 # 5 = 'secondary'
@@ -745,8 +630,6 @@ duration-ms = 150               # roughly how long a window takes to arrive
 
 [drag]
 placeholders = true             # outline where a dragged tile came from and the tile it will swap with
-split-trigger = 'off'           # off | hold | alt | ctrl | cmd | shift: what makes a drop split the tile instead of swapping
-split-delay-ms = 500            # with split-trigger = 'hold', how long the pointer rests on the tile first
 
 # Which key of each pair bindings answer to: both | left | right. With alt = 'left',
 # right Option still types special characters.
@@ -756,9 +639,9 @@ ctrl = 'both'
 cmd = 'both'
 shift = 'both'
 
-# dinky commands run on events. exec-and-forget gets $DINKY_WORKSPACE, $DINKY_PREV_WORKSPACE and $DINKY_DISPLAY
-# in the workspace hooks, $DINKY_MODE, $DINKY_PREV_MODE in mode-changed, and $DINKY_DISPLAYS,
-# $DINKY_PREV_DISPLAYS (how many displays) in display-changed.
+# danky commands run on events. exec-and-forget gets $DANKY_WORKSPACE, $DANKY_PREV_WORKSPACE and $DANKY_DISPLAY
+# in the workspace hooks, $DANKY_MODE, $DANKY_PREV_MODE in mode-changed, and $DANKY_DISPLAYS,
+# $DANKY_PREV_DISPLAYS (how many displays) in display-changed.
 # [hooks]
 # startup = ['exec-and-forget brew services restart sketchybar']
 # workspace-changed = ['exec-and-forget sketchybar --trigger workspace_change']
@@ -803,8 +686,10 @@ alt-shift-k = 'move up'
 alt-shift-l = 'move right'
 alt-minus = 'resize smart -50'
 alt-equal = 'resize smart +50'
-alt-f = 'fullscreen'
-alt-shift-f = 'layout floating tiling'
+alt-r = 'switch-preset-column-width'
+alt-f = 'maximize-column'
+alt-shift-f = 'fullscreen'
+alt-v = 'layout floating tiling'
 alt-comma = 'layout accordion'
 alt-slash = 'layout tiles'
 alt-shift-n = 'move-window-to-display next'

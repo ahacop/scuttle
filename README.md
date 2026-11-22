@@ -1,38 +1,40 @@
-<img src="docs/assets/icon.png" alt="dinky" width="128">
+<img src="docs/assets/icon.png" alt="danky" width="128">
 
-# dinky
+# danky
 
 > oh wow. you moved a rectangle.
 
-A tiling window manager for macOS that leaves System Integrity Protection on.
+A scrolling tiling window manager for macOS, after niri, that leaves System
+Integrity Protection on. Forked from [dinky](https://github.com/mikker/Dinky) by
+Mikkel Malmberg and cut down to its scrolling layout, with niri's column
+widths: `Alt-R` steps the focused column through preset widths (a third, a half,
+two thirds by default) and `Alt-F` maximizes it.
 
-```sh
-brew install --cask mikker/tap/dinky
-```
-
-[Documentation](https://dinky.rodeo)
+[Documentation](docs/index.md)
 
 ## Quick start
 
-Open dinky and grant Accessibility when asked. Windows tile as they open.
+Open danky and grant Accessibility when asked. Windows tile as they open.
 
-- `dinky workspace 3`: Switch to workspace 3.
-- `dinky layout accordion`: Stack the focused container.
-- `dinky doctor`: Check the config, the macOS settings dinky needs, and that no other tiler is running.
+- `danky workspace 3`: Switch to workspace 3.
+- `danky switch-preset-column-width`: Step the focused column to the next preset width.
+- `danky maximize-column`: Widen the focused column to the whole display, and back.
+- `danky layout accordion`: Stack the focused column.
+- `danky doctor`: Check the config, the macOS settings danky needs, and that no other tiler is running.
 
-**macOS 26:** Create and remove desktops in Mission Control (Control–↑). dinky
+**macOS 26:** Create and remove desktops in Mission Control (Control–↑). danky
 numbers, switches and tiles existing desktops, but automatic desktop creation
 and removal require macOS 27 or later. Add enough desktops on each display for
-your configured workspaces; `dinky doctor` reports shortages.
+your configured workspaces; `danky doctor` reports shortages.
 
 Learn more:
 
-- [Concepts](https://dinky.rodeo/concepts/) and [Layouts](https://dinky.rodeo/layouts/)
-- [Configuration](https://dinky.rodeo/configuration/)
-- [Commands](https://dinky.rodeo/commands/)
+- [Concepts](docs/concepts.md) and [Layouts](docs/layouts.md)
+- [Configuration](docs/configuration.md)
+- [Commands](docs/commands.md)
 
 Window rules can match or exclude Accessibility identifiers to distinguish auxiliary
-windows from documents with the same title. See [window rules](https://dinky.rodeo/configuration/#rules).
+windows from documents with the same title. See [window rules](docs/configuration.md#rules).
 
 Window borders use a subtle 5% optical thickening at rounded corner midpoints,
 tapering back to the configured width at the straight edges.

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Builds build/dinky.app and signs it with a stable identity, so the Accessibility grant survives rebuilds.
+# Builds build/danky.app and signs it with a stable identity, so the Accessibility grant survives rebuilds.
 # Usage: scripts/bundle.sh [--debug]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VERSION="${VERSION:-0.0}"
 BUILD="${BUILD:-1}"
-IDENTITY="${IDENTITY:-Apple Development: Mikkel Malmberg (VAW8MWER4W)}"
+# Set IDENTITY to your own signing identity (security find-identity -p codesigning). Ad-hoc (-) works, but
+# macOS drops the Accessibility grant on every rebuild.
+IDENTITY="${IDENTITY:--}"
 SIGN_FLAGS="${SIGN_FLAGS:-}"  # release packaging adds --options runtime --timestamp
 CONFIG=release
 [[ "${1:-}" == "--debug" ]] && CONFIG=debug
@@ -17,22 +19,22 @@ if [[ "$CONFIG" == release ]]; then
 fi
 swift build "${BUILD_FLAGS[@]}"
 
-APP=build/dinky.app
+APP=build/danky.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
-cp "$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)/dinky" "$APP/Contents/MacOS/dinky"
+cp "$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)/danky" "$APP/Contents/MacOS/danky"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 plutil -replace CFBundleVersion -string "$BUILD" "$APP/Contents/Info.plist"
 
-# The app icon: Resources/Dinky.icon (Icon Composer) compiled into Assets.car and an icns fallback.
+# The app icon: Resources/Danky.icon (Icon Composer) compiled into Assets.car and an icns fallback.
 ICON_OUT="$(mktemp -d)"
-xcrun actool "$PWD/Resources/Dinky.icon" --compile "$ICON_OUT" --platform macosx --minimum-deployment-target 15.0 \
-  --app-icon Dinky --include-all-app-icons --output-partial-info-plist "$ICON_OUT/partial.plist" >/dev/null
+xcrun actool "$PWD/Resources/Danky.icon" --compile "$ICON_OUT" --platform macosx --minimum-deployment-target 15.0 \
+  --app-icon Danky --include-all-app-icons --output-partial-info-plist "$ICON_OUT/partial.plist" >/dev/null
 mkdir -p "$APP/Contents/Resources"
-cp "$ICON_OUT/Assets.car" "$ICON_OUT/Dinky.icns" "$APP/Contents/Resources/"
-plutil -replace CFBundleIconFile -string Dinky "$APP/Contents/Info.plist"
-plutil -replace CFBundleIconName -string Dinky "$APP/Contents/Info.plist"
+cp "$ICON_OUT/Assets.car" "$ICON_OUT/Danky.icns" "$APP/Contents/Resources/"
+plutil -replace CFBundleIconFile -string Danky "$APP/Contents/Info.plist"
+plutil -replace CFBundleIconName -string Danky "$APP/Contents/Info.plist"
 rm -rf "$ICON_OUT"
 
 # Sparkle.framework from the resolved SwiftPM artifact; the linker rpath finds it here.

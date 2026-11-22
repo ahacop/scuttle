@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Fuzzes a running dinky app with random window, app and workspace actions and checks layout invariants.
+"""Fuzzes a running danky app with random window, app and workspace actions and checks layout invariants.
 
-Runs inside the VM guest (see `just fuzz`), next to a running `dinky app`. Each step runs one random action, waits
-for dinky's animations to finish (at least 0.8 s) and reads `dinky debug-state`, waits 1.5 s more and reads it again.
+Runs inside the VM guest (see `just fuzz`), next to a running `danky app`. Each step runs one random action, waits
+for danky's animations to finish (at least 0.8 s) and reads `danky debug-state`, waits 1.5 s more and reads it again.
 An animation still running after 3 s is a violation. Invariants are checked on the second
 state (what was only late is noted as "settled late"), and anything that moved between the two, with nothing
 happening, is a "spontaneous shift". Violations are printed as they are found and the run goes on.
 
-    python3 fuzz.py --seed 1 --steps 150 --dinky ~/dinky-fuzz
+    python3 fuzz.py --seed 1 --steps 150 --danky ~/danky-fuzz
     python3 fuzz.py --seed 1 --steps 150 --switching   # quits, closes, activations and Space switches dominate
 
 The idle wait also polls the current Space: a display that changes Space three or more times while nothing
@@ -17,9 +17,9 @@ import argparse, json, os, random, subprocess, sys, time
 
 APPS = {"com.apple.TextEdit", "com.apple.finder", "com.apple.Safari"}
 MIN_WINDOWS, MAX_WINDOWS = 3, 8
-DOCS = "/tmp/dinky-fuzz"
-KEYS = os.path.expanduser("~/dinky-fuzz-keys")
-MOUSE = os.path.expanduser("~/dinky-fuzz-mouse")
+DOCS = "/tmp/danky-fuzz"
+KEYS = os.path.expanduser("~/danky-fuzz-keys")
+MOUSE = os.path.expanduser("~/danky-fuzz-mouse")
 # mouse <x> <y> [steps]: mouseMoved events ending at x,y, for focus-follows-mouse. No arguments: print the position.
 MOUSE_SOURCE = """
 import CoreGraphics
@@ -40,7 +40,7 @@ for i in 1...steps {
 }
 """
 # drag <x1> <y1> <x2> <y2>: press, drag in steps and release, as a hand moving a window by its title bar.
-DRAG = os.path.expanduser("~/dinky-fuzz-drag")
+DRAG = os.path.expanduser("~/danky-fuzz-drag")
 DRAG_SOURCE = """
 import CoreGraphics
 import Foundation
@@ -59,7 +59,7 @@ usleep(200_000)
 post(.leftMouseUp, to)
 """
 # Control-Arrow with the secondary-fn flag, as Mission Control expects, <count> times. The fuzzer posts it in
-# dinky's `service` mode, which does not bind ctrl-left/right, so the switch is the native one.
+# danky's `service` mode, which does not bind ctrl-left/right, so the switch is the native one.
 KEYS_SOURCE = """
 import CoreGraphics
 import Foundation
@@ -76,13 +76,13 @@ for _ in 0..<(Int(CommandLine.arguments[2]) ?? 1) {
 
 
 class Fuzzer:
-    def __init__(self, seed, dinky, switching=False):
-        self.rng, self.seed, self.dinky = random.Random(seed), seed, dinky
+    def __init__(self, seed, danky, switching=False):
+        self.rng, self.seed, self.danky = random.Random(seed), seed, danky
         self.switching = switching
         self.history, self.docs = [], 0
         self.seen, self.found = set(), {}  # violations reported last step; count per class
         self.landing, self.landings = None, []  # a step's trip to an empty workspace; all of them
-        self.animated = 0  # steps during which dinky was seen animating
+        self.animated = 0  # steps during which danky was seen animating
 
     def run(self, *cmd):
         self.history.append(" ".join(str(c) for c in cmd))
@@ -93,17 +93,17 @@ class Fuzzer:
             return False
 
     def cli(self, *args):
-        return self.run(self.dinky, *args)
+        return self.run(self.danky, *args)
 
     def ask(self, *args):
-        """`dinky args` for its output, unrecorded; None when it gives no answer within 10 s."""
+        """`danky args` for its output, unrecorded; None when it gives no answer within 10 s."""
         try:
-            return subprocess.run([self.dinky, *args], capture_output=True, text=True, timeout=10)
+            return subprocess.run([self.danky, *args], capture_output=True, text=True, timeout=10)
         except subprocess.TimeoutExpired:
             return None
 
     def state(self):
-        """`dinky debug-state`, with each display's workspaces (their Spaces, by number) listed on it. The VM has one
+        """`danky debug-state`, with each display's workspaces (their Spaces, by number) listed on it. The VM has one
         display, so a workspace's place in that list plus one is its number. None when the app is gone or hung."""
         out = self.ask("debug-state")
         if out is None or out.returncode != 0: return None
@@ -220,14 +220,14 @@ class Fuzzer:
         return ok
 
     def go_empty(self, s):
-        """To an empty workspace, by dinky or by the native keystroke, sometimes then activating an app from there."""
+        """To an empty workspace, by danky or by the native keystroke, sometimes then activating an app from there."""
         d = s["displays"][0]
         occupied = {w["live-space"] for w in s["windows"] if w["normal"] and not w["minimized"]}
         empty = [i for i, sp in enumerate(d["workspaces"]) if sp not in occupied and sp != d["current-space"]]
         if not empty or d["current-space"] not in d["workspaces"]: return False
         i, here = self.rng.choice(empty), d["workspaces"].index(d["current-space"])
-        how = self.rng.choice(["dinky", "native"])
-        if how == "dinky": self.cli("workspace", i + 1)
+        how = self.rng.choice(["danky", "native"])
+        if how == "danky": self.cli("workspace", i + 1)
         else: self.native_switch(s, "right" if i > here else "left", abs(i - here))
         if self.rng.random() < 0.4:  # 0.5 or 1.5 s later: past the arrival activation, so this one is followed
             delay = self.rng.choice([0.5, 1.5])
@@ -342,7 +342,7 @@ class Fuzzer:
             if size[0] > 0.85 * area[2] or size[1] > 0.85 * area[3]:
                 v[("j-minimum", int(id))] = f"window {id} has minimum size {size}, nearly the display ({area[2]}x{area[3]})"
         if s["dragging"]:
-            v[("k-dragging", s["dragging"])] = f"dinky still thinks window {s['dragging']} is being dragged"
+            v[("k-dragging", s["dragging"])] = f"danky still thinks window {s['dragging']} is being dragged"
         out = self.ask("list-workspaces", "--focused")
         out = out.stdout.strip() if out else ""  # hung: the next state() reports the app gone
         d = s["displays"][0]
@@ -455,7 +455,7 @@ class Fuzzer:
         return 1 if self.found else 0
 
     def wait_for_animations(self):
-        """Waits at least 0.8 s, and until dinky animates nothing, polling. The windows still animating after 3 s."""
+        """Waits at least 0.8 s, and until danky animates nothing, polling. The windows still animating after 3 s."""
         start, seen = time.time(), False
         while time.time() - start < 3:
             s = self.state()
@@ -511,7 +511,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--steps", type=int, default=150)
-    parser.add_argument("--dinky", default=os.path.expanduser("~/dinky-fuzz"))
+    parser.add_argument("--danky", default=os.path.expanduser("~/danky-fuzz"))
     parser.add_argument("--switching", action="store_true", help="quits, closes, activations and Space switches dominate")
     args = parser.parse_args()
-    sys.exit(Fuzzer(args.seed, args.dinky, args.switching).fuzz(args.steps))
+    sys.exit(Fuzzer(args.seed, args.danky, args.switching).fuzz(args.steps))

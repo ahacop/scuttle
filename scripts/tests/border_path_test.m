@@ -14,8 +14,8 @@ int main(void) {
     for (int i = 0; i < 5; i++) {
         double w = widths[i], radius = 12, r = radius + w;
         CGRect bounds = CGRectMake(0, 0, 240, 180);
-        CGPathRef original = dinky_border_path(bounds, radius, w, 0);
-        CGPathRef corrected = dinky_border_path(bounds, radius, w, .05);
+        CGPathRef original = danky_border_path(bounds, radius, w, 0);
+        CGPathRef corrected = danky_border_path(bounds, radius, w, .05);
         assert(CGRectEqualToRect(CGPathGetPathBoundingBox(corrected), bounds));
         assert(!contains(corrected, 120, 90));
         assert(contains(corrected, 120, w / 2));
@@ -34,8 +34,8 @@ int main(void) {
         CGPathRelease(original);
         CGPathRelease(corrected);
 
-        original = dinky_border_path(bounds, 0, w, 0);
-        corrected = dinky_border_path(bounds, 0, w, .05);
+        original = danky_border_path(bounds, 0, w, 0);
+        corrected = danky_border_path(bounds, 0, w, .05);
         assert(CGPathEqualToPath(original, corrected));
         CGPathRelease(original);
         CGPathRelease(corrected);
