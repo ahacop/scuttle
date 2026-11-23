@@ -1,7 +1,9 @@
 // Drives scuttle through its socket while sampling where the window server has the animtest windows.
 // Writes events.csv (`time,command`) and trace.csv (`time,label,x,y,width,height`), times in CACurrentMediaTime
 // seconds, the clock animtest logs its draws on.
-// Usage: animbench <out dir> <scenario file>. A scenario line is a scuttle command, or `sleep <seconds>`.
+// Also samples scuttle's own windows (its borders' edge pieces) as label `border`, to measure how far borders lag.
+// Usage: animbench <out dir> <scenario file>. A scenario line is a scuttle command, `sleep <seconds>`, or
+// `open <label> <#rrggbb>`, which starts another animtest window (ANIMTEST names the binary) and records it too.
 import AppKit
 
 let args = CommandLine.arguments
@@ -45,9 +47,9 @@ func send(_ command: String) -> String {
     return String(decoding: reply, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-let windows = testWindows()
+var windows = testWindows()
 guard !windows.isEmpty else { print("no animtest windows on screen"); exit(1) }
-let ids = Array(windows.keys)
+var opened: [Process] = []
 
 var trace = "time,label,x,y,width,height\n"
 var events = "time,command,reply\n"
@@ -56,16 +58,15 @@ var sampling = true
 
 // Samples every 4 ms on a background thread; an unchanged frame is still recorded, so stalls show.
 let sampler = Thread {
-    // The window ids themselves as the array's values, not boxed numbers.
-    var values = ids.map { UnsafeRawPointer(bitPattern: UInt($0)) }
-    let array = CFArrayCreate(nil, &values, values.count, nil)!
     while lock.withLock({ sampling }) {
         let t = CACurrentMediaTime()
-        let info = CGWindowListCreateDescriptionFromArray(array) as? [[String: Any]] ?? []
+        let known = lock.withLock { windows }
+        let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
         var rows = ""
         for w in info {
-            guard let id = w[kCGWindowNumber as String] as? CGWindowID, let label = windows[id],
+            guard let id = w[kCGWindowNumber as String] as? CGWindowID,
                   let b = w[kCGWindowBounds as String] as? [String: Double] else { continue }
+            guard let label = known[id] ?? ((w[kCGWindowOwnerName as String] as? String) == "scuttle" ? "border" : nil) else { continue }
             rows += "\(t),\(label),\(b["X"]!),\(b["Y"]!),\(b["Width"]!),\(b["Height"]!)\n"
         }
         lock.withLock { trace += rows }
@@ -80,6 +81,27 @@ for line in scenario {
         usleep(useconds_t((Double(line.dropFirst(6)) ?? 0) * 1_000_000))
         continue
     }
+    if line.hasPrefix("open ") {
+        let parts = line.split(separator: " ").map(String.init)
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["ANIMTEST"] ?? "animtest")
+        process.arguments = [parts[1], parts[2], outDir.appending(path: "draw-\(parts[1]).log").path]
+        let t = CACurrentMediaTime()
+        try? process.run()
+        opened.append(process)
+        lock.withLock { events += "\(t),\(line),started\n" }
+        // Picks the new window up as soon as the window server lists it.
+        DispatchQueue.global().async {
+            for _ in 0..<500 {
+                if let id = testWindows().first(where: { $0.value == parts[1] })?.key {
+                    lock.withLock { windows[id] = parts[1] }
+                    return
+                }
+                usleep(2000)
+            }
+        }
+        continue
+    }
     let t = CACurrentMediaTime()
     let reply = send(line).replacingOccurrences(of: ",", with: ";").replacingOccurrences(of: "\n", with: " ")
     lock.withLock { events += "\(t),\(line),\(reply)\n" }
@@ -87,6 +109,7 @@ for line in scenario {
 usleep(300_000)
 lock.withLock { sampling = false }
 usleep(50_000)
+opened.forEach { $0.terminate() }
 try! FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 try! trace.write(to: outDir.appending(path: "trace.csv"), atomically: true, encoding: .utf8)
 try! events.write(to: outDir.appending(path: "events.csv"), atomically: true, encoding: .utf8)

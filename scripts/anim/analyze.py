@@ -13,6 +13,8 @@ For each command, every window's left and right edges are read on a 60 Hz grid, 
   apart, both before and after: columns pulling apart or overlapping mid-animation
 - torn: grid frames where the gap between such neighbours is off by more than 4 points
 - hz: how often the window server showed a moving window at a new frame, on average
+- border: how far, in points, the focus border's top edge is from where the window's edges put it: mean over
+  frames while windows move, and the share of those frames off by more than 4 points (`bfar`)
 - stale: the share of grid frames where the app's last drawn width isn't the window's width, so its
   content is stretched or cut off
 
@@ -29,15 +31,18 @@ FRAME = 1 / 60
 
 def load(run):
     events = [(float(r["time"]), r["command"]) for r in csv.DictReader(open(run / "events.csv"))]
-    trace = {}
+    trace, borders = {}, {}
     for r in csv.DictReader(open(run / "trace.csv")):
         x, w = float(r["x"]), float(r["width"])
-        trace.setdefault(r["label"], []).append((float(r["time"]), x, x + w, w))
+        if r["label"] == "border":
+            borders.setdefault(float(r["time"]), []).append((x, float(r["y"]), w, float(r["height"])))
+            continue
+        trace.setdefault(r["label"], []).append((float(r["time"]), x, x + w, w, float(r["y"])))
     draws = {}
     for log in run.glob("draw-*.log"):
         label = log.stem.split("-", 1)[1]
         draws[label] = [(float(t), int(w)) for t, _, w, _ in (line.strip().split(",") for line in open(log) if line.strip())]
-    return events, trace, draws
+    return events, trace, draws, borders
 
 
 def at(samples, times, t):
@@ -63,8 +68,9 @@ def edge_metrics(series):
 
 
 def analyze(run):
-    events, trace, draws = load(run)
+    events, trace, draws, borders = load(run)
     labels = sorted(trace)
+    border_times = sorted(borders)
     times = {l: [s[0] for s in trace[l]] for l in labels}
     end = max(s[0] for l in labels for s in trace[l])
     rows = []
@@ -99,6 +105,26 @@ def analyze(run):
                         gap = max(gap, error)
                         if error > 4:
                             torn_frames.add(k)
+        # Border lag: each moving window's top border piece against the window's edges, while it moves.
+        border_errors = []
+        if border_times:
+            width = None
+            for l in labels:
+                if not per[l]["states"]:
+                    continue
+                for t, f in zip(grid, per[l]["frames"]):
+                    if t > t0 + per[l]["duration"] / 1000 + 0.05:
+                        break
+                    rects = borders[border_times[max(bisect.bisect_right(border_times, t) - 1, 0)]]
+                    _, left, right, _, top = f
+                    # The top piece: just above the window, as wide as it give or take the border, overlapping it.
+                    tops = [r for r in rects if abs((r[1] + r[3]) - top) <= 30 and r[3] <= 40 and r[0] < right and r[0] + r[2] > left]
+                    if not tops:
+                        continue
+                    piece = min(tops, key=lambda r: abs(r[0] - left) + abs(r[0] + r[2] - right))
+                    w = (piece[2] - (right - left)) / 2 if width is None else width
+                    width = width if width is not None else max(0.0, round(w))
+                    border_errors.append(max(abs(piece[0] - (left - width)), abs(piece[0] + piece[2] - (right + width))))
         edges = [per[l][e] for l in labels for e in ("left", "right")]
         rows.append(dict(
             command=command,
@@ -111,6 +137,8 @@ def analyze(run):
             torn=len(torn_frames),
             hz=len(intervals) / sum(intervals) if intervals else 0,
             stale=stale / total if total else 0,
+            border=sum(border_errors) / len(border_errors) if border_errors else 0,
+            bfar=sum(e > 4 for e in border_errors) / len(border_errors) if border_errors else 0,
         ))
     return rows
 
@@ -149,6 +177,8 @@ def summary(rows):
         hz=sum(r["hz"] for r in moving) / len(moving),
         stale=sum(r["stale"] for r in moving) / len(moving),
         ms=sum(r["ms"] for r in moving) / len(moving),
+        border=sum(r["border"] for r in moving) / len(moving),
+        bfar=sum(r["bfar"] for r in moving) / len(moving),
     )
 
 
@@ -158,10 +188,10 @@ def main():
     if "--json" in sys.argv:
         print(json.dumps(dict(rows=rows, summary=summary(rows)), indent=1))
         return
-    print(f"{'command':28} {'ms':>5} {'states':>6} {'stalls':>6} {'rev':>4} {'rough':>6} {'gap':>6} {'torn':>5} {'hz':>5} {'stale':>6}")
+    print(f"{'command':28} {'ms':>5} {'states':>6} {'stalls':>6} {'rev':>4} {'rough':>6} {'gap':>6} {'torn':>5} {'hz':>5} {'stale':>6} {'border':>7} {'bfar':>5}")
     for r in rows:
         print(f"{r['command'][:28]:28} {r['ms']:5.0f} {r['states']:6d} {r['stalls']:6d} {r['reversals']:4d} "
-              f"{r['rough']:6.2f} {r['gap']:6.1f} {r['torn']:5d} {r['hz']:5.1f} {r['stale']:6.0%}")
+              f"{r['rough']:6.2f} {r['gap']:6.1f} {r['torn']:5d} {r['hz']:5.1f} {r['stale']:6.0%} {r['border']:7.1f} {r['bfar']:5.0%}")
     side = scuttle_side(run)
     if side:
         print(f"SCUTTLE ticks {side['tick_hz']:.1f} Hz (p95 interval {side['tick_p95_ms']:.1f} ms), "
@@ -171,7 +201,7 @@ def main():
                   f"{side['border_ms_max']:.1f} ms max, {side['border_ms_total']:.0f} ms total")
     s = summary(rows)
     print(f"SUMMARY stalls {s['stalls']}  rev {s['reversals']}  torn {s['torn']}  worst gap {s['gap']:.0f}  worst rough {s['rough']:.2f}  "
-          f"hz {s['hz']:.1f}  stale {s['stale']:.0%}  ms {s['ms']:.0f}")
+          f"hz {s['hz']:.1f}  stale {s['stale']:.0%}  ms {s['ms']:.0f}  border {s['border']:.1f}  bfar {s['bfar']:.0%}")
 
 
 if __name__ == "__main__":

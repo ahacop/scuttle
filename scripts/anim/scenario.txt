@@ -16,3 +16,5 @@ move left
 sleep 0.9
 move right
 sleep 0.9
+open D #7d3c98
+sleep 1.2

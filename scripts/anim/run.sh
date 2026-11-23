@@ -18,7 +18,7 @@ seconds="$(awk '/^sleep/{s+=$2} END{print int(s+3)}' "$scenario")"
 if [[ -n "${APP:-}" ]]; then
   pkill -f "scuttle.app/Contents/MacOS/scuttle" || true
   sleep 0.8
-  open --env SCUTTLE_ANIM_LOG="$out/scuttle.log" --env SCUTTLE_BORDER_LOG="$out/borders.log" --env SCUTTLE_AX_LOG="$out/ax.log" "$APP"
+  open --env SCUTTLE_ANIM_LOG="$out/scuttle.log" --env SCUTTLE_BORDER_LOG="$out/borders.log" --env SCUTTLE_AX_LOG="$out/ax.log" ${APP_ENV:-} "$APP"
   for _ in $(seq 50); do scuttle version >/dev/null 2>&1 && scuttle list-workspaces >/dev/null 2>&1 && break; sleep 0.2; done
   sleep 1.5
 fi
@@ -44,7 +44,7 @@ ffmpeg -hide_banner -loglevel error -y -f avfoundation -framerate 60 -pixel_form
   -c:v libx264 -preset ultrafast -crf 20 -pix_fmt yuv420p "$out/screen.mp4" &
 ff=$!
 sleep 0.6
-"$bin/animbench" "$out" "$scenario"
+ANIMTEST="$bin/animtest" "$bin/animbench" "$out" "$scenario"
 wait "$ff" || true
 cleanup; trap - EXIT
 python3 "$here/analyze.py" "$out"

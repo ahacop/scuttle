@@ -13,15 +13,20 @@ which must be empty, and returns to the workspace it started on. Don't touch the
 - `animtest.swift`: the test app. One window of a solid colour with stripes and its width written in it, logging
   every draw.
 - `animbench.swift`: sends the scenario's commands through scuttle's socket and samples the window server's frame
-  of every test window every 4 ms.
-- `scenario.txt`: what to do: preset widths, maximize, focus and move.
+  of every test window, and of scuttle's border pieces, every 4 ms or so.
+- `scenario.txt`: what to do: preset widths, maximize, focus, move, and opening a fourth window (`open <label> <colour>`).
 - `analyze.py`: measures for each command, on a 60 Hz grid: stalls (frames where a moving edge stands still),
-  reversals, torn frames (neighbours' gap off by more than 4 points), the worst gap, update rate, stale content
-  and duration. `compare.py` summarizes several runs.
+  reversals, torn frames (neighbours' gap off by more than 4 points), the worst gap, update rate, stale content,
+  duration, and border lag (how far each moving window's top border piece is from its edges). `compare.py`
+  summarizes several runs.
 
 With `APP` set, scuttle is restarted from that bundle with its logs on: `SCUTTLE_ANIM_LOG` (each animation step's
 timing and frames), `SCUTTLE_BORDER_LOG` (border work) and `SCUTTLE_AX_LOG` (each Accessibility write). The
-analysis adds the frame loop's rate and the border work's cost when they are there. Build the bundle with
+analysis adds the frame loop's rate and the border work's cost when they are there. `APP_ENV` passes more to
+`open`, such as `APP_ENV="--env SCUTTLE_NO_BORDER_TRACKING=1"` to compare without border tracking.
+
+Runs vary with whatever else the Mac is doing, sometimes more than a change being measured. To compare two
+builds or settings, alternate them in one session (A, B, A, B, ...) rather than benching one and then the other. Build the bundle with
 `IDENTITY=<your Developer ID hash> scripts/bundle.sh` so the Accessibility permission carries over.
 
 Needs ffmpeg (`brew install ffmpeg`) and Screen Recording permission for the terminal running it. The recording
