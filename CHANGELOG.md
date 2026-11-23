@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4
+## Unreleased
 
 - Borders keep up with moving windows: while a window animates, its border is placed on every frame where the window is, instead of trailing it by several frames.
 - Smoother animations: they run at the display's full frame rate, take the configured `duration-ms` instead of trailing on for twice as long, and neighbouring columns no longer pull apart while they move.
