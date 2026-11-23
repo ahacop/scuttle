@@ -190,6 +190,51 @@ void scuttle_border_update(ScuttleBorder *border, uint32_t target, CGRect frame,
     CGPathRelease(ring);
 }
 
+void scuttle_border_redraw_shape(ScuttleBorder *border, CGRect frame, int cornerRadius, ScuttleBorderColor color, double width,
+                                 bool sizeOnly)
+{
+    int cid = scuttle_connection();
+    CGRect outer = outer_frame(frame, width);
+    CGRect bounds = { CGPointZero, outer.size };
+    double outerRadius = fitted_radius(bounds, cornerRadius + width);
+    CGPathRef ring = scuttle_border_path(bounds, cornerRadius, width, 0.05);
+    CGRect before[ScuttleBorderEdges];
+    memcpy(before, border->edges, sizeof(before));
+    layout_edges(border, outer.size, outerRadius, width);
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (!used(border, i)) continue;
+        // A piece of the same size looks the same: a window getting wider keeps its side pieces, which only move.
+        if (sizeOnly && CGSizeEqualToSize(before[i].size, border->edges[i].size)) continue;
+        CGRect shape = { CGPointZero, border->edges[i].size };
+        CFTypeRef region = NULL;
+        CGSNewRegionWithRect(&shape, &region);
+        if (!region) continue;
+        SLSSetWindowShape(cid, border->windows[i], 0, 0, region);
+        CFRelease(region);
+        draw(border->windows[i], border->edges[i], ring, color);
+    }
+    CGPathRelease(ring);
+}
+
+CFTypeRef scuttle_border_transaction_create(void)
+{
+    return SLSTransactionCreate(scuttle_connection());
+}
+
+void scuttle_border_transaction_follow(CFTypeRef transaction, const ScuttleBorder *border, CGRect frame, double width)
+{
+    CGPoint origin = outer_frame(frame, width).origin;
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (used(border, i)) SLSTransactionMoveWindowWithGroup(transaction, border->windows[i], edge_origin(border, i, origin));
+    }
+}
+
+// The caller releases the transaction: Swift does, as it follows the Create rule for the one above.
+void scuttle_border_transaction_commit(CFTypeRef transaction)
+{
+    SLSTransactionCommit(transaction, 0);
+}
+
 void scuttle_border_move(const ScuttleBorder *border, uint32_t target, CGRect frame, double width, ScuttleBorderOrder order)
 {
     place(border, target, outer_frame(frame, width).origin, order, false);

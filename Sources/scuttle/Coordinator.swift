@@ -161,6 +161,7 @@ final class Coordinator {
     private func updateBorders() {
         if enabled, config.borders.enabled {
             borders = borders ?? BorderManager(config: config.borders, model: model, displays: displays.displays,
+                                               isAnimating: Self.borderTracking ? { [unowned self] id in animator.isAnimating(id) } : { _ in false },
                                                decorates: { [windowFacts] window, config in windowFacts.decorates(window, config: config) })
             borders?.update(config: config.borders)
         } else {
@@ -639,6 +640,10 @@ final class Coordinator {
 
     /// Whether scuttle is gliding the window to its tile right now.
     func isAnimating(_ id: WindowID) -> Bool { animator.isAnimating(id) }
+
+    /// Whether moving windows' borders are tracked frame by frame. `SCUTTLE_NO_BORDER_TRACKING` turns it off, for
+    /// comparing with scripts/anim.
+    static let borderTracking = ProcessInfo.processInfo.environment["SCUTTLE_NO_BORDER_TRACKING"] == nil
 
     /// The windows scuttle is gliding to their tiles right now.
     var animatingWindows: [WindowID] { animator.animating }

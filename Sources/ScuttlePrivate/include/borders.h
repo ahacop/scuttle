@@ -42,6 +42,16 @@ bool scuttle_border_create(ScuttleBorder *border, double scale);
 void scuttle_border_update(ScuttleBorder *border, uint32_t target, CGRect frame, int cornerRadius,
                          ScuttleBorderColor color, double width, ScuttleBorderOrder order);
 
+// For borders kept on moving windows every frame, all placed in one transaction: reshapes and redraws a border
+// for a new size without placing it (screen updates are not held for it), then moves borders into a transaction
+// that one commit sends. A border keeps the level and place in the stacking it was last given.
+// With `sizeOnly` (only the size changed since the last draw), pieces whose size didn't change keep their drawing.
+void scuttle_border_redraw_shape(ScuttleBorder *border, CGRect frame, int cornerRadius, ScuttleBorderColor color, double width,
+                                 bool sizeOnly);
+CFTypeRef _Nullable scuttle_border_transaction_create(void) CF_RETURNS_RETAINED;
+void scuttle_border_transaction_follow(CFTypeRef transaction, const ScuttleBorder *border, CGRect frame, double width);
+void scuttle_border_transaction_commit(CFTypeRef transaction);
+
 // Moves and re-orders without redrawing: for re-tiles and restacking that keep the size.
 void scuttle_border_move(const ScuttleBorder *border, uint32_t target, CGRect frame, double width,
                        ScuttleBorderOrder order);

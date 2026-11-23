@@ -64,6 +64,21 @@ final class BorderWindow {
         isShown = true
     }
 
+    /// Keeps a shown border on a moving window, as part of a transaction moving several: redrawn first if its size or
+    /// look changed, then moved in `transaction`. It stays at the scale, on the Space and in the stacking it was
+    /// drawn for, none of which a window mid-animation changes.
+    func track(_ window: Window, color: ScuttleConfig.Color, config: Borders, in transaction: CFTypeRef) {
+        guard created, isShown else { return }
+        let look = Look(size: window.frame.size, cornerRadius: window.cornerRadius, color: color, width: config.width)
+        if look != drawn {
+            let rgba = ScuttleBorderColor(red: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
+            let sizeOnly = drawn.map { $0.cornerRadius == look.cornerRadius && $0.color == look.color && $0.width == look.width } ?? false
+            scuttle_border_redraw_shape(&border, window.frame, Int32(window.cornerRadius), rgba, config.width, sizeOnly)
+            drawn = look
+        }
+        scuttle_border_transaction_follow(transaction, &border, window.frame, config.width)
+    }
+
     /// Follows a window that only moved: the border keeps its shape, Space and place in the stacking, so it is moved
     /// without being redrawn or re-ordered. False if it needs `update` instead: it is hidden, or the window has a new
     /// size or reached a display of another scale.

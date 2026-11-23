@@ -22,15 +22,23 @@ final class BorderManager {
     /// Whether a delayed focus check is on its way: a burst of activations and reorders needs only one.
     private var refocusScheduled = false
     private let decorates: (Window, Borders) -> Bool
+    /// Whether scuttle is animating the window: its border is then the tracker's, which keeps it on the window
+    /// from its own thread, frame by frame.
+    private let isAnimating: (UInt32) -> Bool
+    private let tracker = BorderTracker()
 
-    init(config: Borders, model: WindowModel, displays: [Display], decorates: @escaping (Window, Borders) -> Bool) {
+    init(config: Borders, model: WindowModel, displays: [Display], isAnimating: @escaping (UInt32) -> Bool,
+         decorates: @escaping (Window, Borders) -> Bool) {
         self.config = config
         self.model = model
+        self.isAnimating = isAnimating
         self.decorates = decorates
         visibleSpaces = Self.visibleSpaces(on: displays)
         focusedID = scuttle_border_focused_window()
         syncAll()
     }
+
+    deinit { tracker.removeAll() }
 
     /// The display model changed. It also hears of Space changes WindowServer sends no event for (a swipe posted
     /// by another process, caught by its poll or an NSWorkspace notification), so borders follow it rather than
@@ -68,7 +76,12 @@ final class BorderManager {
             pending.refocus = true
             // A click between one app's windows can report the previous one in front for a few ms.
             scheduleRefocus()
-        case .windowUpdate, .windowCreate, .windowDestroy, .windowTitle:
+        case .windowUpdate:
+            // A window moving or resizing sends these every frame and its focus doesn't change: checking focus is a
+            // window-server query that took up to 30 ms, a third of the main thread while windows animated.
+            if let window = event.window, isAnimating(window.id) { break }
+            pending.refocus = true
+        case .windowCreate, .windowDestroy, .windowTitle:
             pending.refocus = true
         default:
             break
@@ -77,6 +90,7 @@ final class BorderManager {
         if let window = event.window {
             if event.change == .removed {
                 // Released now, not at the flush: WindowServer can reuse the id before then.
+                tracker.remove(window.id)
                 borders[window.id] = nil
             } else if event.kind == .windowReorder {
                 // A border is ordered next to its target once, so a window raised later lands on top of every
@@ -102,10 +116,10 @@ final class BorderManager {
         DispatchQueue.main.async { [weak self] in self?.flush() }
     }
 
-    private func scheduleRefocus() {
+    private func scheduleRefocus(after delay: Int = 20) {
         guard !refocusScheduled else { return }
         refocusScheduled = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(20)) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(delay)) { [weak self] in
             self?.refocusScheduled = false
             self?.refocus()
         }
@@ -117,12 +131,23 @@ final class BorderManager {
         pending = (refocus: false, all: false, ids: [], moved: [])
         flushScheduled = false
         let start = CACurrentMediaTime()
-        if work.refocus { refocus() }
+        // While borders are tracked, focus is checked at most every 100 ms: the check is several window-server
+        // queries, and moving windows ask for one with nearly every event. Only an opening window changes focus then.
+        if work.refocus { tracker.isTracking ? scheduleRefocus(after: 100) : refocus() }
+        let focused = CACurrentMediaTime()
         if work.all { syncAll() } else { sync(work.ids); follow(work.moved.subtracting(work.ids)) }
         if let log = Self.log {
-            let line = "border,\(start),\((CACurrentMediaTime() - start) * 1000),\(work.ids.count),\(work.moved.count),\(work.all)\n"
+            let end = CACurrentMediaTime()
+            let line = "border,\(start),\((end - start) * 1000),\(work.ids.count),\(work.moved.count),\(work.all),"
+                + "\((focused - start) * 1000),\((end - focused) * 1000)\n"
             log.write(line.data(using: .utf8)!)
         }
+    }
+
+    /// Logs other border work, such as a tracker tick, as `<kind>,<time>,<ms>,<count>`.
+    static func note(_ kind: String, since start: CFTimeInterval, count: Int) {
+        guard let log else { return }
+        log.write("\(kind),\(start),\((CACurrentMediaTime() - start) * 1000),\(count)\n".data(using: .utf8)!)
     }
 
     /// With `SCUTTLE_BORDER_LOG` set to a path, each flush's time is appended there, for scripts/anim:
@@ -135,8 +160,9 @@ final class BorderManager {
     /// Borders of windows that only moved follow them. One that needs more than a move is placed in full.
     private func follow(_ ids: Set<UInt32>) {
         for id in ids {
-            guard let window = model.windows[id] else { continue }
-            if borders[id]?.follow(window) != true { sync(window) }
+            guard let window = model.windows[id], !tracker.owns(id) else { continue }
+            // A window that started animating is handed to the tracker by sync.
+            if isAnimating(id) || borders[id]?.follow(window) != true { sync(window) }
         }
     }
 
@@ -157,24 +183,45 @@ final class BorderManager {
     func missionControlChanged() { syncAll() }
 
     private func syncAll() {
-        for id in borders.keys where model.windows[id] == nil { borders[id] = nil }
+        for id in borders.keys where model.windows[id] == nil {
+            tracker.remove(id)
+            borders[id] = nil
+        }
         for window in model.windows.values { sync(window) }
     }
 
     private func sync(_ window: Window) {
+        // A moving window's border is the tracker's until it arrives, when this runs in full again; only its colour can
+        // change meanwhile. The checks below cost more than that, every frame.
+        if tracker.owns(window.id), isAnimating(window.id) {
+            let color = window.id == focusedID ? config.activeColor : config.inactiveColor
+            return tracker.restyle(window.id, color: color, config: config)
+        }
         guard config.enabled, window.isDocument, decorates(window, config) else {
+            tracker.remove(window.id)
             borders[window.id] = nil
             return
         }
         // Minimized windows land here too (they are still documents, just not visible), so the border hides.
         guard window.isOrderedIn, window.isVisible, !window.isMinimized, visibleSpaces.contains(window.spaceID), !MissionControl.shared.active else {
+            tracker.remove(window.id)
             borders[window.id]?.hide()
             return
         }
-        let focused = window.id == focusedID
+        let color = window.id == focusedID ? config.activeColor : config.inactiveColor
+        if isAnimating(window.id) {
+            if tracker.owns(window.id) { return tracker.restyle(window.id, color: color, config: config) }
+            // Drawn once here, where the model has the window, then kept on it by the tracker.
+            let border = borders[window.id] ?? BorderWindow(target: window.id)
+            borders[window.id] = border
+            border.update(window, color: color, config: config)
+            return tracker.add(border, for: window, color: color, config: config)
+        }
+        // Done moving: the border is the main thread's again, placed where the window came to rest.
+        tracker.remove(window.id)
         let border = borders[window.id] ?? BorderWindow(target: window.id)
         borders[window.id] = border
-        border.update(window, color: focused ? config.activeColor : config.inactiveColor, config: config)
+        border.update(window, color: color, config: config)
     }
 
     private func refocus() {
