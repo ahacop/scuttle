@@ -157,8 +157,10 @@ final class FrameApplier {
 
     private func raiseIntoOrder(_ layout: Layout, pids: [WindowID: pid_t], front: WindowID?, pass: Int, permit: Int) {
         raiseQueue.async { [passes] in
-            guard self.writes.allows(permit), passes.isLatest(pass, for: layout.order) else { return }
-            var ids = layout.raises(current: onScreenOrder())
+            // Columns side by side overlap nowhere and have no stacking to restore: nothing to ask or raise.
+            guard self.writes.allows(permit), passes.isLatest(pass, for: layout.order), layout.hasOverlaps else { return }
+            var ids = layout.raises(current: Self.onMain { onScreenOrder() })
+            guard !ids.isEmpty else { return }
             // Raising makes a window its app's key window, so the front window goes last when its app had another
             // raised: it overlaps nothing (a column in view of a scrolling strip) and would lose focus otherwise.
             if let front, ids.last != front, let pid = pids[front], ids.contains(where: { pids[$0] == pid }) {
@@ -214,10 +216,20 @@ final class FrameApplier {
     /// Otherwise the layout is older than the focus, say right after Cmd-` or while a pass that started before
     /// a newer one finishes, and raising would take focus back. The next pass raises once the tree has caught up.
     private static func raisingKeepsFocus(_ ids: [WindowID], front: WindowID?, pids: [WindowID: pid_t]) -> Bool {
-        let focused = scuttle_border_focused_window()
+        let (focused, owner) = onMain { () -> (WindowID, pid_t) in
+            let focused = scuttle_border_focused_window()
+            return (focused, focused != 0 && focused != front ? scuttle_window_info(focused).pid : 0)
+        }
         guard focused != 0, focused != front else { return true }
-        let owner = scuttle_window_info(focused).pid
         return !ids.contains { pids[$0] == owner }
+    }
+
+    /// Runs a question to the window server on the main thread, from the raise queue. Asked from another thread
+    /// while the main thread has drawing to commit (a border redrawn, as at the start and end of every animated
+    /// pass), the window server call waits half a second for that commit while holding the lock the commit needs:
+    /// the main thread stood still that long, borders and commands with it (scripts/anim, `sample`).
+    private static func onMain<T>(_ body: () -> T) -> T {
+        Thread.isMainThread ? body() : DispatchQueue.main.sync(execute: body)
     }
 
     /// A pass can outlive native minimization: AXRaise would undo it, even before WindowServer updates its tags.

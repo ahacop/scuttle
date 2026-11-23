@@ -4,6 +4,8 @@
 
 - Borders keep up with moving windows: while a window animates, its border is placed on every frame where the window is, instead of trailing it by several frames.
 - Smoother animations: they run at the display's full frame rate, take the configured `duration-ms` instead of trailing on for twice as long, and neighbouring columns no longer pull apart while they move.
+- A border no longer flashes in the menu bar while its window is resized.
+- Commands no longer wait up to half a second when they follow an animation closely, and borders stay closer to moving windows.
 - **Edit Config…** in the menu opens the config file in your text editor.
 - Borders stay visible and resize with their windows during animations, instead of disappearing until the window arrives.
 - `scuttle version` prints the app's version when run through Homebrew's `scuttle` command, instead of `dev (0)`.

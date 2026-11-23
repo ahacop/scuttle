@@ -27,7 +27,7 @@ typedef NS_ENUM(uint32_t, ScuttleEventKind) {
 typedef struct {
     ScuttleEventKind kind;
     uint32_t windowID;  // 0 for Space and front app events
-    pid_t pid;          // window owner, or the front app for ScuttleEventFrontApp; 0 if gone, and for a move
+    pid_t pid;          // window owner, or the front app for ScuttleEventFrontApp; 0 if gone, and for a move, resize or update
     uint64_t spaceID;   // create/destroy and Space created/destroyed only, else 0
 } ScuttleEvent;
 

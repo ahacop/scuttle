@@ -51,7 +51,8 @@ final class Recovery {
         self.model = model
         self.applier = applier
         carryOver()
-        model.observe { [weak self] _ in self?.record() }
+        // A window that only moved or resized is journaled already, or still is not one to journal.
+        model.observe { [weak self] event in if !event.frameOnly { self?.record() } }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification,
                                                           object: nil, queue: .main) { [weak self] _ in self?.record() }
     }

@@ -173,7 +173,9 @@ final class Coordinator {
 
     private func handle(_ event: WindowEvent) {
         // Detected here, not in the border manager, so hover focus stands down even with borders off.
-        if MissionControl.shared.update(from: model) {
+        // Mission Control shows as a window of WindowManager's, so only its events, and those about no window, can
+        // change the answer; every other window's are spared the look through all windows and screens.
+        if event.window.map({ $0.bundleID == MissionControl.bundleID }) ?? true, MissionControl.shared.update(from: model) {
             overviewChanged()
             borders?.missionControlChanged()
         }
@@ -220,10 +222,13 @@ final class Coordinator {
     /// Apps can move themselves after the write and its retry have finished. Correct that event, not a timer.
     private func recoverFrame(of id: WindowID) {
         guard enabled, !MissionControl.shared.active,
-              let placement = placements[id], !placement.floating, let key = placement.space,
-              isVisible(key), let tile = workspaces[key]?.layout().frames[id] else { return }
-        let eligible = dragging == nil && !CGEventSource.buttonState(.combinedSessionState, button: .left)
-            && !animator.isAnimating(id) && applying[key, default: 0] == 0
+              let placement = placements[id], !placement.floating, let key = placement.space else { return }
+        // Scuttle's own writes and the user's drags neither spend nor replenish the correction budget, and come on
+        // every frame while a window moves: they are told apart before the layout is worked out and the window
+        // server is asked for the frame.
+        let eligible = dragging == nil && !animator.isAnimating(id) && applying[key, default: 0] == 0
+            && !CGEventSource.buttonState(.combinedSessionState, button: .left)
+        guard eligible, isVisible(key), let tile = workspaces[key]?.layout().frames[id] else { return }
         let resting = animator.isResting(id, at: scuttle_window_info(id).frame, for: tile)
         if frameRecovery[id, default: FrameRecovery()].shouldReapply(tile: tile, resting: resting, eligible: eligible) {
             layouts.dirty.insert(key)

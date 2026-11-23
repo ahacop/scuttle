@@ -39,6 +39,8 @@ struct WindowEvent {
     let pid: pid_t       // window owner, or the new front app for .frontApp
     let spaceID: UInt64  // from the payload, when it carries one
     let time: Date
+    /// Only the window's frame was read and can have changed: one frame of a drag, a resize or a glide.
+    var frameOnly = false
 }
 
 // The window table, seeded from WindowServer and kept current by its notifications.
@@ -118,8 +120,8 @@ final class WindowModel {
             remove(id, kind: event.kind, pid: event.pid)
         case .spaceChange, .spaceCreated, .spaceDestroyed, .frontApp:
             publish(event.kind, .none, nil, pid: event.pid, spaceID: event.spaceID)
-        case .windowMove where windows[id] != nil:
-            moved(id)
+        case .windowMove where windows[id] != nil, .windowResize where windows[id] != nil:
+            reframed(id, kind: event.kind)
         default:
             if windows[id] != nil {
                 refresh(id, kind: event.kind)
@@ -165,16 +167,16 @@ final class WindowModel {
         publish(kind, .updated, window, pid: window.pid)
     }
 
-    /// A move comes on every frame of a drag or a glide, so it reads only the frame. The full re-read waits until the
-    /// window has been still for a moment, for whatever changed along with it, such as its Space when it is dropped
-    /// on another display.
-    private func moved(_ id: UInt32) {
+    /// A move or a resize comes on every frame of a drag or a glide, so it reads only the frame: one round trip to the
+    /// window server where the full read is seven. The full re-read waits until the window has been still for a
+    /// moment, for whatever changed along with it, such as its Space when it is dropped on another display.
+    private func reframed(_ id: UInt32, kind: ScuttleEventKind) {
         guard var window = windows[id] else { return }
         let frame = scuttle_window_frame(id)
-        guard !frame.isNull else { return refresh(id, kind: .windowMove) }
+        guard !frame.isNull else { return refresh(id, kind: kind) }
         window.frame = frame
         windows[id] = window
-        publish(.windowMove, .updated, window, pid: window.pid)
+        publish(kind, .updated, window, pid: window.pid, frameOnly: true)
         settling[id]?.cancel()
         let settle = DispatchWorkItem { [weak self] in self?.refresh(id) }
         settling[id] = settle
@@ -213,8 +215,10 @@ final class WindowModel {
         scuttle_events_watch_windows(ids, Int32(ids.count))
     }
 
-    private func publish(_ kind: ScuttleEventKind, _ change: WindowEvent.Change, _ window: Window?, pid: pid_t, spaceID: UInt64 = 0) {
-        let event = WindowEvent(kind: kind, change: change, window: window, pid: pid, spaceID: spaceID, time: Date())
+    private func publish(_ kind: ScuttleEventKind, _ change: WindowEvent.Change, _ window: Window?, pid: pid_t, spaceID: UInt64 = 0,
+                         frameOnly: Bool = false) {
+        let event = WindowEvent(kind: kind, change: change, window: window, pid: pid, spaceID: spaceID, time: Date(),
+                                frameOnly: frameOnly)
         observers.forEach { $0(event) }
     }
 }

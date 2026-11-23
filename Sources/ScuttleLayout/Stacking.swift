@@ -12,6 +12,17 @@ extension Layout {
     /// nothing is raised just to fix which background window peeks out at an edge. Disjoint tiles can each be
     /// foreground; in an accordion only its front window is. Switching accordion focus normally raises nothing.
     public func raises(current: [WindowID]) -> [WindowID] {
+        guard hasOverlaps else { return [] }
+        return raisesAmongOverlaps(current: current)
+    }
+
+    /// Whether any two windows overlap. With none, no stacking is wrong and `raises` needs no current order,
+    /// which costs its caller a question to the window server.
+    public var hasOverlaps: Bool {
+        order.indices.contains { i in order[(i + 1)...].contains { overlaps(order[i], $0) } }
+    }
+
+    private func raisesAmongOverlaps(current: [WindowID]) -> [WindowID] {
         let stack = order.filter { id in
             frames.keys.contains { $0 != id && overlaps($0, id) }
         }

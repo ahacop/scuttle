@@ -179,7 +179,8 @@ void scuttle_border_update(ScuttleBorder *border, uint32_t target, CGRect frame,
         CFTypeRef region = NULL;
         CGSNewRegionWithRect(&shape, &region);
         if (!region) continue;
-        SLSSetWindowShape(cid, border->windows[i], 0, 0, region);
+        CGPoint origin = edge_origin(border, i, outer.origin);
+        SLSSetWindowShape(cid, border->windows[i], origin.x, origin.y, region);
         CFRelease(region);
         draw(border->windows[i], border->edges[i], ring, color);
     }
@@ -209,7 +210,11 @@ void scuttle_border_redraw_shape(ScuttleBorder *border, CGRect frame, int corner
         CFTypeRef region = NULL;
         CGSNewRegionWithRect(&shape, &region);
         if (!region) continue;
-        SLSSetWindowShape(cid, border->windows[i], 0, 0, region);
+        // The shape comes with a position, and the piece is there at once: given the corner of the screen and moved
+        // back by the transaction that follows, it showed in the menu bar for a frame of every step of a resize
+        // (scripts/anim: `stray`). So it is given the place it belongs.
+        CGPoint origin = edge_origin(border, i, outer.origin);
+        SLSSetWindowShape(cid, border->windows[i], origin.x, origin.y, region);
         CFRelease(region);
         draw(border->windows[i], border->edges[i], ring, color);
     }
