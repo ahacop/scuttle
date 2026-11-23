@@ -16,9 +16,30 @@ final class EventHub {
         subscribers.append(handler)
         guard !started else { return true }
         started = scuttle_events_start({ event, _ in
-            DispatchQueue.main.async { EventHub.shared.subscribers.forEach { $0(event) } }
+            guard EventHub.log != nil else {
+                DispatchQueue.main.async { EventHub.shared.subscribers.forEach { $0(event) } }
+                return
+            }
+            let sent = CACurrentMediaTime()
+            DispatchQueue.main.async {
+                let start = CACurrentMediaTime()
+                EventHub.shared.subscribers.forEach { $0(event) }
+                EventHub.note(event.kind.rawValue, sent: sent, start: start)
+            }
         }, nil)
         return started
+    }
+
+    /// With `SCUTTLE_EVENT_LOG` set to a path, every WindowServer event's cost on the main thread is appended there,
+    /// for scripts/anim: `event,<time>,<kind>,<ms it waited for the main thread>,<ms handling it took>`.
+    private static let log: FileHandle? = ProcessInfo.processInfo.environment["SCUTTLE_EVENT_LOG"].flatMap { path in
+        FileManager.default.createFile(atPath: path, contents: nil)
+        return FileHandle(forWritingAtPath: path)
+    }
+
+    private static func note(_ kind: UInt32, sent: CFTimeInterval, start: CFTimeInterval) {
+        let line = "event,\(sent),\(kind),\((start - sent) * 1000),\((CACurrentMediaTime() - start) * 1000)\n"
+        log?.write(line.data(using: .utf8)!)
     }
 }
 

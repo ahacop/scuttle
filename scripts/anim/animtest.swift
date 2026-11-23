@@ -1,25 +1,40 @@
-// A test app for the animation harness: one window of a solid colour with vertical stripes every 40 points and
-// its current width written in the middle, so a frame drawn late or at the wrong size shows in a recording.
-// Every draw is logged as `time,label,width,height` (CACurrentMediaTime seconds) to the file given.
-// Usage: animtest <label> <#rrggbb> <log path> [draw delay ms]
+// A test app for the animation harness: windows of a solid colour with vertical stripes every 40 points and their
+// current width written in the middle, so a frame drawn late or at the wrong size shows in a recording.
+// Every draw is logged as `time,label,width,height` (CACurrentMediaTime seconds) to the file given; `{}` in its
+// path stands for the window's label.
+// Usage: animtest <label[,label...]> <#rrggbb[,#rrggbb...]> <log path> [draw delay ms]
+// Several labels make several windows in this one process, as one app with many windows has: scuttle writes their
+// frames one after another, not side by side.
+// An app is rarely as obliging as a plain window. These make it less so:
+//   ANIMTEST_MIN_WIDTH=<points>   refuses to be narrower; ANIMTEST_MIN_SHARE=<0-1> says it as a share of the screen
+//   ANIMTEST_GRID=<points>        only takes widths that are multiples of it, as a terminal does
+// and the draw delay makes every redraw slow, so a new size shows late and writes queue up behind it.
 import AppKit
 
 let args = CommandLine.arguments
-guard args.count >= 4 else { FileHandle.standardError.write("usage: animtest label #rrggbb log [delay-ms]\n".data(using: .utf8)!); exit(64) }
-let label = args[1], hex = args[2], logPath = args[3]
+guard args.count >= 4 else { FileHandle.standardError.write("usage: animtest label[,label] #rrggbb[,#rrggbb] log [delay-ms]\n".data(using: .utf8)!); exit(64) }
+let labels = args[1].split(separator: ",").map(String.init), hexes = args[2].split(separator: ",").map(String.init), logPath = args[3]
 let delayMs = args.count > 4 ? Double(args[4]) ?? 0 : 0
+let environment = ProcessInfo.processInfo.environment
+let minWidth = environment["ANIMTEST_MIN_WIDTH"].flatMap(Double.init)
+    ?? environment["ANIMTEST_MIN_SHARE"].flatMap(Double.init).map { $0 * Double(NSScreen.main?.frame.width ?? 0) } ?? 0
+let grid = environment["ANIMTEST_GRID"].flatMap(Double.init) ?? 0
 
 func color(_ hex: String) -> NSColor {
     let v = Int(hex.dropFirst(), radix: 16) ?? 0x888888
     return NSColor(srgbRed: CGFloat((v >> 16) & 255) / 255, green: CGFloat((v >> 8) & 255) / 255, blue: CGFloat(v & 255) / 255, alpha: 1)
 }
 
-FileManager.default.createFile(atPath: logPath, contents: nil)
-let log = FileHandle(forWritingAtPath: logPath)!
-
 final class Canvas: NSView {
-    let fill: NSColor
-    init(fill: NSColor) { self.fill = fill; super.init(frame: .zero) }
+    let fill: NSColor, label: String, log: FileHandle
+    init(fill: NSColor, label: String) {
+        self.fill = fill
+        self.label = label
+        let path = logPath.replacingOccurrences(of: "{}", with: label)
+        FileManager.default.createFile(atPath: path, contents: nil)
+        log = FileHandle(forWritingAtPath: path)!
+        super.init(frame: .zero)
+    }
     required init?(coder: NSCoder) { fatalError() }
     override var isFlipped: Bool { true }
     override func draw(_ dirtyRect: NSRect) {
@@ -36,14 +51,32 @@ final class Canvas: NSView {
     }
 }
 
+/// Holds a window to the sizes this app takes.
+final class Constraints: NSObject, NSWindowDelegate {
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        var width = max(frameSize.width, minWidth)
+        if grid > 0 { width = max(grid, (width / grid).rounded(.down) * grid) }
+        return NSSize(width: width, height: frameSize.height)
+    }
+}
+
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
-let window = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 800, height: 600),
-                      styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-window.title = "animtest \(label)"
-window.collectionBehavior = [.fullScreenPrimary]
-window.contentView = Canvas(fill: color(hex))
-window.makeKeyAndOrderFront(nil)
+let constraints = Constraints()
+var windows: [NSWindow] = []
+for (n, label) in labels.enumerated() {
+    let window = NSWindow(contentRect: NSRect(x: 200 + 60 * n, y: 200, width: 800, height: 600),
+                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+    window.title = "animtest \(label)"
+    window.collectionBehavior = [.fullScreenPrimary]
+    window.isReleasedWhenClosed = false
+    window.contentView = Canvas(fill: color(hexes[min(n, hexes.count - 1)]), label: label)
+    if minWidth > 0 || grid > 0 { window.delegate = constraints }
+    window.makeKeyAndOrderFront(nil)
+    windows.append(window)
+    // One at a time, as separate apps would open them: scuttle tiles each as it comes.
+    RunLoop.current.run(until: Date().addingTimeInterval(n + 1 < labels.count ? 0.9 : 0))
+}
 app.activate(ignoringOtherApps: true)
 signal(SIGTERM) { _ in exit(0) }
 app.run()

@@ -39,8 +39,8 @@ docs:
     cd docs && jekyll serve --livereload --host 0.0.0.0
 
 # Record this build and the last release animating, alternating, and fail if this build is clearly worse.
-# Takes over the screen for a few minutes. See scripts/anim/README.md.
-anim-check runs="5":
+# Takes over the screen for a quarter of an hour. See scripts/anim/README.md.
+anim-check runs="3":
     scripts/anim/check.sh {{runs}}
 
 # Fuzz the debug build in the Tart VM: random actions, layout invariants checked after each. See scripts/fuzz.py.

@@ -50,9 +50,13 @@ public struct Config: Equatable {
 
     public init() {}
 
-    /// `~/.config/scuttle/scuttle.toml`
+    /// `~/.config/scuttle/scuttle.toml`, or the file `SCUTTLE_CONFIG` names: scripts/anim records with a config of
+    /// its own, so its measures don't depend on the settings of whoever runs it.
     public static var userConfigURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appending(path: ".config/scuttle/scuttle.toml")
+        if let path = ProcessInfo.processInfo.environment["SCUTTLE_CONFIG"], !path.isEmpty {
+            return URL(fileURLWithPath: path)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser.appending(path: ".config/scuttle/scuttle.toml")
     }
 
     /// The config shipped with scuttle, used when the user has none.

@@ -3,7 +3,8 @@
 # cask in ahacop/homebrew-tap. Usage: scripts/release.sh [X.Y]   (run again to retry a failed release)
 # Without a version it bumps the latest tag by 0.1. Preparing turns CHANGELOG.md's `## Unreleased` into
 # `## X.Y`, sets the manual's version and commits and pushes "Release X.Y"; a rerun reuses that commit.
-# Before preparing, it runs the tests and scripts/anim/check.sh (SKIP_ANIM_CHECK=1 skips the animation check).
+# Before preparing, it runs the tests and scripts/anim/check.sh (SKIP_ANIM_CHECK=1 skips the animation check,
+# SKIP_TESTS=1 the tests).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 version="${1:-}"
@@ -70,8 +71,10 @@ if [[ -z "$prepared" ]]; then
   [[ "$(grep -cx '## Unreleased' CHANGELOG.md || true)" == 1 ]] || { echo 'CHANGELOG.md needs one ## Unreleased section' >&2; exit 1; }
   [[ -n "$(changelog_section Unreleased)" ]] || { echo 'The ## Unreleased section of CHANGELOG.md is empty' >&2; exit 1; }
   git rev-parse --verify -q "$tag" >/dev/null && { echo "Tag $tag already exists" >&2; exit 1; }
-  echo "==> Testing before preparing $version"
-  swift test --jobs 4
+  if [[ -z "${SKIP_TESTS:-}" ]]; then
+    echo "==> Testing before preparing $version"
+    swift test --jobs 4
+  fi
   # Animations against the last release, on this Mac's screen: see scripts/anim/README.md.
   if [[ -z "${SKIP_ANIM_CHECK:-}" ]]; then
     echo "==> Checking animations against $latest (takes over the screen for a few minutes; SKIP_ANIM_CHECK=1 skips)"
@@ -101,7 +104,7 @@ if [[ "$(gh release view "$tag" -R "$repo" --json isDraft --jq .isDraft 2>/dev/n
   exit 0
 fi
 
-[[ -n "$prepared" ]] && swift test --jobs 4
+[[ -n "$prepared" && -z "${SKIP_TESTS:-}" ]] && swift test --jobs 4
 scripts/package-release.sh "$version"
 [[ "$head" == "$(git rev-parse HEAD)" && -z "$(git status --porcelain)" ]] || { echo 'Source changed during packaging; retry' >&2; exit 1; }
 

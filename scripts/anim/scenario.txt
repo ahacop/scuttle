@@ -10,11 +10,16 @@ maximize-column
 sleep 0.9
 maximize-column
 sleep 0.9
+# A second command while the first is still gliding, as a key pressed twice quickly.
+switch-preset-column-width
+sleep 0.08
+switch-preset-column-width
+sleep 0.9
 focus right
 sleep 0.9
 move left
 sleep 0.9
 move right
 sleep 0.9
-open D #7d3c98
+open D #6a1b9a
 sleep 1.2

@@ -1,7 +1,8 @@
 // Drives scuttle through its socket while sampling where the window server has the animtest windows.
-// Writes events.csv (`time,command`) and trace.csv (`time,label,x,y,width,height`), times in CACurrentMediaTime
+// Writes events.csv (`time,command`) and trace.csv (`time,label,x,y,width,height,id`), times in CACurrentMediaTime
 // seconds, the clock animtest logs its draws on.
-// Also samples scuttle's own windows (its borders' edge pieces) as label `border`, to measure how far borders lag.
+// Also samples scuttle's own windows (its borders' edge pieces) as label `border`, each under its window id, to measure
+// how far borders are from their windows.
 // Usage: animbench <out dir> <scenario file>. A scenario line is a scuttle command, `sleep <seconds>`, or
 // `open <label> <#rrggbb>`, which starts another animtest window (ANIMTEST names the binary) and records it too.
 import AppKit
@@ -51,7 +52,14 @@ var windows = testWindows()
 guard !windows.isEmpty else { print("no animtest windows on screen"); exit(1) }
 var opened: [Process] = []
 
-var trace = "time,label,x,y,width,height\n"
+// The screen's size in points and its pixels per point, for reading the recording against the trace.
+if let screen = NSScreen.main {
+    let meta = "{\"width\": \(screen.frame.width), \"height\": \(screen.frame.height), \"scale\": \(screen.backingScaleFactor)}\n"
+    try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
+    try? meta.write(to: outDir.appending(path: "screen.json"), atomically: true, encoding: .utf8)
+}
+
+var trace = "time,label,x,y,width,height,id\n"
 var events = "time,command,reply\n"
 let lock = NSLock()
 var sampling = true
@@ -67,7 +75,7 @@ let sampler = Thread {
             guard let id = w[kCGWindowNumber as String] as? CGWindowID,
                   let b = w[kCGWindowBounds as String] as? [String: Double] else { continue }
             guard let label = known[id] ?? ((w[kCGWindowOwnerName as String] as? String) == "scuttle" ? "border" : nil) else { continue }
-            rows += "\(t),\(label),\(b["X"]!),\(b["Y"]!),\(b["Width"]!),\(b["Height"]!)\n"
+            rows += "\(t),\(label),\(b["X"]!),\(b["Y"]!),\(b["Width"]!),\(b["Height"]!),\(id)\n"
         }
         lock.withLock { trace += rows }
         usleep(4000)
