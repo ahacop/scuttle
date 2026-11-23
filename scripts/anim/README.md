@@ -29,6 +29,25 @@ Runs vary with whatever else the Mac is doing, sometimes more than a change bein
 builds or settings, alternate them in one session (A, B, A, B, ...) rather than benching one and then the other. Build the bundle with
 `IDENTITY=<your Developer ID hash> scripts/bundle.sh` so the Accessibility permission carries over.
 
+## Regression checks
+
+Two layers keep animations from getting worse:
+
+- `Tests/ScuttleAppTests/AnimationSmoothnessTests.swift`, part of `swift test` and CI. They step the real Animator
+  with a test clock instead of a display link and check the frames it asks for: every moving window gets a frame
+  on every tick, in one batch; the ease ends on time, also after a second command mid-flight; edges never turn
+  back; neighbouring columns keep their gap; a step of 40 windows stays far under a display frame. They don't see
+  apps or the window server. `scripts/tests/test_anim_check.py` checks this harness's own measures on made-up traces.
+- `just anim-check [runs]` (`check.sh`), on your Mac. It bundles this build and downloads the latest release into
+  `build/anim-baseline/`, records each `runs` times (default 5), alternating, and compares the medians with
+  `check.py`. A measure fails when this build is worse by more than both a share of the release's value and a fixed
+  amount (the limits are at the top of `check.py`). It exits non-zero on failure, and `scripts/release.sh` runs
+  it before preparing a release (`SKIP_ANIM_CHECK=1` skips it). Afterwards the scuttle that was running is started
+  again. Set `BASE_APP` or `HEAD_APP` to compare other bundles, such as a branch against main.
+
+GitHub's macOS runners have no display to record and no Accessibility permission, so the second layer can't run
+in CI.
+
 Needs ffmpeg (`brew install ffmpeg`) and Screen Recording permission for the terminal running it. The recording
 is `screen.mp4` in each run directory; to look at frames:
 

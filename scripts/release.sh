@@ -3,6 +3,7 @@
 # cask in ahacop/homebrew-tap. Usage: scripts/release.sh [X.Y]   (run again to retry a failed release)
 # Without a version it bumps the latest tag by 0.1. Preparing turns CHANGELOG.md's `## Unreleased` into
 # `## X.Y`, sets the manual's version and commits and pushes "Release X.Y"; a rerun reuses that commit.
+# Before preparing, it runs the tests and scripts/anim/check.sh (SKIP_ANIM_CHECK=1 skips the animation check).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 version="${1:-}"
@@ -71,6 +72,11 @@ if [[ -z "$prepared" ]]; then
   git rev-parse --verify -q "$tag" >/dev/null && { echo "Tag $tag already exists" >&2; exit 1; }
   echo "==> Testing before preparing $version"
   swift test --jobs 4
+  # Animations against the last release, on this Mac's screen: see scripts/anim/README.md.
+  if [[ -z "${SKIP_ANIM_CHECK:-}" ]]; then
+    echo "==> Checking animations against $latest (takes over the screen for a few minutes; SKIP_ANIM_CHECK=1 skips)"
+    scripts/anim/check.sh
+  fi
   sed -i '' "s/^## Unreleased\$/## $version/" CHANGELOG.md
   sed -i '' "s/^version: \".*\"\$/version: \"$version\"/" docs/_config.yml
   git commit -q -m "Release $version" CHANGELOG.md docs/_config.yml

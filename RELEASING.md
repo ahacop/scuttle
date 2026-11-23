@@ -4,7 +4,7 @@ Versions are `X.Y`, bumped by 0.1 each release (0.9 is followed by 0.10 unless y
 
 Run `just release` from a clean `main` that matches `origin/main` (or `just release 1.0` to pick the version; the first release has no tag to bump, so it needs one). It:
 
-1. runs the tests, renames `## Unreleased` to `## X.Y`, sets `version:` in `docs/_config.yml` (the manual's front page shows it), and commits and pushes `Release X.Y`;
+1. runs the tests and the animation check against the last release (`scripts/anim/check.sh`, which takes over the screen for a few minutes; `SKIP_ANIM_CHECK=1` skips it), renames `## Unreleased` to `## X.Y`, sets `version:` in `docs/_config.yml` (the manual's front page shows it), and commits and pushes `Release X.Y`;
 2. builds a universal bundle for Apple silicon and Intel, signs it with the Developer ID Application certificate (hardened runtime), notarizes and staples it with the `danky-notary` keychain profile, and zips it to `dist/scuttle.app.zip`;
 3. signs the zip for Sparkle and writes `dist/appcast.xml`, with the `## X.Y` section of the changelog, rendered by GitHub, as the notes the update window shows, and `dist/scuttle.rb` from `scripts/scuttle.rb.template`;
 4. tags `vX.Y`, publishes a GitHub release on [ahacop/scuttle](https://github.com/ahacop/scuttle) with the changelog section as notes and the zip, appcast and cask attached, and pushes `Casks/scuttle.rb` to [ahacop/homebrew-tap](https://github.com/ahacop/homebrew-tap) through a temporary clone.

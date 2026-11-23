@@ -19,7 +19,10 @@ final class Animator: NSObject {
         var key: UInt64
     }
 
-    private let applier: FrameApplier
+    /// Writes one step's frames: the applier's per-app queues, or a test's recorder.
+    private let write: ([FrameJob]) -> Void
+    /// Whether a display link steps frames. Off, a test steps them with `advance(dt:)`.
+    private let linked: Bool
     /// Guards everything below that both threads touch.
     private let lock = NSLock()
     private var entries: [WindowID: Entry] = [:]
@@ -67,9 +70,16 @@ final class Animator: NSObject {
         return loop!
     }()
 
-    init(applier: FrameApplier) {
-        self.applier = applier
+    convenience init(applier: FrameApplier) {
+        self.init(write: { applier.step($0) })
+    }
+
+    /// `linked` false leaves stepping to `advance(dt:)`, for tests: no display link, no watchdog.
+    init(write: @escaping ([FrameJob]) -> Void, linked: Bool = true) {
+        self.write = write
+        self.linked = linked
         super.init()
+        guard linked else { return }
         // The link is made for one screen; with that screen gone it never fires again.
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil,
                                                queue: .main) { [weak self] _ in self?.screensChanged() }
@@ -153,6 +163,7 @@ final class Animator: NSObject {
 
     /// Starts the display link on the animation thread, if it isn't running. Main thread.
     private func run() {
+        guard linked else { return }
         lock.withLock { lastStepAt = CACurrentMediaTime() }
         if lock.withLock({ link == nil }), let screen = NSScreen.main ?? NSScreen.screens.first {
             let link = screen.displayLink(target: self, selector: #selector(tick))
@@ -208,6 +219,9 @@ final class Animator: NSObject {
         step(dt: dt)
     }
 
+    /// Steps every window by `dt` seconds, as a display link tick would. For tests made with `linked` false.
+    func advance(dt: Double) { step(dt: dt) }
+
     /// Advances every window by `dt` seconds and writes the frames; `dt` of `timeout` or more lands them all.
     private func step(dt: Double) {
         let start = CACurrentMediaTime()
@@ -221,7 +235,7 @@ final class Animator: NSObject {
             }
             return (jobs, arrived, takeArrivedLocked(), entries.isEmpty)
         }
-        applier.step(jobs)
+        write(jobs)
         if !arrived.isEmpty || !ready.isEmpty {
             DispatchQueue.main.async { [weak self] in
                 if !arrived.isEmpty { self?.onArrive(arrived) }

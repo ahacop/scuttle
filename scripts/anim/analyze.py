@@ -30,9 +30,9 @@ FRAME = 1 / 60
 
 
 def load(run):
-    events = [(float(r["time"]), r["command"]) for r in csv.DictReader(open(run / "events.csv"))]
+    events = [(float(r["time"]), r["command"]) for r in csv.DictReader((run / "events.csv").read_text().splitlines())]
     trace, borders = {}, {}
-    for r in csv.DictReader(open(run / "trace.csv")):
+    for r in csv.DictReader((run / "trace.csv").read_text().splitlines()):
         x, w = float(r["x"]), float(r["width"])
         if r["label"] == "border":
             borders.setdefault(float(r["time"]), []).append((x, float(r["y"]), w, float(r["height"])))
@@ -41,7 +41,7 @@ def load(run):
     draws = {}
     for log in run.glob("draw-*.log"):
         label = log.stem.split("-", 1)[1]
-        draws[label] = [(float(t), int(w)) for t, _, w, _ in (line.strip().split(",") for line in open(log) if line.strip())]
+        draws[label] = [(float(t), int(w)) for t, _, w, _ in (line.strip().split(",") for line in log.read_text().splitlines() if line.strip())]
     return events, trace, draws, borders
 
 

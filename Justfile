@@ -38,6 +38,11 @@ install: bundle
 docs:
     cd docs && jekyll serve --livereload --host 0.0.0.0
 
+# Record this build and the last release animating, alternating, and fail if this build is clearly worse.
+# Takes over the screen for a few minutes. See scripts/anim/README.md.
+anim-check runs="5":
+    scripts/anim/check.sh {{runs}}
+
 # Fuzz the debug build in the Tart VM: random actions, layout invariants checked after each. See scripts/fuzz.py.
 fuzz seed="1" steps="150": build
     scripts/vm-fuzz.sh {{seed}} {{steps}}
