@@ -74,8 +74,28 @@ final class BorderTracker: NSObject {
         link = nil
     }
 
-    /// Every tracked border to its window's frame now.
+    /// `SCUTTLE_TRACK_DELAY`: how far into a display frame borders are placed, as a share of the frame. The animator
+    /// writes its windows' frames at the start of the frame and their apps move them a moment later: read before
+    /// that, a window is still where the last frame left it, and its border is placed a frame behind.
+    private static let delay = min(max(ProcessInfo.processInfo.environment["SCUTTLE_TRACK_DELAY"].flatMap(Double.init) ?? 0, 0), 0.85)
+    /// Whether a delayed placement is on its way, so a late one is not followed at once by the next frame's.
+    private var placing = false
+
+    /// On every display frame: places the borders now or, with a delay, that far into the frame, leaving the main
+    /// thread free until then.
     @objc private func tick(_ link: CADisplayLink) {
+        let wait = link.timestamp + Self.delay * link.duration - CACurrentMediaTime()
+        guard Self.delay > 0, wait > 0.0005 else { return place() }
+        guard !placing else { return }
+        placing = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + wait) { [weak self] in
+            self?.placing = false
+            self?.place()
+        }
+    }
+
+    /// Every tracked border to its window's frame now.
+    private func place() {
         let start = CACurrentMediaTime()
         defer { BorderManager.note("track", since: start, count: lock.withLock { entries.count }) }
         let idle = lock.withLock { () -> Bool in
