@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Smoother column swaps and small width changes: a window whose size changes by 16 points or less takes its new size at once while it glides, instead of being redrawn on every frame for a difference too small to see.
+- Less work while windows animate: keeping borders on moving windows takes about half the time it did, so commands and key presses during an animation are handled sooner.
+- A change of focus redraws the two borders that change colour in place, and asks the window server which window has focus once instead of twice.
+
 ## 0.4
 
 - Borders keep up with moving windows: while a window animates, its border is placed on every frame where the window is, instead of trailing it by several frames.
