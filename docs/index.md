@@ -1,13 +1,13 @@
 ---
 layout: default
 title: Documentation
-description: A scrolling tiling window manager for macOS that leaves System Integrity Protection on.
+description: A scrolling tiling window manager for macOS.
 permalink: /
 ---
 
 <img class="app-icon" src="{{ '/assets/icon.png' | relative_url }}" alt="scuttle's app icon: a red crab carrying a window" width="96" height="96">
 
-# scuttle: scrolling tiling on native Spaces, with SIP left on
+# scuttle: scrolling tiling on native Spaces
 
 ```
 $ scuttle workspace 3
@@ -23,7 +23,8 @@ windows on a workspace are arranged as a strip of full-height columns, one
 window per column, in the style of [niri](https://github.com/YaLTeR/niri).
 Columns have preset widths, the focused window has a colored border, settings
 are kept in a TOML file, and a `scuttle` command is available for scripts and
-status bars. No code is injected into the Dock.
+status bars. No code is injected into the Dock, so System Integrity Protection
+can stay on.
 
 scuttle isn't a compositor, and windows are drawn the usual way. Windows are moved and resized through the
 Accessibility API, and animation is done by moving a window a step at a time.
