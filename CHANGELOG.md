@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5
 
 - Smoother column swaps and small width changes: a window whose size changes by 16 points or less takes its new size at once while it glides, instead of being redrawn on every frame for a difference too small to see.
 - Less work while windows animate: keeping borders on moving windows takes about half the time it did, so commands and key presses during an animation are handled sooner.
