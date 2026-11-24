@@ -17,12 +17,16 @@ final class EventHub {
         guard !started else { return true }
         started = scuttle_events_start({ event, _ in
             guard EventHub.log != nil else {
-                DispatchQueue.main.async { EventHub.shared.subscribers.forEach { $0(event) } }
+                DispatchQueue.main.async {
+                    FocusRead.note(event.kind)
+                    EventHub.shared.subscribers.forEach { $0(event) }
+                }
                 return
             }
             let sent = CACurrentMediaTime()
             DispatchQueue.main.async {
                 let start = CACurrentMediaTime()
+                FocusRead.note(event.kind)
                 EventHub.shared.subscribers.forEach { $0(event) }
                 EventHub.note(event.kind.rawValue, sent: sent, start: start)
             }
@@ -113,6 +117,7 @@ final class DisplayModel {
             settledSpaceIDs[display.uuid] = display.currentSpaceID
         }
         guard fresh != displays else { return }
+        FocusRead.invalidate()
         // Displays coming and going (as around sleep) leave the focus where the windows are.
         if Set(fresh.map(\.uuid)) != Set(displays.map(\.uuid)) { focusOverride = nil }
         // A disconnected display takes its history with it.

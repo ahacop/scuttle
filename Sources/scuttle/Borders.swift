@@ -225,7 +225,7 @@ final class BorderManager {
     }
 
     private func refocus() {
-        let id = scuttle_border_focused_window()
+        let id = FocusRead.window()
         guard id != focusedID else { return }
         let old = focusedID
         focusedID = id

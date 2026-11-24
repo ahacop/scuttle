@@ -463,7 +463,7 @@ final class Coordinator {
 
     /// Follows focus into the trees, so new windows land beside the focused one and accordions show it.
     private func syncFocus() {
-        let id = focusedWindow
+        let id = FocusRead.window()
         let deferring = focusing.map { $0.id != id && Date() < $0.until } ?? false
         if id != lastFocused {
             // Before the override goes: a new window can take focus before it shows. See Adoption.swift.
