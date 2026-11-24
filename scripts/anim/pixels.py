@@ -44,6 +44,11 @@ from pathlib import Path
 FILLS = {"A": "#d81b60", "B": "#00a651", "C": "#ff8f00", "D": "#6a1b9a"}
 STRIPE = 0.65  # animtest's stripes are the fill under 35% black
 STEP = 6
+# How far a pixel may be from a window's colour and still be the window. The recording shows the fills some 40
+# from what animtest asks for (the display's colour profile, then the encoder), and darker still beside a stripe:
+# at 45 a window's edge read 12 points short on some frames and not others, which looked like the window moving.
+MATCH = 60
+VERSION = 2  # of the readings kept in pixels.json; older ones are read again
 FPS = 60
 
 
@@ -65,7 +70,7 @@ def window_classifier():
         shades += [(label, c), (label, tuple(round(x * STRIPE) for x in c))]
 
     def classify(r, g, b):
-        best, found = 45 * 45, None
+        best, found = MATCH * MATCH, None
         for label, (cr, cg, cb) in shades:
             d = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2
             if d < best:
@@ -126,7 +131,9 @@ def extract(run):
     """Every frame's readings, kept in pixels.json beside the recording: reading it takes a few seconds."""
     cache = run / "pixels.json"
     if cache.exists() and cache.stat().st_mtime >= (run / "screen.mp4").stat().st_mtime:
-        return json.loads(cache.read_text())
+        data = json.loads(cache.read_text())
+        if data.get("version") == VERSION:
+            return data
     width, height, scale, rows = rows_for(run)
     colours = {"active-color": "#ff00ff", "inactive-color": "#00ffff"}
     if (run / "scuttle.toml").exists():
@@ -147,7 +154,7 @@ def extract(run):
                     for start, end, _ in border_runs(video[at + i * size:at + (i + 1) * size], width, is_border))
         frames.append(dict(w={l: [v / scale for v in s] for l, s in spans.items()},
                            b=[[start / scale, end / scale, kind] for start, end, kind in runs], stray=stray / scale))
-    data = dict(frames=frames, width=width / scale)
+    data = dict(frames=frames, width=width / scale, version=VERSION)
     cache.write_text(json.dumps(data))
     return data
 

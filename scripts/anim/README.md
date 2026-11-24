@@ -51,12 +51,25 @@ is the display or the window server, not one app. `plat` and `pdur` are the mill
 first and the last frame that moved. A change of a few points long after a glide stopped (a shadow or a border
 settling) is left out, or the still frames before it would count as stalls.
 
-`open` reads worse than it is. The scenario's new window is a new process: it shows some 160 ms after the command,
-macOS zooms it open for another 90 ms, a point or two a frame, and only then does its app answer Accessibility, so
-scuttle's glide starts some 250 ms after the command however fast scuttle is. The zoom and the wait count as
-stalls and as `plat`; the glide itself is the twelve frames after them. While it waits for the app's first answer
-(`axWindow` in `classify`, 55 to 95 ms) scuttle's main thread is held, which nothing on screen shows as long as
-no other window is animating.
+A window that opens is measured from scuttle's first step, not from the command. The scenario's new window is a
+new process: it shows some 160 ms after the command, macOS zooms it open for another 90 ms, a point or two a
+frame, and only then does its app answer Accessibility, so scuttle's glide starts some 250 ms after the command
+however fast scuttle is. That wait is `pwait`; counted in, the zoom read as fifteen to thirty stalls. While it
+waits for the app's first answer (`axWindow` in `classify`, 55 to 95 ms) scuttle's main thread is held, which
+nothing on screen shows as long as no other window is animating.
+
+## Scenarios
+
+`scenario.txt`, the default, is width presets, maximize, a retarget mid-glide, a column swap and a window opening.
+`scenario-more.txt` is the rest of what scuttle animates on one display: the strip scrolling as focus moves to a
+column out of view, `resize width` in small steps and three in a row, `balance-sizes`, `fullscreen` on and off,
+`layout floating` and `tiling`, a window closing, and the mouse dragging a window's edge and dragging a window
+onto another column. `scenario-swap.txt` is the column swap alone, six times, for quick rounds on the command
+that stutters most. Give one as run.sh's second argument, or as `SCENARIO=scripts/anim/scenario-more.txt` to
+ab.sh, bench.sh and check.sh. The drags move the real pointer and press its button.
+
+Every column is as tall as the display and holds one window, so there are no heights to test; macOS full screen
+is not a layout of scuttle's. Not covered: a second display, other refresh rates, and real apps.
 
 ## Calibration
 

@@ -3,8 +3,15 @@
 // seconds, the clock animtest logs its draws on.
 // Also samples scuttle's own windows (its borders' edge pieces) as label `border`, each under its window id, to measure
 // how far borders are from their windows.
-// Usage: animbench <out dir> <scenario file>. A scenario line is a scuttle command, `sleep <seconds>`, or
-// `open <label> <#rrggbb>`, which starts another animtest window (ANIMTEST names the binary) and records it too.
+// Usage: animbench <out dir> <scenario file>. A scenario line is a scuttle command, `sleep <seconds>`, or one of
+//   open <label> <#rrggbb>                   starts another animtest window (ANIMTEST names the binary), recorded too
+//   close <label>                            ends that window's app, so its neighbours close the gap; not for a
+//                                            window that shares its app with others (the `shared` profile's A, B, C)
+//   drag <label> <left|right|title> <dx> [s] presses the mouse on the window's left or right edge, or its title
+//                                            bar, moves it dx points over s seconds (default 0.4) and lets go: an
+//                                            edge is a column resize, the title bar onto another column a swap.
+//                                            The release is its own event, `drop <label>`, since what scuttle
+//                                            animates comes after it; before it the app follows the mouse itself.
 import AppKit
 
 let args = CommandLine.arguments
@@ -46,6 +53,23 @@ func send(_ command: String) -> String {
     var reply = [UInt8](), chunk = [UInt8](repeating: 0, count: 4096)
     while true { let n = read(fd, &chunk, chunk.count); if n <= 0 { break }; reply += chunk[0..<n] }
     return String(decoding: reply, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+/// Where the window server has a window now, in global top-left points, and whose it is.
+func bounds(of label: String) -> (frame: CGRect, pid: pid_t)? {
+    let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+    for w in info {
+        guard (w[kCGWindowOwnerName as String] as? String) == "animtest", (w[kCGWindowLayer as String] as? Int) == 0,
+              (w[kCGWindowName as String] as? String) == "animtest \(label)",
+              let b = w[kCGWindowBounds as String] as? [String: Double], let pid = w[kCGWindowOwnerPID as String] as? pid_t else { continue }
+        return (CGRect(x: b["X"]!, y: b["Y"]!, width: b["Width"]!, height: b["Height"]!), pid)
+    }
+    return nil
+}
+
+func mouse(_ type: CGEventType, at point: CGPoint) {
+    CGEvent(mouseEventSource: CGEventSource(stateID: .hidSystemState), mouseType: type, mouseCursorPosition: point, mouseButton: .left)?
+        .post(tap: .cghidEventTap)
 }
 
 var windows = testWindows()
@@ -108,6 +132,47 @@ for line in scenario {
                 usleep(2000)
             }
         }
+        continue
+    }
+    if line.hasPrefix("close ") {
+        let label = String(line.dropFirst(6))
+        let t = CACurrentMediaTime()
+        var reply = "no such window"
+        if let pid = bounds(of: label)?.pid {
+            let shared = ["A", "B", "C", "D"].contains { $0 != label && bounds(of: $0)?.pid == pid }
+            reply = shared ? "shares its app" : "closed"
+            if !shared { kill(pid, SIGTERM) }
+        }
+        lock.withLock { events += "\(t),\(line),\(reply)\n" }
+        continue
+    }
+    if line.hasPrefix("drag ") {
+        let parts = line.split(separator: " ").map(String.init)
+        guard parts.count >= 4, let dx = Double(parts[3]), let frame = bounds(of: parts[1])?.frame else {
+            lock.withLock { events += "\(CACurrentMediaTime()),\(line),no such window\n" }
+            continue
+        }
+        let seconds = parts.count > 4 ? Double(parts[4]) ?? 0.4 : 0.4
+        // Just inside an edge is still its resize zone; the title bar is taken clear of its buttons.
+        let from: CGPoint = switch parts[2] {
+        case "left": CGPoint(x: frame.minX + 1, y: frame.midY)
+        case "right": CGPoint(x: frame.maxX - 1, y: frame.midY)
+        default: CGPoint(x: frame.midX, y: frame.minY + 14)
+        }
+        mouse(.mouseMoved, at: from)
+        usleep(100_000)
+        lock.withLock { events += "\(CACurrentMediaTime()),\(line),pressed\n" }
+        mouse(.leftMouseDown, at: from)
+        usleep(50_000)
+        let steps = max(2, Int(seconds * 120))
+        for k in 1...steps {
+            let u = Double(k) / Double(steps), e = 3 * u * u - 2 * u * u * u
+            mouse(.leftMouseDragged, at: CGPoint(x: from.x + dx * e, y: from.y))
+            usleep(useconds_t(seconds / Double(steps) * 1_000_000))
+        }
+        usleep(150_000)
+        lock.withLock { events += "\(CACurrentMediaTime()),drop \(parts[1]),released\n" }
+        mouse(.leftMouseUp, at: CGPoint(x: from.x + dx, y: from.y))
         continue
     }
     let t = CACurrentMediaTime()

@@ -1,0 +1,17 @@
+# The column swap alone, three times each way: the command that stuttered most, in a run of fifteen seconds
+# instead of scenario.txt's whole list. Starts with three half-width columns A B C, A focused.
+sleep 0.5
+switch-preset-column-width
+sleep 0.9
+move right
+sleep 0.9
+move left
+sleep 0.9
+move right
+sleep 0.9
+move left
+sleep 0.9
+move right
+sleep 0.9
+move left
+sleep 0.9

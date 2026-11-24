@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Records scuttle animating three test windows on workspace 5, then analyzes it.
-# Usage: scripts/anim/run.sh <out dir> [scenario file] [draw delay ms]
+# Usage: scripts/anim/run.sh <out dir> [scenario file] [draw delay ms]. SCENARIO names the scenario too, which is how
+# ab.sh and check.sh are given one: scenario.txt by default, scenario-more.txt for the rest of what scuttle animates.
 # Takes over the screen for about 15 seconds and returns to the workspace it started on.
 #
 # PROFILE says what the test windows are like (default `ideal`), since a change that suits an app that does all it
@@ -14,7 +15,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 source "$here/awake.sh"
-out="$1"; scenario="${2:-$here/scenario.txt}"; delay="${3:-0}"
+out="$1"; scenario="${2:-${SCENARIO:-$here/scenario.txt}}"; delay="${3:-0}"
 mkdir -p "$out"
 # scuttle is started by `open`, in another directory, and writes its logs here.
 out="$(cd "$out" && pwd)"
@@ -27,7 +28,8 @@ for tool in animtest animbench; do
 done
 # Listing devices always exits non-zero, so its status is ignored.
 screen="$( (ffmpeg -hide_banner -f avfoundation -list_devices true -i "" 2>&1 || true) | sed -n 's/.*\[\([0-9]*\)\] Capture screen 0.*/\1/p' | head -1)"
-seconds="$(awk '/^sleep/{s+=$2} END{print int(s+3)}' "$scenario")"
+# A drag takes about a second of its own.
+seconds="$(awk '/^sleep/{s+=$2} /^drag/{s+=1} END{print int(s+3)}' "$scenario")"
 
 # With APP set to a scuttle.app (such as build/scuttle.app), restart scuttle from it with its animation log on.
 if [[ -n "${APP:-}" ]]; then

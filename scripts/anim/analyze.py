@@ -112,6 +112,14 @@ def recording(run, trace, labels):
     return data, lambda t: round((t - start) / FRAME) + shift
 
 
+def step_times(run):
+    """When scuttle stepped its animations, from its log; none without one."""
+    try:
+        return [float(line.split(",")[1]) for line in (run / "scuttle.log").read_text().splitlines() if line.startswith("step,")]
+    except (OSError, ValueError, IndexError):
+        return []
+
+
 def border_width(run):
     """The border's width in the config the run recorded with; 4, config.py's, without one."""
     try:
@@ -190,11 +198,18 @@ def analyze(run, with_pixels=True):
                                            t0 + max(per[l]["duration"] for l in labels) / 1000, border_width(run))
             pieces.pop("pieces")
         shown = None
+        # A window that opens is its app's to show first: it appears, macOS zooms it open, and only when the app
+        # answers Accessibility can scuttle move anything. What scuttle animates is measured from its first step
+        # (a frame early, to keep the frame before the first move); the wait is `pwait`, and not scuttle's.
+        wait = 0.0
+        if command.startswith("open ") and with_pixels:
+            wait = next((t - t0 for t in step_times(run) if t0 <= t < t1), 0.0)
         if video:
             data, frame_of = video
-            shown = pixels.measure(data, max(frame_of(t0), 0), min(frame_of(t1), len(data["frames"])))
+            shown = pixels.measure(data, max(frame_of(t0 + wait) - (1 if wait else 0), 0), min(frame_of(t1), len(data["frames"])))
         pieces.update(shown or {**{k: 0 for k in PIXEL_KEYS}, "pborders": False})
         pieces["pixels"] = shown is not None
+        pieces["pwait"] = wait * 1000
         rows.append(dict(
             command=command,
             ms=max(per[l]["duration"] for l in labels),
@@ -322,7 +337,7 @@ def summary(rows):
         pstalls=sum(r["pstalls"] for r in rows),
         pslip=sum(r["pslip"] for r in rows),
         pfreeze=sum(r["pfreeze"] for r in rows),
-        plat=mean_of(moving, "plat"),
+        plat=mean_of(moving, "plat"), pwait=max((r.get("pwait", 0) for r in rows), default=0),
         pdur=mean_of(moving, "pdur"),
         pixels=all(r["pixels"] for r in rows),
         pborders=any(r["pborders"] for r in rows),

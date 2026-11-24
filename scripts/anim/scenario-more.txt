@@ -1,0 +1,50 @@
+# What scenario.txt leaves out: the strip scrolling, small width steps, balancing, scuttle's fullscreen, floating,
+# a window closing, and the mouse. Starts as scenario.txt does: three half-width columns A B C, A focused, so C
+# hangs over the right edge of the display.
+sleep 0.5
+# Focus moves to a column that is partly out of view: the whole strip scrolls.
+focus right
+sleep 0.9
+focus right
+sleep 0.9
+focus left
+sleep 0.9
+focus left
+sleep 0.9
+# Small steps, as the resize keys make them; three quickly, as a key held.
+resize width +50
+sleep 0.9
+resize width -50
+sleep 0.9
+resize width +50
+sleep 0.08
+resize width +50
+sleep 0.08
+resize width +50
+sleep 0.9
+# Every column back to the default width at once.
+balance-sizes
+sleep 0.9
+# scuttle's own fullscreen, on and off.
+fullscreen
+sleep 0.9
+fullscreen
+sleep 0.9
+# Out of the strip, where the neighbours close the gap, and back in, where they make room.
+layout floating
+sleep 0.9
+layout tiling
+sleep 0.9
+# A window opens and closes again.
+open D #6a1b9a
+sleep 1.5
+close D
+sleep 1.0
+# The mouse: A's right edge dragged 300 points left, which narrows its column on release, then A dragged by its
+# title bar onto the column to its right, which swaps the two.
+focus left
+sleep 0.9
+drag A right -300
+sleep 1.0
+drag A title 1500 0.6
+sleep 1.2
