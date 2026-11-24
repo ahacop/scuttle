@@ -56,6 +56,13 @@ final class BorderWindow {
         let order: ScuttleBorderOrder = config.order == .above ? .above : .below
         if look == drawn {
             scuttle_border_move(&border, target, window.frame, config.width, order)
+        } else if isShown, let drawn, look == drawn.with(color: color), Self.recolors {
+            // Only the colour changed, as when focus moves: the pieces are redrawn where they are, then placed as
+            // for a move.
+            let rgba = ScuttleBorderColor(red: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
+            scuttle_border_recolor(&border, window.frame, Int32(window.cornerRadius), rgba, config.width)
+            scuttle_border_move(&border, target, window.frame, config.width, order)
+            self.drawn = look
         } else {
             let rgba = ScuttleBorderColor(red: color.red, green: color.green, blue: color.blue, alpha: color.alpha)
             scuttle_border_update(&border, target, window.frame, Int32(window.cornerRadius), rgba, config.width, order)
@@ -97,6 +104,10 @@ final class BorderWindow {
 
     // JankyBorders sets the resolution once, at creation; a display change gets a new window.
     // Widths and radii stay in points; the resolution alone decides the pixels.
+    /// `SCUTTLE_BORDER_RECOLOR=0` reshapes and places a border for a new colour as for a new size, as before, for
+    /// comparing with scripts/anim.
+    private static let recolors = ProcessInfo.processInfo.environment["SCUTTLE_BORDER_RECOLOR"] != "0"
+
     private func recreate(scale: Double) {
         scuttle_border_destroy(&border)
         created = scuttle_border_create(&border, scale)

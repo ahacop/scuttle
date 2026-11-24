@@ -221,6 +221,17 @@ void scuttle_border_redraw_shape(ScuttleBorder *border, CGRect frame, int corner
     CGPathRelease(ring);
 }
 
+void scuttle_border_recolor(const ScuttleBorder *border, CGRect frame, int cornerRadius, ScuttleBorderColor color, double width)
+{
+    CGRect outer = outer_frame(frame, width);
+    CGRect bounds = { CGPointZero, outer.size };
+    CGPathRef ring = scuttle_border_path(bounds, cornerRadius, width, 0.05);
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (used(border, i)) draw(border->windows[i], border->edges[i], ring, color);
+    }
+    CGPathRelease(ring);
+}
+
 CFTypeRef scuttle_border_transaction_create(void)
 {
     return SLSTransactionCreate(scuttle_connection());

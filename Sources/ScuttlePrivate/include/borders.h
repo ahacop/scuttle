@@ -52,6 +52,11 @@ CFTypeRef _Nullable scuttle_border_transaction_create(void) CF_RETURNS_RETAINED;
 void scuttle_border_transaction_follow(CFTypeRef transaction, const ScuttleBorder *border, CGRect frame, double width);
 void scuttle_border_transaction_commit(CFTypeRef transaction);
 
+// Redraws a border in another colour: same size, radius and width as it was last drawn with, so its pieces keep
+// their shapes and only their contents change. Nothing is moved, ordered or held back: a focus change redraws two
+// borders, and reshaping and placing each with screen updates held cost several times the drawing itself.
+void scuttle_border_recolor(const ScuttleBorder *border, CGRect frame, int cornerRadius, ScuttleBorderColor color, double width);
+
 // Moves and re-orders without redrawing: for re-tiles and restacking that keep the size.
 void scuttle_border_move(const ScuttleBorder *border, uint32_t target, CGRect frame, double width,
                        ScuttleBorderOrder order);
