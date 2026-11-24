@@ -99,17 +99,16 @@ final class BorderTracker: NSObject {
         if idle { stop() }
     }
 
-    /// Where the window server has each window now, top-left global points.
+    /// Where the window server has each window now, top-left global points. A window that is gone has none.
+    ///
+    /// Asked window by window, as the model asks on every move event. One CGWindowList call for them all first
+    /// waits for the connection's last transaction, which is the commit that moved the borders a frame ago: it took
+    /// 6 ms of every frame on the main thread, nine tenths of a tick (`sample`, issue 25).
     private static func frames(of ids: [UInt32]) -> [UInt32: CGRect] {
-        var values = ids.map { UnsafeRawPointer(bitPattern: UInt($0)) }
-        guard let array = CFArrayCreate(nil, &values, values.count, nil),
-              let info = CGWindowListCreateDescriptionFromArray(array) as? [[String: Any]] else { return [:] }
         var frames: [UInt32: CGRect] = [:]
-        for w in info {
-            guard let id = w[kCGWindowNumber as String] as? UInt32,
-                  let bounds = w[kCGWindowBounds as String] as? NSDictionary,
-                  let rect = CGRect(dictionaryRepresentation: bounds) else { continue }
-            frames[id] = rect
+        for id in ids {
+            let frame = scuttle_window_frame(id)
+            if !frame.isNull { frames[id] = frame }
         }
         return frames
     }
