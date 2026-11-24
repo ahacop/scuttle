@@ -129,10 +129,40 @@ class PixelTests(unittest.TestCase):
         self.assertEqual((row["pstall"], row["ptorn"], row["pbhid"], row["pstray"]), (0, 0, 0, 0))
         self.assertLess(row["pbord"], 0.5)
 
+    def test_a_point_settling_long_after_the_glide_is_not_the_glide(self):
+        data = self.frames()
+        last = data["frames"][-1]
+        for k in range(40):
+            data["frames"].append(dict(last, w={"A": list(last["w"]["A"]), "B": [last["w"]["B"][0], last["w"]["B"][1] + (k >= 30)]}))
+        row = pixels.measure(data, 0, len(data["frames"]))
+        self.assertEqual((row["pstall"], row["pfreeze"]), (0, 0))
+        self.assertLess(row["pdur"], 400)
+
     def test_a_frame_shown_twice_jitters_and_stalls(self):
         smooth, repeated = self.measure(), self.measure(repeat=6)
         self.assertGreaterEqual(repeated["pstall"], 1)
         self.assertGreater(repeated["pjit"], smooth["pjit"] * 1.5)
+
+    def test_measures_are_split_by_whether_the_window_was_resized(self):
+        row = self.measure(repeat=6)
+        # A widens, B is only pushed; the frame shown twice is A's.
+        self.assertGreaterEqual(row["pstalls"], 1)
+        self.assertEqual(row["pstallm"], 0)
+        self.assertGreater(row["pjits"], row["pjitm"])
+
+    def test_a_stall_made_up_for_is_not_a_slip_and_one_never_made_up_for_is(self):
+        self.assertEqual(self.measure(repeat=6)["pslip"], 0)
+        late = self.frames()
+        # From the seventh frame on, everything is shown a frame later.
+        late["frames"] = late["frames"][:9] + [late["frames"][8]] + late["frames"][9:]
+        row = pixels.measure(late, 0, len(late["frames"]))
+        self.assertGreaterEqual(row["pslip"], 2)
+        self.assertEqual(row["pfreeze"], 1)
+
+    def test_latency_is_from_the_command_to_the_first_frame_that_moves(self):
+        row = self.measure()
+        self.assertAlmostEqual(row["plat"], 4 * 1000 / 60, delta=1)
+        self.assertGreater(row["pdur"], row["plat"] + 150)
 
     def test_a_neighbour_a_frame_behind_tears_the_gap(self):
         self.assertGreaterEqual(self.measure(behind=1)["ptorn"], 6)

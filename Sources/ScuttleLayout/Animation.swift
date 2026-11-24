@@ -40,7 +40,7 @@ public struct Ease: Equatable, Sendable {
 /// once and only the position glides: an app redraws its contents for every new size, and most cannot keep up
 /// with one a frame, so a size change in steps stutters where a move alone does not.
 public struct FrameAnimation: Equatable, Sendable {
-    public let snapsSize: Bool
+    public private(set) var snapsSize: Bool
     private var target: CGRect
     private var value: [Double]
     private var velocity: [Double] = [0, 0, 0, 0]
@@ -76,8 +76,9 @@ public struct FrameAnimation: Equatable, Sendable {
     }
 
     /// Head somewhere else, keeping the current position and speed so the motion stays continuous.
-    public mutating func retarget(_ new: CGRect) {
+    public mutating func retarget(_ new: CGRect, snapsSize snaps: Bool? = nil) {
         guard new != target else { return }
+        if let snaps { snapsSize = snaps }
         target = new
         age = 0
         origin = value
@@ -97,6 +98,22 @@ public struct FrameAnimation: Equatable, Sendable {
             return true
         }
         return false
+    }
+
+    /// Whether the size is on its way too, not only the position.
+    public var glidesSize: Bool {
+        origin[2] != Double(target.width) || origin[3] != Double(target.height)
+    }
+
+    /// The frame the ease reaches `lead` seconds from now, the target once its duration is up: what to ask of a
+    /// window whose app shows a step later than its neighbours' apps do.
+    public func frame(_ ease: Ease, ahead lead: Double) -> CGRect {
+        let goal = Self.components(target), d = ease.duration, t = age + lead
+        guard t < d - 1e-6 else { return target }
+        let u = t / d
+        let h00 = 2 * u * u * u - 3 * u * u + 1, h10 = u * u * u - 2 * u * u + u, h01 = -2 * u * u * u + 3 * u * u
+        let v = (0..<4).map { (h00 * origin[$0] + h10 * d * originVelocity[$0] + h01 * goal[$0]).rounded() }
+        return CGRect(x: v[0], y: v[1], width: v[2], height: v[3])
     }
 
     /// Advance along an ease by `dt` seconds. True once it has run its duration, on the target, or after `timeout`.

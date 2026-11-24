@@ -37,7 +37,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import borders as border_pieces  # noqa: E402
 import pixels  # noqa: E402
 
-PIXEL_KEYS = ["pjit", "pstall", "ptorn", "pgap", "pbord", "pbmax", "pbjit", "pbhid", "pstray"]
+PIXEL_KEYS = ["pjit", "pstall", "ptorn", "pgap", "pbord", "pbmax", "pbjit", "pbhid", "pstray",
+              "pjitm", "pstallm", "pjits", "pstalls", "pslip", "pfreeze", "plat", "pdur"]
 
 FRAME = 1 / 60
 
@@ -281,6 +282,12 @@ def scuttle_side(run):
     return side
 
 
+def mean_of(rows, key):
+    """The mean of a measure over the commands that have one: a command with no window of a kind scores 0."""
+    values = [r[key] for r in rows if r[key]]
+    return sum(values) / len(values) if values else 0
+
+
 def summary(rows):
     moving = [r for r in rows if r["states"]]
     return dict(
@@ -309,6 +316,14 @@ def summary(rows):
         pbjit=sum(r["pbjit"] for r in moving) / len(moving),
         pbhid=sum(r["pbhid"] for r in rows),
         pstray=sum(r["pstray"] for r in rows),
+        pjitm=mean_of(moving, "pjitm"),
+        pstallm=sum(r["pstallm"] for r in rows),
+        pjits=mean_of(moving, "pjits"),
+        pstalls=sum(r["pstalls"] for r in rows),
+        pslip=sum(r["pslip"] for r in rows),
+        pfreeze=sum(r["pfreeze"] for r in rows),
+        plat=mean_of(moving, "plat"),
+        pdur=mean_of(moving, "pdur"),
         pixels=all(r["pixels"] for r in rows),
         pborders=any(r["pborders"] for r in rows),
     )
@@ -331,6 +346,10 @@ def main():
         for r in rows:
             print(f"{r['command'][:28]:28} {r['pjit']:5.1f} {r['pstall']:6d} {r['ptorn']:5d} {r['pgap']:6.0f} {r['pbord']:6.1f} "
                   f"{r['pbmax']:6.0f} {r['pbjit']:6.1f} {r['pbhid']:6d} {r['pstray']:6d}")
+        print(f"\n{'on screen, by kind':28} {'pjitm':>5} {'pstallm':>7} {'pjits':>5} {'pstalls':>7} {'pslip':>5} {'pfreeze':>7} {'plat':>5} {'pdur':>5}")
+        for r in rows:
+            print(f"{r['command'][:28]:28} {r['pjitm']:5.1f} {r['pstallm']:7d} {r['pjits']:5.1f} {r['pstalls']:7d} {r['pslip']:5d} "
+                  f"{r['pfreeze']:7d} {r['plat']:5.0f} {r['pdur']:5.0f}")
         print()
     if side:
         print(f"SCUTTLE ticks {side['tick_hz']:.1f} Hz (p95 interval {side['tick_p95_ms']:.1f} ms), "
@@ -359,6 +378,8 @@ def main():
     if s["pixels"]:
         print(f"ON SCREEN pjit {s['pjit']:.1f}  pstall {s['pstall']}  ptorn {s['ptorn']}  worst pgap {s['pgap']:.0f}  pbord {s['pbord']:.1f}  "
               f"pbmax {s['pbmax']:.0f}  pbjit {s['pbjit']:.1f}  pbhid {s['pbhid']}  pstray {s['pstray']}")
+        print(f"BY KIND moved pjitm {s['pjitm']:.1f} pstallm {s['pstallm']}  resized pjits {s['pjits']:.1f} pstalls {s['pstalls']}  "
+              f"pslip {s['pslip']}  pfreeze {s['pfreeze']}  plat {s['plat']:.0f} ms  pdur {s['pdur']:.0f} ms")
 
 
 if __name__ == "__main__":

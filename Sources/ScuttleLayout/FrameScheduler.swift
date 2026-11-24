@@ -49,6 +49,9 @@ public final class FrameScheduler: @unchecked Sendable {
     private let read: (FrameJob) -> CGRect?
     private let write: (FrameJob) -> Void
     private let move: (FrameJob) -> Void
+    private let resize: (FrameJob) -> Void
+    /// Whether a step writes only what differs from the window's last step: see `step(_:known:)`.
+    private let stepsWriteChanges: Bool
     private let alive: (Int32) -> Bool
 
     private let lock = NSLock()
@@ -59,14 +62,14 @@ public final class FrameScheduler: @unchecked Sendable {
     /// Bumped by `cancel`; writes queued under an older generation are dropped.
     private var generation = 0
 
-    /// `prepare` runs once per process before its first write; `read`, `write` and `move` (position only)
-    /// run on that process's queue. `beforeBatch` refreshes app state before every nonempty drain.
+    /// `prepare` runs once per process before its first write; `read`, `write`, `move` (position only) and
+    /// `resize` (size only) run on that process's queue. `beforeBatch` refreshes app state before every nonempty drain.
     /// `alive` says whether a process is still running.
     public init(settle: TimeInterval = 0.1, prepare: @escaping (Int32) -> Void = { _ in },
                 beforeBatch: @escaping (Int32) -> Void = { _ in },
                 alive: @escaping (Int32) -> Bool = { kill($0, 0) == 0 || errno == EPERM },
                 read: @escaping (FrameJob) -> CGRect?, write: @escaping (FrameJob) -> Void,
-                move: ((FrameJob) -> Void)? = nil) {
+                move: ((FrameJob) -> Void)? = nil, resize: ((FrameJob) -> Void)? = nil, stepsWriteChanges: Bool = false) {
         self.settle = settle
         self.prepare = prepare
         self.beforeBatch = beforeBatch
@@ -74,6 +77,8 @@ public final class FrameScheduler: @unchecked Sendable {
         self.read = read
         self.write = write
         self.move = move ?? write
+        self.resize = resize ?? write
+        self.stepsWriteChanges = stepsWriteChanges
     }
 
     /// Sizes windows refused to go below, the same for two different sizes asked. Only dimensions that were
@@ -113,10 +118,15 @@ public final class FrameScheduler: @unchecked Sendable {
 
     /// Queue animation steps: each replaces any step of the same window not written yet, and is written once
     /// without reading back. A step whose size is the one last written for its window only moves it.
-    public func step(_ jobs: [FrameJob]) {
+    ///
+    /// With `stepsWriteChanges`, a step writes only the position or the size that differs from its window's last
+    /// step, and nothing when neither does: a full write is three round trips to the app, and a step comes every
+    /// display frame. `known` is where windows starting to move are now, so their first step is held to the same.
+    public func step(_ jobs: [FrameJob], known: [WindowID: CGRect] = [:]) {
         lock.withLock {
             for job in jobs {
                 let app = app(job.pid)
+                if let frame = known[job.id] { app.known[job.id] = frame }
                 if let i = app.steps.firstIndex(where: { $0.id == job.id }) { app.steps[i] = job } else { app.steps.append(job) }
                 schedule(app)
             }
@@ -185,15 +195,15 @@ public final class FrameScheduler: @unchecked Sendable {
     public func cancel() {
         lock.withLock {
             generation += 1
-            for app in apps.values { app.pending = []; app.steps = [] }
+            for app in apps.values { app.pending = []; app.steps = []; app.known = [:] }
         }
     }
 
     /// Take everything pending for one process and write it, steps first. Runs on the process's queue.
     private func drain(_ app: App) {
-        let (steps, jobs, batches, needsPrepare, generation, revisions) = lock.withLock {
-            defer { app.steps = []; app.pending = []; app.batches = []; app.scheduled = false; app.prepared = true }
-            return (app.steps, app.pending, app.batches, !app.prepared || app.forgotten, self.generation, app.latest)
+        let (steps, known, jobs, batches, needsPrepare, generation, revisions) = lock.withLock {
+            defer { app.steps = []; app.known = [:]; app.pending = []; app.batches = []; app.scheduled = false; app.prepared = true }
+            return (app.steps, app.known, app.pending, app.batches, !app.prepared || app.forgotten, self.generation, app.latest)
         }
         // An interrupted write may never have reached the window. Do not reuse its known-size shortcut.
         if app.writtenGeneration != generation {
@@ -202,10 +212,12 @@ public final class FrameScheduler: @unchecked Sendable {
         }
         if needsPrepare { prepare(app.pid) }
         if !steps.isEmpty || !jobs.isEmpty { beforeBatch(app.pid) }
+        // Where a window starting to move is now says more than what an earlier glide last wrote to it.
+        if stepsWriteChanges { for (id, frame) in known { app.written[id] = frame } }
         for job in steps {
             guard lock.withLock({ self.generation == generation }) else { break }
-            app.written[job.id] == job.frame.size ? move(job) : write(job)
-            app.written[job.id] = job.frame.size
+            writeStep(job, after: app.written[job.id])
+            app.written[job.id] = job.frame
             app.stepSizes[job.id, default: []].insert(job.frame.size)
         }
         let results = run(jobs, stepSizes: app.stepSizes) { job in
@@ -224,6 +236,19 @@ public final class FrameScheduler: @unchecked Sendable {
             dropIfDone(app)
         }
         for batch in batches { batch.report(results) }
+    }
+
+    /// One animation step of a window whose last step, or whose place when it started to move, was `last`.
+    private func writeStep(_ job: FrameJob, after last: CGRect?) {
+        guard let last else { return write(job) }
+        guard stepsWriteChanges else { return last.size == job.frame.size ? move(job) : write(job) }
+        let moved = last.origin != job.frame.origin, sized = last.size != job.frame.size
+        // Both: the smaller of the two frames first, so the window is never larger than either on its way and an
+        // edge of the screen clamps neither write.
+        let grows = job.frame.width > last.width || job.frame.height > last.height
+        if moved && (!sized || grows) { move(job) }
+        if sized { resize(job) }
+        if moved && sized && !grows { move(job) }
     }
 
     /// Write, settle, read back; write the misses once more, settle, read back again. Writes only while `live`.
@@ -325,8 +350,10 @@ public final class FrameScheduler: @unchecked Sendable {
         var latest: [WindowID: Int] = [:]
         var batches: [Batch] = []
         var steps: [FrameJob] = []
-        /// The size each window's last step wrote, so the next step can be a plain move. Queue only.
-        var written: [WindowID: CGSize] = [:]
+        /// The frame each window's last step wrote, so the next step can write less. Queue only.
+        var written: [WindowID: CGRect] = [:]
+        /// Where windows were when they started to move, for the steps not drained yet.
+        var known: [WindowID: CGRect] = [:]
         /// Every size steps asked of each window since the last full pass that included it. Apps that resize
         /// lazily can still be at one of them when the full write reads back. Queue only.
         var stepSizes: [WindowID: Set<CGSize>] = [:]

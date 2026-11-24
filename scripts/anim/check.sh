@@ -10,6 +10,7 @@
 # OUT: where the runs go. Default: build/anim-check/<date>.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
+source "$here/awake.sh"
 root="$(cd "$here/../.." && pwd)"
 runs="${1:-3}"
 out="${OUT:-$root/build/anim-check/$(date +%Y%m%d-%H%M%S)}"

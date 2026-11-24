@@ -17,6 +17,11 @@ From them, for each command (all in points):
   average: the curve through those four, which is the glide's own curve, so a smooth glide scores next to nothing
   however far and fast it goes, and a frame shown twice and then caught up scores most of a frame's travel
 - pstall: frames where a window edge on its way stands still
+- pjitm, pstallm and pjits, pstalls: the two above for windows that were only moved and for those resized, whose
+  apps have to draw before a step shows
+- pslip: stalls never made up for, after which the window is shown a frame later than before
+- pfreeze: frames on which no edge on its way moved: the display showed nothing new at all
+- plat, pdur: milliseconds from the command to the first frame an edge moved on, and to the last
 - ptorn, pgap: frames where the gap between neighbouring columns is off by more than 4 points, and the worst
 - pbord, pbmax: how far a border's side piece is from where it sits against its window at rest, mean and worst
 - pbjit: how much that changes from one frame to the next: a border that trails steadily scores 0, one that jumps
@@ -197,6 +202,31 @@ def sides(frame, width):
     return {label: tuple(pair) for label, pair in found.items()}
 
 
+def made_up(xs, k):
+    """Whether the frame an edge stood still on (`xs[k]` is `xs[k - 1]`) was made up for: the step before or after it
+    covers about two frames' travel, going by the steps either side of those. A stall never made up for is the
+    window shown a frame later from then on."""
+    def step(i):
+        return abs(xs[i] - xs[i - 1]) if 0 < i < len(xs) and None not in (xs[i], xs[i - 1]) else None
+    around = [d for d in (step(k - 2), step(k + 2)) if d is not None and d >= 1]
+    beside = [d for d in (step(k - 1), step(k + 1)) if d is not None]
+    if not around or not beside:
+        return False
+    return max(beside) >= 1.6 * sum(around) / len(around)
+
+
+def settled(xs, changes):
+    """`changes` without the stragglers: a change of a few points long after the glide stopped (a shadow or a
+    border settling, the encoder) or long before it began is not the glide still going, and counting the still
+    frames between as stalls makes a clean glide look like the worst."""
+    changes = list(changes)
+    while len(changes) > 1 and changes[-1] - changes[-2] > 6 and abs(xs[changes[-1]] - xs[changes[-2]]) < 16:
+        changes.pop()
+    while len(changes) > 1 and changes[1] - changes[0] > 6 and abs(xs[changes[0]] - xs[changes[0] - 1]) < 16:
+        changes.pop(0)
+    return changes
+
+
 def measure(data, first, last):
     """The measures of the frames first..last of a recording, one command's."""
     frames, width = data["frames"][first:last], data["width"]
@@ -211,24 +241,45 @@ def measure(data, first, last):
         x = series[label][k][side]
         return any(o != label and series[o][k] and series[o][k][0] - 3 <= x <= series[o][k][1] + 3 for o in labels)
 
+    def resized(label):
+        """Whether the window's width changes: its app has to draw for every step, where one only moved has not."""
+        widths = [s[1] - s[0] for s in series[label] if s and s[0] > 1 and s[1] < width - 1]
+        return bool(widths) and max(widths) - min(widths) > 8
+
     jitter, stalls, moving = [], 0, set()
+    # The same by what was asked of the window, [moved, resized]; stalls never made up for; and per frame, the
+    # edges on their way and those of them that moved.
+    kinds, slips, first_change, last_change = [dict(jitter=[], stalls=0), dict(jitter=[], stalls=0)], 0, None, None
+    under_way, changed = [0] * len(frames), [0] * len(frames)
     for label, spans in series.items():
+        kind = kinds[resized(label)]
         for side in (0, 1):
             xs = [s[side] if s else None for s in spans]
             # An edge at the screen's edge is the screen's, not the window's.
             xs = [x if x is not None and 1 < x < width - 1 and not covered(k, label, side) else None for k, x in enumerate(xs)]
             changes = [k for k in range(1, len(xs)) if xs[k] is not None and xs[k - 1] is not None and abs(xs[k] - xs[k - 1]) >= 1]
+            changes = settled(xs, changes)
             if not changes or abs(xs[changes[-1]] - xs[changes[0] - 1]) < 8:
                 continue
             start, end = changes[0], changes[-1]
+            first_change = start if first_change is None else min(first_change, start)
+            last_change = end if last_change is None else max(last_change, end)
             moving.update(range(start - 1, end + 2))
             for k in range(start, end):
                 if None in (xs[k - 1], xs[k]):
                     continue
-                stalls += abs(xs[k] - xs[k - 1]) < 1
+                under_way[k] += 1
+                still = abs(xs[k] - xs[k - 1]) < 1
+                changed[k] += not still
+                stalls += still
+                kind["stalls"] += still
+                if still:
+                    slips += not made_up(xs, k)
                 # Within the glide only: where it starts and stops, the curve through the neighbours has a corner.
                 if start + 1 <= k <= end - 2 and k + 2 < len(xs) and None not in (xs[k - 2], xs[k + 1], xs[k + 2]):
-                    jitter.append(abs(xs[k] - (-xs[k - 2] + 4 * xs[k - 1] + 4 * xs[k + 1] - xs[k + 2]) / 6))
+                    off = abs(xs[k] - (-xs[k - 2] + 4 * xs[k - 1] + 4 * xs[k + 1] - xs[k + 2]) / 6)
+                    jitter.append(off)
+                    kind["jitter"].append(off)
     gap, torn = 0.0, set()
     for a in labels:
         for b in labels:
@@ -266,7 +317,12 @@ def measure(data, first, last):
                 if previous is not None:
                     swings.append(abs(error - previous))
                 previous = error
-    return dict(pjit=sum(jitter) / len(jitter) if jitter else 0, pstall=stalls, ptorn=len(torn), pgap=gap,
+    mean = lambda values: sum(values) / len(values) if values else 0  # noqa: E731
+    return dict(pjit=mean(jitter), pstall=stalls, ptorn=len(torn), pgap=gap,
+                pjitm=mean(kinds[0]["jitter"]), pstallm=kinds[0]["stalls"], pjits=mean(kinds[1]["jitter"]), pstalls=kinds[1]["stalls"],
+                pslip=slips, pfreeze=sum(1 for n, c in zip(under_way, changed) if n and not c),
+                plat=first_change * 1000 / FPS if first_change is not None else 0,
+                pdur=(last_change + 1) * 1000 / FPS if last_change is not None else 0,
                 pbord=sum(errors) / len(errors) if errors else 0, pbmax=max(errors, default=0),
                 pbjit=sum(swings) / len(swings) if swings else 0, pbhid=hidden,
                 pstray=sum(1 for f in frames if f["stray"] >= 6), pborders=any(f["b"] for f in frames))

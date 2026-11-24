@@ -17,10 +17,16 @@ final class Animator: NSObject {
         var animation: FrameAnimation
         let pid: pid_t
         var key: UInt64
+        /// Where the window was when it started to move, until its first step is written.
+        var start: CGRect?
     }
 
-    /// Writes one step's frames: the applier's per-app queues, or a test's recorder.
-    private let write: ([FrameJob]) -> Void
+    /// Writes one step's frames: the applier's per-app queues, or a test's recorder. With them, where the windows
+    /// taking their first step were when they started to move.
+    private let write: ([FrameJob], [WindowID: CGRect]) -> Void
+    private let tuning: AnimationTuning
+    /// One display frame, in seconds: the last tick's.
+    private var frameDuration = 1.0 / 60
     /// Whether a display link steps frames. Off, a test steps them with `advance(dt:)`.
     private let linked: Bool
     /// Guards everything below that both threads touch.
@@ -45,12 +51,14 @@ final class Animator: NSObject {
     /// Called on the main thread with the windows that just arrived.
     var onArrive: ([WindowID]) -> Void = { _ in }
     /// With `SCUTTLE_ANIM_LOG` set to a path, every step's timing and frames are appended there, for
-    /// scripts/anim: `step,<time>,<ms the step took>,<dt>` and `frame,<time>,<window id>,<x>,<y>,<width>,<height>`.
+    /// scripts/anim: `step,<time>,<ms the step took>,<dt>,<ms after its display frame>` and `frame,<time>,<window id>,<x>,<y>,<width>,<height>`.
     private let log: FileHandle? = ProcessInfo.processInfo.environment["SCUTTLE_ANIM_LOG"].flatMap { path in
         FileManager.default.createFile(atPath: path, contents: nil)
         return FileHandle(forWritingAtPath: path)
     }
     private var logBuffer = ""
+    /// How long after its display frame the last step started, in milliseconds, for the log.
+    private var phase = 0.0
 
     /// The animation thread's run loop, where display links fire.
     private static let runLoop: CFRunLoop = {
@@ -71,13 +79,18 @@ final class Animator: NSObject {
     }()
 
     convenience init(applier: FrameApplier) {
-        self.init(write: { applier.step($0) })
+        self.init(writeFrom: { applier.step($0, known: $1) }, linked: true, tuning: .shared)
     }
 
     /// `linked` false leaves stepping to `advance(dt:)`, for tests: no display link, no watchdog.
-    init(write: @escaping ([FrameJob]) -> Void, linked: Bool = true) {
+    convenience init(write: @escaping ([FrameJob]) -> Void, linked: Bool = true, tuning: AnimationTuning = AnimationTuning()) {
+        self.init(writeFrom: { jobs, _ in write(jobs) }, linked: linked, tuning: tuning)
+    }
+
+    init(writeFrom write: @escaping ([FrameJob], [WindowID: CGRect]) -> Void, linked: Bool, tuning: AnimationTuning) {
         self.write = write
         self.linked = linked
+        self.tuning = tuning
         super.init()
         guard linked else { return }
         // The link is made for one screen; with that screen gone it never fires again.
@@ -111,10 +124,12 @@ final class Animator: NSObject {
             for (id, entry) in entries where entry.key == key && targets[id] == nil { entries[id] = nil }
             for (id, target) in targets {
                 if entries[id] != nil {
-                    entries[id]!.animation.retarget(target)
+                    let from = entries[id]!.animation.frame
+                    entries[id]!.animation.retarget(target, snapsSize: snapsLocked(from: from, to: target))
                     entries[id]!.key = key
                 } else if let start = starts[id], let pid = pids[id], !restingLocked(id, at: start, for: target) {
-                    entries[id] = Entry(animation: FrameAnimation(from: start, to: target, snapsSize: snapsSize), pid: pid, key: key)
+                    entries[id] = Entry(animation: FrameAnimation(from: start, to: target, snapsSize: snapsLocked(from: start, to: target)),
+                                        pid: pid, key: key, start: start)
                 }
             }
             finishes[key] = finish
@@ -122,6 +137,16 @@ final class Animator: NSObject {
         }
         ready.forEach { $0() }
         if moving { run() }
+    }
+
+    /// Whether a window going from `from` to `target` takes its new size at once, only its position gliding: always
+    /// with `resize = 'instant'`, and with `tuning.snapResizeWithin` when the size changes by no more than that.
+    /// A size on a glide is a redraw for the app on every frame, and two columns trading places are a few points
+    /// apart in width: each was redrawn twelve times over to change by eight points while it crossed the screen.
+    private func snapsLocked(from: CGRect, to target: CGRect) -> Bool {
+        if snapsSize { return true }
+        let change = max(abs(target.width - from.width), abs(target.height - from.height))
+        return change > 0 && change <= tuning.snapResizeWithin
     }
 
     /// Whether a window at `start` is as close to `target` as it gets: on it, or where it came to rest when last asked for it.
@@ -212,30 +237,53 @@ final class Animator: NSObject {
     /// On the animation thread.
     @objc private func tick(_ link: CADisplayLink) {
         // A stalled clock (sleep, a busy thread) resumes where it was rather than leaping ahead.
-        let dt = lock.withLock { () -> Double in
+        let late = CACurrentMediaTime() - link.timestamp
+        let dt = lock.withLock { () -> Double? in
             defer { lastTick = link.timestamp }
+            if link.duration > 0 { frameDuration = link.duration }
+            // A link just started fires at once, wherever in the display's frame that is, and again at the start
+            // of the next: two steps in less than a frame, which the display may show as one. With
+            // `tuning.alignsStart`, a first tick that far into its frame is left out, and stepping starts with
+            // the next.
+            if lastTick == nil, tuning.alignsStart, late > 0.003 { return nil }
             return min(lastTick.map { link.timestamp - $0 } ?? link.duration, 1.0 / 30)
         }
+        guard let dt else { return }
+        if tuning.stepDelay > 0 {
+            let wait = link.timestamp + tuning.stepDelay - CACurrentMediaTime()
+            if wait > 0 { Thread.sleep(forTimeInterval: wait) }
+        }
+        phase = (CACurrentMediaTime() - link.timestamp) * 1000
         step(dt: dt)
     }
 
     /// Steps every window by `dt` seconds, as a display link tick would. For tests made with `linked` false.
-    func advance(dt: Double) { step(dt: dt) }
+    func advance(dt: Double) {
+        lock.withLock { frameDuration = dt }
+        step(dt: dt)
+    }
 
     /// Advances every window by `dt` seconds and writes the frames; `dt` of `timeout` or more lands them all.
     private func step(dt: Double) {
         let start = CACurrentMediaTime()
-        let (jobs, arrived, ready, idle) = lock.withLock { () -> ([FrameJob], [WindowID], [() -> Void], Bool) in
+        let (jobs, known, arrived, ready, idle) = lock.withLock { () -> ([FrameJob], [WindowID: CGRect], [WindowID], [() -> Void], Bool) in
             lastStepAt = start
-            var jobs: [FrameJob] = [], arrived: [WindowID] = []
+            var jobs: [FrameJob] = [], known: [WindowID: CGRect] = [:], arrived: [WindowID] = []
             for (id, entry) in entries {
+                // Taken before the step: a window that arrives is on its target, where its size no longer glides.
+                let lead = tuning.resizeLead > 0 && entries[id]!.animation.glidesSize ? tuning.resizeLead * frameDuration : 0
                 let done = entries[id]!.animation.step(ease, dt: dt, timeout: timeout)
-                jobs.append(FrameJob(pid: entry.pid, id: id, frame: entries[id]!.animation.frame))
+                let animation = entries[id]!.animation
+                jobs.append(FrameJob(pid: entry.pid, id: id, frame: done || lead == 0 ? animation.frame : animation.frame(ease, ahead: lead)))
+                if let start = entry.start {
+                    known[id] = start
+                    entries[id]!.start = nil
+                }
                 if done { entries[id] = nil; arrived.append(id) }
             }
-            return (jobs, arrived, takeArrivedLocked(), entries.isEmpty)
+            return (jobs, known, arrived, takeArrivedLocked(), entries.isEmpty)
         }
-        write(jobs)
+        write(jobs, known)
         if !arrived.isEmpty || !ready.isEmpty {
             DispatchQueue.main.async { [weak self] in
                 if !arrived.isEmpty { self?.onArrive(arrived) }
@@ -262,7 +310,7 @@ final class Animator: NSObject {
             let f = job.frame
             logBuffer += "frame,\(start),\(job.id),\(f.minX),\(f.minY),\(f.width),\(f.height)\n"
         }
-        logBuffer += "step,\(start),\((CACurrentMediaTime() - start) * 1000),\(lastTickInterval(start))\n"
+        logBuffer += "step,\(start),\((CACurrentMediaTime() - start) * 1000),\(lastTickInterval(start)),\(phase)\n"
         if idle {
             log?.write(logBuffer.data(using: .utf8)!)
             logBuffer = ""

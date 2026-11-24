@@ -126,6 +126,69 @@ struct AnimationSmoothnessTests {
         #expect(Set(tracks[2]!.map(\.minX)).count > Self.ticks / 2, "the neighbour glides")
     }
 
+    func animator(_ tuning: AnimationTuning) -> (Animator, Recorder) {
+        let recorder = Recorder()
+        let animator = Animator(write: recorder.write, linked: false, tuning: tuning)
+        animator.setDuration(ms: 200)
+        animator.setResize(glides: true)
+        return (animator, recorder)
+    }
+
+    /// Two columns trading places differ by a few points in width: not worth a redraw on every frame.
+    @Test func `A size that changes by a few points is taken at once when small resizes snap`() {
+        var tuning = AnimationTuning()
+        tuning.snapResizeWithin = 16
+        let (animator, recorder) = animator(tuning)
+        let starts: [WindowID: CGRect] = [1: CGRect(x: 10, y: 40, width: 1250, height: 1000), 2: CGRect(x: 1270, y: 40, width: 600, height: 1000)]
+        let targets: [WindowID: CGRect] = [1: CGRect(x: 1900, y: 40, width: 1242, height: 1000), 2: CGRect(x: 10, y: 40, width: 900, height: 1000)]
+        animator.animate(1, from: starts, to: targets, pids: pids(starts)) {}
+        let tracks = tracks(run(animator, recorder), from: starts)
+        #expect(tracks[1]!.allSatisfy { $0.width == 1242 }, "eight points narrower: at once")
+        #expect(Set(tracks[1]!.map(\.minX)).count > Self.ticks / 2, "its position glides")
+        #expect(Set(tracks[2]!.map(\.width)).count > Self.ticks / 2, "three hundred points wider: on a glide")
+        #expect(tracks[1]!.last == targets[1] && tracks[2]!.last == targets[2])
+    }
+
+    @Test func `A window whose size glides is asked a frame ahead and arrives with the others`() {
+        var tuning = AnimationTuning()
+        tuning.resizeLead = 1
+        let (led, ledRecorder) = animator(tuning)
+        let (plain, plainRecorder) = animator()
+        let starts = columns([600, 600, 600]), targets = columns([900, 600, 600])
+        led.animate(1, from: starts, to: targets, pids: pids(starts)) {}
+        plain.animate(1, from: starts, to: targets, pids: pids(starts)) {}
+        let ahead = tracks(run(led, ledRecorder), from: starts), now = tracks(run(plain, plainRecorder), from: starts)
+        #expect(ahead[1]!.count == Self.ticks)
+        // The resized column is where the plain glide has it a tick later; the columns it pushes are not ahead.
+        #expect(Array(ahead[1]!.dropLast()) == Array(now[1]!.dropFirst()))
+        #expect(ahead[2]! == now[2]! && ahead[3]! == now[3]!)
+        #expect(ahead[1]!.last == targets[1])
+        #expect(reversals(ahead[1]!.map(\.maxX)) == 0)
+    }
+
+    @Test func `Where a window starts is handed over with its first step only`() {
+        let lock = NSLock()
+        var known: [[WindowID: CGRect]] = []
+        let animator = Animator(writeFrom: { _, starts in lock.withLock { known.append(starts) } }, linked: false, tuning: AnimationTuning())
+        animator.setDuration(ms: 200)
+        let starts = columns([600, 600]), targets = columns([900, 600])
+        animator.animate(1, from: starts, to: targets, pids: pids(starts)) {}
+        animator.advance(dt: Self.tick)
+        animator.animate(1, from: [:], to: columns([1200, 600]), pids: [:]) {}
+        animator.advance(dt: Self.tick)
+        #expect(lock.withLock { known } == [starts, [:]], "a retarget mid-flight is not a new start")
+    }
+
+    @Test func `Small resizes snap and steps write changes unless the environment says otherwise`() {
+        let usual = AnimationTuning(environment: [:])
+        #expect(usual.stepDelay == 0 && !usual.alignsStart && usual.snapResizeWithin == 16 && usual.resizeLead == 0 && usual.stepsWriteChanges)
+        let set = AnimationTuning(environment: ["SCUTTLE_STEP_DELAY_MS": "8", "SCUTTLE_ALIGN_START": "1", "SCUTTLE_SNAP_RESIZE_WITHIN": "0",
+                                                "SCUTTLE_RESIZE_LEAD": "1", "SCUTTLE_STEP_WRITES": "all"])
+        #expect(set.stepDelay == 0.008 && set.alignsStart && set.snapResizeWithin == 0 && set.resizeLead == 1 && !set.stepsWriteChanges)
+        let bare = AnimationTuning()
+        #expect(bare.snapResizeWithin == 0 && !bare.stepsWriteChanges)
+    }
+
     /// A second command mid-flight, such as pressing the preset key twice quickly.
     @Test func `A retarget mid-flight carries on without a jump or a turn and still ends on time`() {
         let (animator, recorder) = animator()

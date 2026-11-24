@@ -44,7 +44,12 @@ final class FrameApplier {
             move: { [unowned self] job in
                 guard let permit = writes.permit else { return }
                 withElement(pid: job.pid, id: job.id) { move(job.frame.origin, to: $0, permit: permit) }
-            }
+            },
+            resize: { [unowned self] job in
+                guard let permit = writes.permit else { return }
+                withElement(pid: job.pid, id: job.id) { resize(job.frame.size, of: $0, permit: permit) }
+            },
+            stepsWriteChanges: AnimationTuning.shared.stepsWriteChanges
         )
     }
 
@@ -118,9 +123,10 @@ final class FrameApplier {
     }
 
     /// Writes one step of an animation: no readback, no retry, no raising.
-    func step(_ jobs: [FrameJob]) {
+    /// `known`: where the windows starting to move are now.
+    func step(_ jobs: [FrameJob], known: [WindowID: CGRect] = [:]) {
         guard writes.permit != nil else { return }
-        scheduler.step(jobs)
+        scheduler.step(jobs, known: known)
     }
 
     /// Write every frame in `layout`, then raise overlapping windows into the layout's order if they are not,
@@ -313,6 +319,14 @@ final class FrameApplier {
         let start = CACurrentMediaTime()
         defer { Self.trace("move", start) }
         return AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, AXValueCreate(.cgPoint, &origin)!)
+    }
+
+    private func resize(_ size: CGSize, of element: AXUIElement, permit: Int) -> AXError {
+        guard writes.allows(permit) else { return .success }
+        var size = size
+        let start = CACurrentMediaTime()
+        defer { Self.trace("resize", start) }
+        return AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, AXValueCreate(.cgSize, &size)!)
     }
 
     /// With `SCUTTLE_AX_LOG` set to a path, each frame write's duration is appended there, for scripts/anim:

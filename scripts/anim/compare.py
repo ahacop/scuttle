@@ -10,7 +10,8 @@ from analyze import analyze, scuttle_side, summary  # noqa: E402
 runs = [Path(a) for a in sys.argv[1:] if not a.startswith("--")]
 summaries = [summary(analyze(r)) for r in runs]
 keys = ["stalls", "reversals", "torn", "gap", "rough", "hz", "stale", "ms", "border", "bfar", "bmax", "bjit", "stray",
-        "missing", "unsettled", "orphans", "pjit", "pstall", "ptorn", "pgap", "pbord", "pbmax", "pbjit", "pbhid", "pstray"]
+        "missing", "unsettled", "orphans", "pjit", "pstall", "ptorn", "pgap", "pbord", "pbmax", "pbjit", "pbhid", "pstray",
+        "pjitm", "pstallm", "pjits", "pstalls", "pslip", "pfreeze", "plat", "pdur"]
 result = {k: dict(mean=sum(s[k] for s in summaries) / len(summaries), low=min(s[k] for s in summaries),
                   high=max(s[k] for s in summaries)) for k in keys}
 # What scuttle logged about itself, where every run has it: the numbers only.

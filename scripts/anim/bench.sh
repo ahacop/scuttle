@@ -4,6 +4,7 @@
 # With APP set, scuttle is restarted from it (with its logs on) before the first run.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
+source "$here/awake.sh"
 out="$1"; runs="${2:-3}"; scenario="${3:-$here/scenario.txt}"
 mkdir -p "$out"
 export ANIM_BIN="${ANIM_BIN:-$out/bin}"

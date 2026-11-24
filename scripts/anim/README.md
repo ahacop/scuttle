@@ -25,6 +25,11 @@ which must be empty, and returns to the workspace it started on. Don't touch the
   questions asked of the recording, frame by frame as the display showed them (the `p` measures). `compare.py`
   summarizes several runs.
 - `sheet.py`: the frames of each command side by side in one picture, to look at.
+- `table.py`: `ab.sh`'s runs side by side, a row per build under each condition, and with `--commands` per
+  command: a change can help one kind of command and hurt another, which a run's totals hide.
+- `animcal.swift`, `cal.sh`, `cal.py`: calibration. See below.
+- `awake.sh`: sourced by every script that records. It keeps the display awake while the script runs and refuses
+  to start with the screen locked: a display asleep fires no display link, so nothing animates.
 
 ## What to trust
 
@@ -38,6 +43,36 @@ look for it. A measure only finds what someone thought to ask; before calling a 
 Some things are bugs, not numbers, and fail a check whatever the build compared with does: a border piece somewhere
 its window never asked it to be (`stray`, `pstray`), one off its window once the window has stopped (`unsettled`),
 one left against no window (`orphans`).
+
+The measures are also split by what was asked of a window: `pjitm` and `pstallm` for windows only moved, `pjits`
+and `pstalls` for windows resized, whose apps must draw before a step shows. `pslip` counts stalls never made up
+for (the window is a frame later from then on) and `pfreeze` frames on which nothing on its way moved at all, which
+is the display or the window server, not one app. `plat` and `pdur` are the milliseconds from a command to the
+first and the last frame that moved. A change of a few points long after a glide stopped (a shadow or a border
+settling) is left out, or the still frames before it would count as stalls.
+
+`open` reads worse than it is. The scenario's new window is a new process: it shows some 160 ms after the command,
+macOS zooms it open for another 90 ms, a point or two a frame, and only then does its app answer Accessibility, so
+scuttle's glide starts some 250 ms after the command however fast scuttle is. The zoom and the wait count as
+stalls and as `plat`; the glide itself is the twelve frames after them. While it waits for the app's first answer
+(`axWindow` in `classify`, 55 to 95 ms) scuttle's main thread is held, which nothing on screen shows as long as
+no other window is animating.
+
+## Calibration
+
+`scripts/anim/cal.sh <out dir> [kind...]` records glides whose smoothness is known, with scuttle stopped, and
+`cal.py` reads them as `pixels.py` reads a run:
+
+- `layer`: a layer the render server animates. It scores no stalls, so a stall in a run is not the recording's.
+- `window[:delay ms]`: a window that moves itself on every display frame. No stalls either.
+- `ax[:delay ms[:move|size|both|first|same[:draw ms]]]`: a window of another process moved through Accessibility on
+  every display frame, as scuttle moves windows, `delay` ms into the frame. This is the floor for scuttle.
+
+What it showed, on a 60 Hz display: a move written at the very start of a frame is as smooth as the window moving
+itself. Written 1 to 16 ms into the frame, it loses about one frame per glide: the display shows one frame twice
+and everything after it a frame later. So where in the frame the writes land matters more than how many there are,
+and an app that is busy drawing when the frame starts, because its window is being resized, answers late and
+lands anywhere.
 
 ## Kinds of window
 
@@ -61,6 +96,14 @@ the events by kind, the share of the animations' time the main thread was busy w
 Accessibility writes by kind. The measures above say what the screen showed; these say where to look when it was
 bad. A stall the logs don't explain is best found with `sample scuttle 12 -file out.txt` during a run: that is how
 a window-server call on a background queue was found holding the main thread for half a second at a time.
+
+How steps are timed and written is set through the environment too, so one bundle can be recorded against itself
+(`Sources/scuttle/AnimationTuning.swift`). On by default, each with a way back to compare against:
+`SCUTTLE_SNAP_RESIZE_WITHIN` (a size changing by no more than that many points is taken at once; 16, and 0 glides
+every size) and `SCUTTLE_STEP_WRITES` (a step writes only the position or size that changed; `all` writes size,
+position, size to every resized window). Off by default, having shown no gain on screen: `SCUTTLE_STEP_DELAY_MS`
+(step that long into the frame; helps the shared profile, hurts the others), `SCUTTLE_ALIGN_START=1` (skip a
+display link's first tick when it comes mid-frame) and `SCUTTLE_RESIZE_LEAD` (frames ahead a gliding size is asked).
 
 `APP_ENV` passes more to `open`, such as `APP_ENV="--env SCUTTLE_NO_BORDER_TRACKING=1"` to compare without border
 tracking.

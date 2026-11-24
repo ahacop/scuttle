@@ -408,6 +408,48 @@ struct FrameSchedulerStepTests {
         #expect(!result.dropFirst().dropLast().contains { $0.hasPrefix("write") })
     }
 
+    /// The calls a scheduler that writes only what changed makes for `steps`, each drained before the next.
+    private func changes(_ steps: [(FrameJob, known: CGRect?)]) -> [String] {
+        let lock = NSLock()
+        var calls: [String] = []
+        func note(_ kind: String, _ job: FrameJob) {
+            lock.withLock { calls.append("\(kind) \(Int(job.frame.minX)) \(Int(job.frame.width))") }
+        }
+        let scheduler = FrameScheduler(settle: 0, read: { _ in Issue.record("steps are not read back"); return nil },
+                                       write: { note("write", $0) }, move: { note("move", $0) }, resize: { note("resize", $0) },
+                                       stepsWriteChanges: true)
+        for (job, known) in steps {
+            scheduler.step([job], known: known.map { [job.id: $0] } ?? [:])
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return lock.withLock { calls }
+    }
+
+    private func frame(_ x: CGFloat, _ width: CGFloat) -> FrameJob {
+        FrameJob(pid: 1, id: 1, frame: CGRect(x: x, y: 0, width: width, height: 100))
+    }
+
+    @Test func `Steps that write only what changed move, resize, do both or do nothing`() {
+        let calls = changes([(frame(0, 100), nil), (frame(10, 100), nil), (frame(10, 120), nil), (frame(10, 120), nil),
+                             (frame(0, 140), nil), (frame(20, 100), nil)])
+        // Unknown at first, so written in full. Growing, the move comes first; shrinking, the resize: the window is
+        // never larger on its way than where it starts or ends.
+        #expect(calls == ["write 0 100", "move 10 100", "resize 10 120", "move 0 140", "resize 0 140", "resize 20 100", "move 20 100"])
+    }
+
+    @Test func `A window known to be where it starts is only moved by its first step`() {
+        #expect(changes([(frame(10, 100), CGRect(x: 0, y: 0, width: 100, height: 100))]) == ["move 10 100"])
+        #expect(changes([(frame(0, 120), CGRect(x: 0, y: 0, width: 100, height: 100))]) == ["resize 0 120"])
+    }
+
+    @Test func `Where a window starts a new glide replaces what an earlier glide wrote`() {
+        // Dragged away by the user since: the first step of the next glide must not take the old position for the
+        // window's.
+        let calls = changes([(frame(10, 100), CGRect(x: 0, y: 0, width: 100, height: 100)),
+                             (frame(10, 100), CGRect(x: 500, y: 0, width: 100, height: 100))])
+        #expect(calls == ["move 10 100", "move 10 100"])
+    }
+
     @Test func `A size an animation step asked for is not a minimum`() {
         // The window is stuck at 300 wide, a size a step asked for: it is catching up, not refusing.
         let lagging = FakeWindows([10: CGRect(x: 0, y: 0, width: 300, height: 100)], minWidths: [10: 300])

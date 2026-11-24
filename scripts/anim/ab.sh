@@ -10,6 +10,7 @@
 # keyboard meanwhile. Afterwards the scuttle that was running before is started again.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
+source "$here/awake.sh"
 out="$1"; runs="$2"; shift 2
 mkdir -p "$out"
 conditions="${CONDITIONS:-ideal:glide}"

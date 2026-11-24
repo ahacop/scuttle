@@ -13,6 +13,7 @@
 # RESIZE is `[animations] resize`: glide (default) or instant. CONFIG_SET adds settings, as config.py takes them.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
+source "$here/awake.sh"
 out="$1"; scenario="${2:-$here/scenario.txt}"; delay="${3:-0}"
 mkdir -p "$out"
 # scuttle is started by `open`, in another directory, and writes its logs here.

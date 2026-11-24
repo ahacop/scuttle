@@ -59,7 +59,8 @@ full screen as it is.
 Window moves are animated over `[animations] duration-ms`. Each new size
 requires a redraw of the window's contents, and in many apps that redraw takes
 longer than one frame. So by default (`resize = 'instant'`), a window is given its new size at once and only
-its position is animated. With `resize = 'glide'`, the size is animated too.
+its position is animated. With `resize = 'glide'`, the size is animated too, unless it changes by 16 points or
+less: such a change is too small to see as a glide and would still cost a redraw every frame.
 
 ## Floating
 
