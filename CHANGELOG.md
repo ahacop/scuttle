@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Dragging a tiled window by its title bar no longer freezes scuttle for about a second the first time the outlines of its tile and of the tile under the pointer show: borders kept still meanwhile, and a drop made then took a second to act.
+
 ## 0.5
 
 - Smoother column swaps and small width changes: a window whose size changes by 16 points or less takes its new size at once while it glides, instead of being redrawn on every frame for a difference too small to see.

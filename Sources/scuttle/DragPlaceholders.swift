@@ -48,6 +48,9 @@ final class DragPlaceholders {
     }
 }
 
+/// The outline itself: a layer's background, border and corner radius, which the window server composites. Drawn
+/// as a path into the view's backing store instead, a tile-sized outline took the main thread about a second the
+/// first time it showed at a size (`sample`, issue 25): borders stood still and the drop waited for it.
 private final class PlaceholderView: NSView {
     private let tint: NSColor
     private let fill: CGFloat
@@ -59,16 +62,22 @@ private final class PlaceholderView: NSView {
         self.fill = fill
         self.stroke = stroke
         super.init(frame: .zero)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .onSetNeedsDisplay
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: cornerRadius, yRadius: cornerRadius)
-        tint.withAlphaComponent(fill).setFill()
-        path.fill()
-        path.lineWidth = 3
-        tint.withAlphaComponent(stroke).setStroke()
-        path.stroke()
+    override var wantsUpdateLayer: Bool { true }
+
+    /// Called when the look or the appearance changed: the tint follows light and dark mode and the accent colour.
+    override func updateLayer() {
+        guard let layer else { return }
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            layer.backgroundColor = tint.withAlphaComponent(fill).cgColor
+            layer.borderColor = tint.withAlphaComponent(stroke).cgColor
+        }
+        layer.borderWidth = 3
+        layer.cornerRadius = cornerRadius
     }
 }
