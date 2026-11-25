@@ -2,11 +2,11 @@
 
 # scuttle
 
-A scrolling tiling window manager for macOS that leaves System Integrity
-Protection on. Each window is placed in a full-height column on a strip that can
-be scrolled, one window per column. Press `Alt-R` to step the focused column
-through preset widths (a third, a half and two thirds by default), or `Alt-F` to
-maximize it.
+A scrolling tiling window manager for macOS. Each window is placed in a
+full-height column on a strip that can be scrolled, one window per column. Press
+`Alt-R` to step the focused column through preset widths (a third, a half and
+two thirds by default), or `Alt-F` to maximize it. No code is injected into the
+Dock, so System Integrity Protection can stay on.
 
 [Documentation](https://ahacop.github.io/scuttle/)
 
