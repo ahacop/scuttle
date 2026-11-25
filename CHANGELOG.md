@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6
 
 - Borders hide when a click on the wallpaper reveals the desktop, as they do for Mission Control, and return with the windows. They used to stay up, and macOS slid each side of a border off to a different edge of the screen.
 - Borders stay on their windows while they animate: a border is placed half a display frame after its window was moved instead of at the start of the frame, when the window had often not moved yet. On screen a moving window's border is now 1 to 6 points off on average, where it was 5 to 17.
