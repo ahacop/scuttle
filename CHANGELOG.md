@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7
 
 - macOS full screen is left alone by default: a window put in it (with the green button or Control-Command-F) goes to a Space of its own, as it does without scuttle, and gets a column again when it leaves full screen. Until now such a window was put back on its workspace and shown with scuttle's `fullscreen`. Set `block-native-fullscreen = true` to keep that behaviour.
 
