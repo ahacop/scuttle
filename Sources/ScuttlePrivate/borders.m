@@ -25,6 +25,8 @@ extern CGError SLSTransactionSetWindowLevel(CFTypeRef transaction, uint32_t wid,
 extern CGError SLSTransactionSetWindowSubLevel(CFTypeRef transaction, uint32_t wid, int level) __attribute__((weak_import));
 extern CGError SLSTransactionOrderWindow(CFTypeRef transaction, uint32_t wid, int order, uint32_t relativeTo);
 extern CGError SLSTransactionCommit(CFTypeRef transaction, int synchronous);
+// Scales and places a window as the window server draws it, without touching its contents (yabai uses it to animate).
+extern CGError SLSTransactionSetWindowTransform(CFTypeRef transaction, uint32_t wid, int unknown, int unknown2, CGAffineTransform transform) __attribute__((weak_import));
 
 // SLSTransactionOrderWindow's order-out mode; ScuttleBorderOrder holds the other two.
 enum { OrderOut = 0 };
@@ -79,22 +81,29 @@ static double fitted_radius(CGRect rect, double radius)
     return MAX(0, MIN(radius, MIN(rect.size.width, rect.size.height) / 2));
 }
 
-// Top and bottom span the full width and are as tall as the outer corners' radius (at least the width),
-// so the corners are theirs; left and right fill the straight run between them. A ring too short for any
-// straight run is all top.
-static void layout_edges(ScuttleBorder *border, CGSize size, double outerRadius, double width)
+// Where the ring's pieces go, in points from its top-left corner: the left and the right side, each as wide as the
+// outer corners' radius (at least the width) and as tall as the ring, which carry everything curved, then the
+// straight runs between them along the top and the bottom, each the border's width thick. A ring too narrow to
+// have runs is all one piece, the first.
+static void layout_pieces(CGRect pieces[ScuttleBorderEdges], CGSize size, double outerRadius, double width)
 {
     double cap = ceil(MAX(width, outerRadius));
-    if (2 * cap >= size.height) {
-        border->edges[0] = (CGRect){CGPointZero, size};
-        border->edges[1] = border->edges[2] = border->edges[3] = CGRectZero;
+    for (int i = 0; i < ScuttleBorderEdges; i++) pieces[i] = CGRectZero;
+    if (2 * cap >= size.width) {
+        pieces[0] = (CGRect){CGPointZero, size};
         return;
     }
-    double side = size.height - 2 * cap;
-    border->edges[0] = CGRectMake(0, 0, size.width, cap);
-    border->edges[1] = CGRectMake(0, size.height - cap, size.width, cap);
-    border->edges[2] = CGRectMake(0, cap, width, side);
-    border->edges[3] = CGRectMake(size.width - width, cap, width, side);
+    double across = size.width - 2 * cap;
+    pieces[0] = CGRectMake(0, 0, cap, size.height);
+    pieces[1] = CGRectMake(size.width - cap, 0, cap, size.height);
+    pieces[2] = CGRectMake(cap, 0, across, width);
+    pieces[3] = CGRectMake(cap, size.height - width, across, width);
+}
+
+// The first two pieces are the sides, which only ever move; the others are runs, which can be stretched.
+static bool is_run(int i)
+{
+    return i >= 2;
 }
 
 static bool used(const ScuttleBorder *border, int i)
@@ -107,10 +116,43 @@ static CGPoint edge_origin(const ScuttleBorder *border, int i, CGPoint ringOrigi
     return CGPointMake(ringOrigin.x + border->edges[i].origin.x, ringOrigin.y + border->edges[i].origin.y);
 }
 
+// Puts a piece where `now` has it, the ring's top-left corner at `ringOrigin`. A run drawn at another length is
+// stretched to `now`'s by the window server: its contents are one colour all along, so it needs no redrawing. The
+// transform maps the screen to the piece's own points, so it places the piece as well. Only a run that is stretched,
+// or was until now, is given one: transforms on every run of every border on every frame, moving windows' too, had
+// the window server show more frames on which nothing moved (scripts/anim: `pfreeze`).
+static void move_piece(CFTypeRef transaction, ScuttleBorder *border, int i, CGPoint ringOrigin, CGRect now)
+{
+    CGPoint origin = CGPointMake(ringOrigin.x + now.origin.x, ringOrigin.y + now.origin.y);
+    SLSTransactionMoveWindowWithGroup(transaction, border->windows[i], origin);
+    if (!is_run(i) || !SLSTransactionSetWindowTransform) return;
+    bool stretch = !CGSizeEqualToSize(now.size, border->edges[i].size);
+    if (!stretch && !border->stretched[i]) return;
+    double sx = now.size.width / border->edges[i].size.width, sy = now.size.height / border->edges[i].size.height;
+    CGAffineTransform transform = CGAffineTransformMake(1 / sx, 0, 0, 1 / sy, -origin.x / sx, -origin.y / sy);
+    SLSTransactionSetWindowTransform(transaction, border->windows[i], 0, 0, transform);
+    border->stretched[i] = stretch;
+}
+
+// Gives the runs that are stretched their drawn length back, at once.
+static void unstretch(ScuttleBorder *border, CGPoint ringOrigin)
+{
+    bool any = false;
+    for (int i = 0; i < ScuttleBorderEdges; i++) any = any || border->stretched[i];
+    if (!any) return;
+    CFTypeRef transaction = SLSTransactionCreate(scuttle_connection());
+    if (!transaction) return;
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (border->stretched[i]) move_piece(transaction, border, i, ringOrigin, border->edges[i]);
+    }
+    SLSTransactionCommit(transaction, 1);
+    CFRelease(transaction);
+}
+
 // Moves, copies the level and sub-level and orders each edge next to the target, in one transaction.
 // Unused edges are ordered out. SLSGetWindowSubLevel needs Screen Recording and returns 0 without it
 // (JankyBorders 7ba72e5), which is every normal window's sub-level anyway.
-static void place(const ScuttleBorder *border, uint32_t target, CGPoint origin, ScuttleBorderOrder order, bool synchronous)
+static void place(ScuttleBorder *border, uint32_t target, CGPoint origin, ScuttleBorderOrder order, bool synchronous)
 {
     int cid = scuttle_connection();
     int64_t level = 0;
@@ -126,7 +168,7 @@ static void place(const ScuttleBorder *border, uint32_t target, CGPoint origin, 
             SLSTransactionOrderWindow(transaction, wid, OrderOut, 0);
             continue;
         }
-        SLSTransactionMoveWindowWithGroup(transaction, wid, edge_origin(border, i, origin));
+        move_piece(transaction, border, i, origin, border->edges[i]);
         SLSTransactionSetWindowLevel(transaction, wid, (int)level);
         if (sublevels) SLSTransactionSetWindowSubLevel(transaction, wid, sublevel);
         SLSTransactionOrderWindow(transaction, wid, order, target);
@@ -169,10 +211,12 @@ void scuttle_border_update(ScuttleBorder *border, uint32_t target, CGRect frame,
     // Keep the inner outline fixed and optically thicken rounded corner midpoints by 5%.
     double outerRadius = fitted_radius(bounds, cornerRadius + width);
     CGPathRef ring = scuttle_border_path(bounds, cornerRadius, width, 0.05);
-    layout_edges(border, outer.size, outerRadius, width);
 
-    // Hold screen updates so the reshaped, redrawn and moved border appears at once.
+    // Hold screen updates so the reshaped, redrawn and moved border appears at once. Runs lose their stretch
+    // before they are reshaped: see scuttle_border_redraw_shape.
     SLSDisableUpdate(cid);
+    unstretch(border, outer.origin);
+    layout_pieces(border->edges, outer.size, outerRadius, width);
     for (int i = 0; i < ScuttleBorderEdges; i++) {
         if (!used(border, i)) continue;
         CGRect shape = { CGPointZero, border->edges[i].size };
@@ -201,7 +245,14 @@ void scuttle_border_redraw_shape(ScuttleBorder *border, CGRect frame, int corner
     CGPathRef ring = scuttle_border_path(bounds, cornerRadius, width, 0.05);
     CGRect before[ScuttleBorderEdges];
     memcpy(before, border->edges, sizeof(before));
-    layout_edges(border, outer.size, outerRadius, width);
+    // A piece takes its new shape at once, while a run still has the stretch it was last given: shown like that
+    // for a frame, the top of the border was part missing (scripts/anim/sheet.py). So screen updates are held
+    // until every piece is placed as drawn, and the runs lose their stretch before they are reshaped, or one twice
+    // as long as drawn would be four times as long for a moment. This runs once as a size settles, not on every
+    // frame of a resize.
+    SLSDisableUpdate(cid);
+    unstretch(border, outer.origin);
+    layout_pieces(border->edges, outer.size, outerRadius, width);
     for (int i = 0; i < ScuttleBorderEdges; i++) {
         if (!used(border, i)) continue;
         // A piece of the same size looks the same: a window getting wider keeps its side pieces, which only move.
@@ -218,6 +269,15 @@ void scuttle_border_redraw_shape(ScuttleBorder *border, CGRect frame, int corner
         CFRelease(region);
         draw(border->windows[i], border->edges[i], ring, color);
     }
+    CFTypeRef transaction = SLSTransactionCreate(cid);
+    if (transaction) {
+        for (int i = 0; i < ScuttleBorderEdges; i++) {
+            if (used(border, i)) move_piece(transaction, border, i, outer.origin, border->edges[i]);
+        }
+        SLSTransactionCommit(transaction, 1);
+        CFRelease(transaction);
+    }
+    SLSReenableUpdate(cid);
     CGPathRelease(ring);
 }
 
@@ -232,17 +292,62 @@ void scuttle_border_recolor(const ScuttleBorder *border, CGRect frame, int corne
     CGPathRelease(ring);
 }
 
+bool scuttle_border_fit_sides(ScuttleBorder *border, CGRect frame, int cornerRadius, ScuttleBorderColor color, double width)
+{
+    int cid = scuttle_connection();
+    CGRect outer = outer_frame(frame, width);
+    CGRect bounds = { CGPointZero, outer.size };
+    CGRect now[ScuttleBorderEdges];
+    layout_pieces(now, outer.size, fitted_radius(bounds, cornerRadius + width), width);
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (CGRectIsEmpty(now[i]) != CGRectIsEmpty(border->edges[i])) return false;
+    }
+    CGPathRef ring = scuttle_border_path(bounds, cornerRadius, width, 0.05);
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (!used(border, i)) continue;
+        if (is_run(i)) {
+            // Where it belongs in a ring of this height; its length stays as drawn.
+            border->edges[i].origin = now[i].origin;
+            continue;
+        }
+        if (CGSizeEqualToSize(now[i].size, border->edges[i].size)) continue;
+        border->edges[i] = now[i];
+        CGRect shape = { CGPointZero, now[i].size };
+        CFTypeRef region = NULL;
+        CGSNewRegionWithRect(&shape, &region);
+        if (!region) continue;
+        // With its place, as in scuttle_border_redraw_shape: a side is never stretched, so it can take its new shape
+        // without screen updates held.
+        CGPoint origin = edge_origin(border, i, outer.origin);
+        SLSSetWindowShape(cid, border->windows[i], origin.x, origin.y, region);
+        CFRelease(region);
+        draw(border->windows[i], border->edges[i], ring, color);
+    }
+    CGPathRelease(ring);
+    return true;
+}
+
 CFTypeRef scuttle_border_transaction_create(void)
 {
     return SLSTransactionCreate(scuttle_connection());
 }
 
-void scuttle_border_transaction_follow(CFTypeRef transaction, const ScuttleBorder *border, CGRect frame, double width)
+bool scuttle_border_transaction_follow(CFTypeRef transaction, ScuttleBorder *border, CGRect frame, int cornerRadius, double width)
 {
-    CGPoint origin = outer_frame(frame, width).origin;
+    CGRect outer = outer_frame(frame, width);
+    CGRect bounds = { CGPointZero, outer.size };
+    CGRect now[ScuttleBorderEdges];
+    layout_pieces(now, outer.size, fitted_radius(bounds, cornerRadius + width), width);
     for (int i = 0; i < ScuttleBorderEdges; i++) {
-        if (used(border, i)) SLSTransactionMoveWindowWithGroup(transaction, border->windows[i], edge_origin(border, i, origin));
+        if (CGRectIsEmpty(now[i]) != CGRectIsEmpty(border->edges[i])) return false;
+        if (CGSizeEqualToSize(now[i].size, border->edges[i].size)) continue;
+        // Only a run can be stretched, and only by a window server that has the call.
+        if (!is_run(i) || !SLSTransactionSetWindowTransform) return false;
     }
+    for (int i = 0; i < ScuttleBorderEdges; i++) {
+        if (used(border, i)) move_piece(transaction, border, i, outer.origin, now[i]);
+    }
+    return true;
 }
 
 // The caller releases the transaction: Swift does, as it follows the Create rule for the one above.
@@ -251,18 +356,18 @@ void scuttle_border_transaction_commit(CFTypeRef transaction)
     SLSTransactionCommit(transaction, 0);
 }
 
-void scuttle_border_move(const ScuttleBorder *border, uint32_t target, CGRect frame, double width, ScuttleBorderOrder order)
+void scuttle_border_move(ScuttleBorder *border, uint32_t target, CGRect frame, double width, ScuttleBorderOrder order)
 {
     place(border, target, outer_frame(frame, width).origin, order, false);
 }
 
-void scuttle_border_follow(const ScuttleBorder *border, CGRect frame, double width)
+void scuttle_border_follow(ScuttleBorder *border, CGRect frame, double width)
 {
     CFTypeRef transaction = SLSTransactionCreate(scuttle_connection());
     if (!transaction) return;
     CGPoint origin = outer_frame(frame, width).origin;
     for (int i = 0; i < ScuttleBorderEdges; i++) {
-        if (used(border, i)) SLSTransactionMoveWindowWithGroup(transaction, border->windows[i], edge_origin(border, i, origin));
+        if (used(border, i)) move_piece(transaction, border, i, origin, border->edges[i]);
     }
     SLSTransactionCommit(transaction, 0);
     CFRelease(transaction);
@@ -270,8 +375,8 @@ void scuttle_border_follow(const ScuttleBorder *border, CGRect frame, double wid
 
 void scuttle_border_move_to_space(const ScuttleBorder *border, uint64_t spaceID)
 {
-    const uint32_t *w = border->windows;
-    NSArray *windows = @[@(w[0]), @(w[1]), @(w[2]), @(w[3])];
+    NSMutableArray *windows = [NSMutableArray arrayWithCapacity:ScuttleBorderEdges];
+    for (int i = 0; i < ScuttleBorderEdges; i++) [windows addObject:@(border->windows[i])];
     SLSMoveWindowsToManagedSpace(scuttle_connection(), (__bridge CFArrayRef)windows, spaceID);
 }
 

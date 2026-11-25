@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Borders stay on their windows while they animate: a border is placed half a display frame after its window was moved instead of at the start of the frame, when the window had often not moved yet. On screen a moving window's border is now 1 to 6 points off on average, where it was 5 to 17.
+- A border no longer trails behind as a thin line when its window changes width: its top and bottom are stretched to the window's width on every frame and redrawn once the window has arrived, instead of being redrawn on every frame.
+- Much less work while windows animate, about a third of what 0.5 did, so commands and key presses during an animation are handled sooner.
 - Dragging a tiled window by its title bar no longer freezes scuttle for about a second the first time the outlines of its tile and of the tile under the pointer show: borders kept still meanwhile, and a drop made then took a second to act.
 
 ## 0.5

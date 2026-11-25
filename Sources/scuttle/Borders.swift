@@ -21,6 +21,8 @@ final class BorderManager {
     private var flushScheduled = false
     /// Whether a delayed focus check is on its way: a burst of activations and reorders needs only one.
     private var refocusScheduled = false
+    /// Windows whose borders are stretched and due to be drawn for their size. See `settle`.
+    private var settling: Set<UInt32> = []
     private let decorates: (Window, Borders) -> Bool
     /// Whether scuttle is animating the window: its border is then the tracker's, which keeps it on the window
     /// from its own thread, frame by frame.
@@ -221,7 +223,19 @@ final class BorderManager {
         tracker.remove(window.id)
         let border = borders[window.id] ?? BorderWindow(target: window.id)
         borders[window.id] = border
-        border.update(window, color: color, config: config)
+        if !border.update(window, color: color, config: config) { settle(window.id) }
+    }
+
+    /// A border stretched for a size on its way is drawn for the size once it holds: asked again a moment later, when
+    /// a size that is still changing stretches it again and comes back here. One check per window at a time.
+    private func settle(_ id: UInt32) {
+        guard settling.insert(id).inserted else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(120)) { [weak self] in
+            guard let self else { return }
+            settling.remove(id)
+            pending.ids.insert(id)
+            scheduleFlush()
+        }
     }
 
     private func refocus() {

@@ -118,9 +118,10 @@ position, size to every resized window). Off by default, having shown no gain on
 (step that long into the frame; helps the shared profile, hurts the others), `SCUTTLE_ALIGN_START=1` (skip a
 display link's first tick when it comes mid-frame) and `SCUTTLE_RESIZE_LEAD` (frames ahead a gliding size is asked).
 
-Three more switches, for comparing: `SCUTTLE_TRACK_DELAY` (borders of moving windows are placed that share of a
-frame after it starts, 0 by default: 0.55 kept borders closer when sizes snap and not when they glide, issue 25),
-`SCUTTLE_BORDER_RECOLOR=0` (a border that only changes colour is reshaped and placed again, as before) and
+More switches, each back to how it was before, for comparing: `SCUTTLE_TRACK_DELAY` (how far into a frame the
+borders of moving windows are placed, as a share of it: 0.5, and 0 for the start of the frame),
+`SCUTTLE_BORDER_STRETCH=0` (a border is reshaped and redrawn for every new width of its window instead of having
+its runs stretched), `SCUTTLE_BORDER_RECOLOR=0` (a border that only changes colour is reshaped and placed again) and
 `SCUTTLE_FOCUS_SHARE=0` (the trees and the borders each ask the window server for the focused window).
 
 `APP_ENV` passes more to `open`, such as `APP_ENV="--env SCUTTLE_NO_BORDER_TRACKING=1"` to compare without border

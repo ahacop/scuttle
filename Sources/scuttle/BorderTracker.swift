@@ -74,10 +74,13 @@ final class BorderTracker: NSObject {
         link = nil
     }
 
-    /// `SCUTTLE_TRACK_DELAY`: how far into a display frame borders are placed, as a share of the frame. The animator
-    /// writes its windows' frames at the start of the frame and their apps move them a moment later: read before
-    /// that, a window is still where the last frame left it, and its border is placed a frame behind.
-    private static let delay = min(max(ProcessInfo.processInfo.environment["SCUTTLE_TRACK_DELAY"].flatMap(Double.init) ?? 0, 0), 0.85)
+    /// How far into a display frame borders are placed, as a share of the frame; `SCUTTLE_TRACK_DELAY` sets another,
+    /// 0 for the start of the frame. The animator writes its windows' frames at the start of the frame and their apps
+    /// move them a moment later: read before that, a window is still where the last frame left it, and its border is
+    /// placed a frame behind. And a border commit at the very start of the frame had the apps answer their own writes
+    /// later (scripts/anim: 1.84 ms a write instead of 1.4), which showed as windows stalling. Half a frame in, borders
+    /// were closer to their windows under every condition recorded and windows stalled no more than before (issue 25).
+    private static let delay = min(max(ProcessInfo.processInfo.environment["SCUTTLE_TRACK_DELAY"].flatMap(Double.init) ?? 0.5, 0), 0.85)
     /// Whether a delayed placement is on its way, so a late one is not followed at once by the next frame's.
     private var placing = false
 
