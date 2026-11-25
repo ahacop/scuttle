@@ -458,7 +458,7 @@ final class Coordinator {
         cancelRefocus()
         guard let window = model.windows[id] else { return }
         focusing = (id, Date() + 0.5)
-        focusWindow(pid: window.pid, id: id)
+        focusWindow(pid: window.pid, id: id) { [applier] pid, id in applier.raiseForFocus(pid: pid, id: id) }
     }
 
     /// Follows focus into the trees, so new windows land beside the focused one and accordions show it.

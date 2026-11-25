@@ -71,13 +71,18 @@ func keyboardWindowID() -> UInt32? {
 /// window, which can still be one on another Space when the activation lands. This is the primitive for windows
 /// no tree models (e.g. `focusOnScreen` when the coordinator is not running); a window the coordinator models is
 /// focused through `Coordinator.focus(_:)`, which also arms the grace against stale focus reads.
-func focusWindow(pid: pid_t, id: UInt32) {
+///
+/// `raise` does the Accessibility part for a caller that already holds the window's element; it answers false when
+/// it could not, and the window is then looked up afresh.
+func focusWindow(pid: pid_t, id: UInt32, raise: ((pid_t, UInt32) -> Bool)? = nil) {
     // Focus is on a window again, even when it is the one that had it before a `focus-monitor`.
     AppState.shared.displays.focusOverride = nil
     if AppState.shared.displays.display(ofWindow: id) != nil {
         noteOwnSwitch()
     }
-    if let element = axWindow(pid: pid, wid: id, timeout: FrameApplier.timeout) {
+    if raise?(pid, id) == true {
+        // Raised through the caller's element.
+    } else if let element = axWindow(pid: pid, wid: id, timeout: FrameApplier.timeout) {
         // Raise alone makes the window main; the app's key window can stay one on another Space, and the
         // next command would then act on that one. Make this window main and key explicitly.
         AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)

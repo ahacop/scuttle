@@ -268,6 +268,20 @@ final class FrameApplier {
         } ?? nil
     }
 
+    /// Makes the window its app's main and key window and raises it, through the cached element: what focusing a
+    /// window asks of its app. A fresh lookup lists every window of the app first, one more round trip to it on
+    /// the main thread with every focus command. False when the window has no element.
+    func raiseForFocus(pid: pid_t, id: WindowID) -> Bool {
+        withElement(pid: pid, id: id) { element -> (Bool, AXError) in
+            // Raise alone makes the window main; the app's key window can stay one on another Space. See `focusWindow`.
+            let error = AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
+            if error == .invalidUIElement { return (false, error) }
+            AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+            AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+            return (true, .success)
+        } ?? false
+    }
+
     /// Runs `body` on the window's element, cached by window. An app can replace a window's element while the
     /// window lives on, same id and all: Slack hides its window on close and hands out a new element when it is
     /// reopened. So when the app calls the cached element invalid, it is looked up again and `body` runs once more.
