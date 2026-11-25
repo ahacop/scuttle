@@ -17,12 +17,13 @@ def ease(u):
     return 3 * u * u - 2 * u * u * u
 
 
-def write_run(run, lag=0, stall=None, border=None):
+def write_run(run, lag=0, stall=None, border=None, runs=False):
     """Column A widens from 600 to 900 over 12 frames while B, 10 points right of it, makes room. B's frames are
     `lag` frames late; with `stall`, A skips that frame. `border` gives A a border 4 points wide, its four pieces under
     ids 1-4 (top, bottom, left, right): `(late, corner, hidden, short)`, the frames the pieces trail A by, the
     frames at which the top piece sits in the corner of the screen, those at which it is not on screen, and how far
-    short of A's final width the border stops."""
+    short of A's final width the border stops. With `runs` the pieces are as scuttle draws them after
+    0.5: runs along the top and the bottom, and sides 20 points wide that carry the corners."""
     run.mkdir(parents=True, exist_ok=True)
     with open(run / "events.csv", "w", newline="") as f:
         w = csv.writer(f)
@@ -43,6 +44,14 @@ def write_run(run, lag=0, stall=None, border=None):
                 continue
             late, corner, hidden, short = border
             around = round(600 + 300 * ease(min(max((k - late) / 12, 0), 1))) - (short if k - late >= 12 else 0)
+            if runs:
+                top = [0, 0, around - 32, 4] if k in corner else [26, 36, around - 32, 4]
+                if k not in hidden:
+                    w.writerow([t, "border", *top, 1])
+                w.writerow([t, "border", 26, 1040, around - 32, 4, 2])
+                w.writerow([t, "border", 6, 36, 20, 1008, 3])
+                w.writerow([t, "border", around - 6, 36, 20, 1008, 4])
+                continue
             top = [0, 0, around + 8, 20] if k in corner else [6, 36, around + 8, 20]
             if k not in hidden:
                 w.writerow([t, "border", *top, 1])
@@ -72,9 +81,11 @@ class MeasureTests(unittest.TestCase):
 
 
 class BorderTests(unittest.TestCase):
+    runs = False
+
     def measure(self, late=0, corner=(), hidden=(), short=0):
         with tempfile.TemporaryDirectory() as d:
-            write_run(Path(d), border=(late, corner, hidden, short))
+            write_run(Path(d), border=(late, corner, hidden, short), runs=self.runs)
             return analyze(Path(d))[0]
 
     def test_a_border_on_its_window_is_clean(self):
@@ -100,6 +111,11 @@ class BorderTests(unittest.TestCase):
     def test_a_border_swinging_about_its_window_jitters_more_than_one_trailing_it(self):
         self.assertGreater(self.measure(late=1)["bjit"], 0)
         self.assertEqual(self.measure()["bjit"], 0)
+
+
+class RunBorderTests(BorderTests):
+    """The same measures of a border whose sides carry the corners, with runs between them."""
+    runs = True
 
 
 class PixelTests(unittest.TestCase):

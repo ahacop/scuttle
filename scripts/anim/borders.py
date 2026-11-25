@@ -1,7 +1,8 @@
 """Measures scuttle's focus borders against the windows they belong to, from run.sh's trace.
 
-A border is four scuttle-owned windows, one per side. The trace gives each one's frame under its window id, so a
-piece keeps its identity while it moves. At rest, when a command is sent and again when the next one is, every
+A border is four scuttle-owned windows: the two sides, which carry the corners, and the runs between them along the
+top and the bottom (in builds up to 0.5 a top and a bottom as wide as the window, and the sides between them). The
+trace gives each one's frame under its window id, so a piece keeps its identity while it moves. At rest, when a command is sent and again when the next one is, every
 piece is matched to the test window it lies against and each of its four edges to the window edge it is nearest.
 Its outer edges belong the border's width outside the window and a side piece's inner edge on the window's edge,
 wherever the window goes and whatever its size; only where the top and bottom pieces end and the side pieces begin
@@ -30,31 +31,69 @@ def edges(rect):
     return (x, y, x + w, y + h)
 
 
+CORNER = 64     # a corner is no larger than this, nor a side that carries the corners wider
+
+
 def assign(piece, windows, width=4):
     """The window a piece lies against and, for each of its edges (left, top, right, bottom), the window edge it is
     anchored to and how far from it belongs, for a border `width` wide. `windows`: label -> rect. None when it lies
-    against none: within PAD of where no window's border would have a piece."""
+    against none: within PAD of where no window's border would have a piece.
+
+    A border is the two sides, as wide as its corners and as tall as the window and the border above and below it,
+    and the runs between them along the top and the bottom. In builds up to 0.5 it is a top and a bottom as wide as the
+    window, which carry the corners, and the two sides between them, the border's width wide."""
     pl, pt, pr, pb = edges(piece)
+    thin = 2 * width + 1
     best = None
+
+    def consider(off, label, anchors):
+        nonlocal best
+        if best is None or off < best[0]:
+            best = (off, label, anchors)
+
     for label, rect in windows.items():
         wl, wt, wr, wb = edges(rect)
-        if pr - pl <= 2 * width + 1:
-            # A side piece: the border's width wide, outside the left edge or the right one, between the top and
-            # bottom pieces, whose height is read from the border as drawn.
+        if pr - pl <= thin and pb - pt > thin:
+            # A side piece: the border's width wide, outside the left edge or the right one, between the corners
+            # (or the top and bottom pieces), whose height is read from the border as drawn. It ends as far from the
+            # window's top as from its bottom, which tells its window from another parked nearly on top of it.
             for left in (True, False):
                 anchors = [(0, -width), (1, pt - wt), (0, 0), (3, pb - wb)] if left else [(2, 0), (1, pt - wt), (2, width), (3, pb - wb)]
                 want = expected(anchors, rect)
-                off = abs(pl - want[0]) + abs(pr - want[2]) + (0 if wt - PAD <= pt and pb <= wb + PAD else 4 * PAD)
-                if best is None or off < best[0]:
-                    best = (off, label, anchors)
+                consider(abs(pl - want[0]) + abs(pr - want[2]) + (0 if wt - PAD <= pt and pb <= wb + PAD else 4 * PAD)
+                         + abs((pt - wt) + (pb - wb)), label, anchors)
+        elif pb - pt <= thin and pr - pl > thin:
+            # A run along the top or the bottom: the border's width high, outside that edge, between the corners,
+            # whose width is read from the border as drawn.
+            for top in (True, False):
+                anchors = [(0, pl - wl), (1, -width), (2, pr - wr), (1, 0)] if top else [(0, pl - wl), (3, 0), (2, pr - wr), (3, width)]
+                want = expected(anchors, rect)
+                consider(abs(pt - want[1]) + abs(pb - want[3]) + (0 if wl - PAD <= pl and pr <= wr + PAD else 4 * PAD)
+                         + abs((pl - wl) + (pr - wr)), label, anchors)
+        elif pr - pl <= CORNER and pb - pt > CORNER:
+            # A side that carries the corners: as tall as the window and the border above and below, its outer edge
+            # the border's width outside, its width as drawn.
+            for left in (True, False):
+                anchors = [(0, -width), (1, -width), (0, pr - wl), (3, width)] if left else [(2, pl - wr), (1, -width), (2, width), (3, width)]
+                want = expected(anchors, rect)
+                consider(abs((pl if left else pr) - want[0 if left else 2]) + abs(pt - want[1]) + abs(pb - want[3]), label, anchors)
+        elif pr - pl <= CORNER and pb - pt <= CORNER:
+            # A corner: its outer edges the border's width outside the window's, its size as drawn.
+            for left in (True, False):
+                for top in (True, False):
+                    across = [(0, -width), (0, pr - wl)] if left else [(2, pl - wr), (2, width)]
+                    down = [(1, -width), (1, pb - wt)] if top else [(3, pt - wb), (3, width)]
+                    anchors = [across[0], down[0], across[1], down[1]]
+                    want = expected(anchors, rect)
+                    consider(abs((pl if left else pr) - want[0 if left else 2]) + abs((pt if top else pb) - want[1 if top else 3]),
+                             label, anchors)
         else:
-            # The top or the bottom piece: as wide as the window and the border on both sides, its outer edge outside.
+            # The top or the bottom piece of a border in four: as wide as the window and the border on both sides,
+            # its outer edge outside.
             for top in (True, False):
                 anchors = [(0, -width), (1, -width), (2, width), (1, pb - wt)] if top else [(0, -width), (3, pt - wb), (2, width), (3, width)]
                 want = expected(anchors, rect)
-                off = abs(pl - want[0]) + abs(pr - want[2]) + (abs(pt - want[1]) if top else abs(pb - want[3]))
-                if best is None or off < best[0]:
-                    best = (off, label, anchors)
+                consider(abs(pl - want[0]) + abs(pr - want[2]) + (abs(pt - want[1]) if top else abs(pb - want[3])), label, anchors)
     return (best[1], best[2]) if best and best[0] <= PAD else None
 
 
