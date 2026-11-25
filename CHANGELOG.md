@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- macOS full screen is left alone by default: a window put in it (with the green button or Control-Command-F) goes to a Space of its own, as it does without scuttle, and gets a column again when it leaves full screen. Until now such a window was put back on its workspace and shown with scuttle's `fullscreen`. Set `block-native-fullscreen = true` to keep that behaviour.
+
 ## 0.6
 
 - Borders hide when a click on the wallpaper reveals the desktop, as they do for Mission Control, and return with the windows. They used to stay up, and macOS slid each side of a border off to a different edge of the screen.

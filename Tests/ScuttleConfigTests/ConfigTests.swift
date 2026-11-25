@@ -42,7 +42,7 @@ struct ConfigTests {
         #expect(try main[KeyCombo("alt-f")]?.commands == ["maximize-column"])
         #expect(try main[KeyCombo("alt-shift-f")]?.commands == ["fullscreen"])
         #expect(main.count == 25)
-        #expect(config.blockNativeFullscreen)
+        #expect(!config.blockNativeFullscreen, "macOS full screen is left alone unless asked")
     }
 
     @Test func `Shipped file is the defaults plus rules and bindings`() throws {
@@ -111,6 +111,12 @@ struct ConfigTests {
         #expect(!config.floatWindowsWithoutFullscreen)
         assertError("workspaces = 0\n", path: "workspaces", line: 1, contains: "at least 1")
         assertError("default-layout = 'tiles'\n", path: "default-layout", line: 1, contains: "unknown key")
+    }
+
+    @Test func `Native full screen is blocked only when asked`() throws {
+        #expect(try !Config.parse("").blockNativeFullscreen)
+        #expect(try Config.parse("block-native-fullscreen = true\n").blockNativeFullscreen)
+        #expect(try !Config.parse("block-native-fullscreen = false\n").blockNativeFullscreen)
     }
 
     @Test func `Workspace layouts`() throws {

@@ -13,8 +13,9 @@ Check claims about features against this list and the docs, not against other ti
   and no window heights to change. Nothing moves or resizes vertically within a workspace.
 - "Workspaces are stacked top to bottom" is about `workspace next/prev` (Alt-J/K). It is not window stacking.
 - A window is **tiled, floating or fullscreen**. `fullscreen` is scuttle's own: the window covers the workspace
-  (or `fullscreen-width` of it) and stays on it. **macOS native full screen is not supported as a layout**: by
-  default (`block-native-fullscreen`) such a window is put back on its workspace and shown with `fullscreen`.
+  (or `fullscreen-width` of it) and stays on it. **macOS native full screen is not a layout**: by default such a
+  window is left on its full-screen Space, outside every workspace, with no column until it comes back. With
+  `block-native-fullscreen = true` it is put back on its workspace and shown with `fullscreen` instead.
 - Width is the only size a command changes: `switch-preset-column-width`, `maximize-column`, `resize width ±n`,
   `balance-sizes`, and dragging a window's left or right edge.
 - Columns are reordered with `move left|right` and by dragging a window onto another column.

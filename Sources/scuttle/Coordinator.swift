@@ -396,7 +396,8 @@ final class Coordinator {
             if !classification.runsRules, adopt(window) { return }
         }
         guard !adopting.contains(window.id) else { return }
-        // On a native full-screen Space, the window keeps its tile until scuttle has brought it back.
+        // Blocked from native full screen, the window keeps its tile until scuttle has brought it back. Not
+        // blocked, it gives its tile up below: a full-screen Space has no workspace.
         if holdOutOfNativeFullscreen(window) { return }
         // Back from it: into its workspace's tree if the full-screen Space took it out, then scuttle's fullscreen.
         // Still on its way (not yet ordered in), it is looked at again on its next event.

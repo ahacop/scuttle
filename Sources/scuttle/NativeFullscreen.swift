@@ -2,11 +2,13 @@ import AppKit
 import ScuttleLayout
 import ScuttlePrivate
 
-// Keeps windows out of macOS's native full screen, so every window lives on a scuttle workspace. A window that
-// enters it (the green button, Control-Command-F, View > Enter Full Screen) lands on a full-screen Space of its
-// own; scuttle asks it to leave through Accessibility, keeps its column meanwhile, and once it is back on its
-// workspace shows it with scuttle's own `fullscreen` instead. With `block-native-fullscreen = false`, full-screen
-// Spaces are left alone, as before.
+// A window that enters macOS's native full screen (the green button, Control-Command-F, View > Enter Full Screen)
+// lands on a full-screen Space of its own. By default that Space is left alone: `track` gives up the window's
+// column, as for any window that leaves its workspace, and gives it a new one when it comes back.
+//
+// With `block-native-fullscreen = true`, windows are kept out of native full screen instead, so every window lives
+// on a scuttle workspace: scuttle asks the window to leave through Accessibility, keeps its column meanwhile, and
+// once it is back on its workspace shows it with scuttle's own `fullscreen`.
 
 extension Coordinator {
     /// Whether the Space is one of macOS's full-screen Spaces rather than a desktop.

@@ -52,9 +52,11 @@ A column's width can also be changed by dragging the left or right edge of its
 window.
 
 In macOS full screen, a window is moved to a Space of its own, outside every
-workspace. By default, such a window is put back on its workspace and shown
-with `fullscreen` instead. Set `block-native-fullscreen = false` to leave macOS
-full screen as it is.
+workspace. scuttle leaves it there: its column is closed, and it gets a new
+column, right of the focused one, when it leaves full screen. Set
+`block-native-fullscreen = true` to keep windows on their workspaces: a window
+put in macOS full screen is then put back in its column and shown with
+`fullscreen` instead.
 
 Window moves are animated over `[animations] duration-ms`. Each new size
 requires a redraw of the window's contents, and in many apps that redraw takes

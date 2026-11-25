@@ -14,7 +14,7 @@ extension Config {
     default-tiling = true           # false: workspaces aren't tiled unless [workspace.N] says so
     follow-app-activation = true    # fast Space switching when you use Cmd-Tab or the Dock
     float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like are floating
-    block-native-fullscreen = true  # macOS full screen is replaced with scuttle's fullscreen on the window's workspace
+    block-native-fullscreen = false # true: a window put in macOS full screen is put back on its workspace and shown with fullscreen
     fullscreen-width = 1.0          # share of the display width for a fullscreen or lone window, centered
     # lone-window-width = 0.75      # lone windows only; if omitted, fullscreen-width is used
 

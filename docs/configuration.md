@@ -35,7 +35,7 @@ config stays in use and the error is shown in the menu.
 | `follow-space-order` | `false` | If `true`, the workspaces are renumbered when Spaces are reordered in Mission Control. On each display, the leftmost Space has the lowest number, and windows stay where they are. If `false`, each workspace keeps its number, and its windows are moved back to that number's Space the next time workspaces are arranged: on a config reload, a display change, or when a Space is removed. |
 | `default-tiling` | `true` | If `false`, workspaces aren't tiled unless tiling is turned on in [`[workspace.<number>]`](#workspacenumber). |
 | `follow-app-activation` | `true` | Fast Space switching when you use Cmd-Tab or the Dock. The macOS setting "When switching to an application, switch to a Space with open windows" has to be off for this. To leave some apps out, use the [`[follow-app-activation]`](#follow-app-activation) table instead. |
-| `block-native-fullscreen` | `true` | When a window is put in macOS full screen (with the green button or Control-Command-F), it is moved back to its column and shown with scuttle's `fullscreen` instead, so it stays on its workspace. If `false`, macOS full screen is left as it is and the window is moved to a Space of its own. |
+| `block-native-fullscreen` | `false` | If `false`, macOS full screen is left as it is: a window put in it (with the green button or Control-Command-F) is moved to a Space of its own, outside every workspace. Its column is closed, and it gets a new column, right of the focused one, when it leaves full screen. If `true`, the window is moved back to its column and shown with scuttle's `fullscreen` instead, so it stays on its workspace. |
 | `float-windows-without-fullscreen` | `true` | Float windows that can't be made full screen, such as Finder's copy progress, About This Mac and Calculator. Terminals and editors with a hidden title bar are still tiled. A `layout tiling` rule takes priority. |
 | `fullscreen-width` | `1.0` | The width of a `fullscreen` window, as a share of the display width inside the outer gaps. The window is centered. From `0.1` to `1`. Can be overridden in [`[display.<pattern>]`](#displaypattern) and [`[workspace.<number>]`](#workspacenumber). |
 | `lone-window-width` | the `fullscreen-width` in effect | The width of a window that is alone on its workspace and whose column fills the display, for example at column width `1` or maximized. The window is centered. From `0.1` to `1`. A value in a workspace's own table takes priority over the most specific matching display table, which takes priority over the top level. |
@@ -525,7 +525,7 @@ follow-space-order = false      # true: workspaces are renumbered when Spaces ar
 default-tiling = true           # false: workspaces aren't tiled unless [workspace.N] says so
 follow-app-activation = true    # fast Space switching when you use Cmd-Tab or the Dock
 float-windows-without-fullscreen = true   # progress windows, About, Calculator and the like are floating
-block-native-fullscreen = true  # macOS full screen is replaced with scuttle's fullscreen on the window's workspace
+block-native-fullscreen = false # true: a window put in macOS full screen is put back on its workspace and shown with fullscreen
 fullscreen-width = 1.0          # share of the display width for a fullscreen or lone window, centered
 # lone-window-width = 0.75      # lone windows only; if omitted, fullscreen-width is used
 

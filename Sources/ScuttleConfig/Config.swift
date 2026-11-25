@@ -23,8 +23,9 @@ public struct Config: Equatable {
     /// Float standard windows whose fullscreen button is missing or disabled, as AeroSpace does.
     public var floatWindowsWithoutFullscreen = true
     /// Bring windows straight back out of macOS's native full screen, showing them with scuttle's `fullscreen`
-    /// on their workspace instead, so every window stays on a scuttle workspace.
-    public var blockNativeFullscreen = true
+    /// on their workspace instead, so every window stays on a scuttle workspace. Off, a window in native full
+    /// screen is left on its full-screen Space, where nothing is tiled.
+    public var blockNativeFullscreen = false
     /// The share of the width inside the outer gaps a fullscreen window takes, centred.
     /// 1 fills the width. `[display.<pattern>]` and workspace tables override it.
     public var fullscreenWidth = 1.0

@@ -75,8 +75,8 @@
     },
     "block-native-fullscreen": {
       "type": "boolean",
-      "default": true,
-      "description": "Bring a window that enters macOS's native full screen straight back to its workspace and show it with scuttle's fullscreen instead, so every window stays on a scuttle workspace."
+      "default": false,
+      "description": "Bring a window that enters macOS's native full screen straight back to its workspace and show it with scuttle's fullscreen instead, so every window stays on a scuttle workspace. If false, macOS full screen is left as it is: the window is on a Space of its own, outside every workspace."
     },
     "float-windows-without-fullscreen": {
       "type": "boolean",
