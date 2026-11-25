@@ -50,16 +50,16 @@ struct SocketIOTests {
     func `Incoming bytes reset the idle deadline and no timeout keeps waiting`(timed: Bool) throws {
         let pair = try Pair()
         if timed {
-            var timeout = timeval(tv_sec: 0, tv_usec: 200_000)
+            var timeout = timeval(tv_sec: 1, tv_usec: 0)
             try #require(setsockopt(pair.b, SOL_SOCKET, SO_RCVTIMEO, &timeout,
                                    socklen_t(MemoryLayout<timeval>.size)) == 0)
         }
         let writer = Thread {
             defer { shutdown(pair.a, SHUT_WR) }
             do {
-                // The whole stream exceeds 200 ms, but no individual gap does.
+                // The whole stream exceeds the 1 s timeout, but no gap comes near it, even on a loaded runner.
                 for _ in 0..<8 {
-                    usleep(50_000)
+                    usleep(150_000)
                     try writeAll(pair.a, "x")
                 }
             } catch {
