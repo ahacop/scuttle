@@ -48,6 +48,7 @@ struct RestoreProblemTests {
         #expect(RestoreProblem.displayGone.retries)
         #expect(RestoreProblem.spaceMoveFailed.retries)
         #expect(RestoreProblem.didNotArrive.retries)
+        #expect(RestoreProblem.inFullScreen.retries, "it goes home once it has left full screen")
     }
 
     @Test func `A window that answers wrongly every time is not kept for the next launch`() {
@@ -56,6 +57,7 @@ struct RestoreProblemTests {
         #expect(!RestoreProblem.wrongFrame(got: rect(0, 0, 900, 600), wanted: wanted).retries, "held by a minimum size")
         #expect(!RestoreProblem.closed.retries)
         #expect(!RestoreProblem.spaceGone.retries)
+        #expect(!RestoreProblem.journaledInFullScreen.retries, "a full-screen Space is not a place to go back to")
         #expect(!RestoreProblem.movedByHand.retries)
     }
 }

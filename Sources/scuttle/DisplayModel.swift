@@ -170,6 +170,12 @@ final class DisplayModel {
         spaceID == 0 ? nil : displays.first { $0.spaces.contains(spaceID) }
     }
 
+    /// Whether the Space is one of macOS's full-screen Spaces rather than a desktop. False for a Space no display
+    /// has, such as one made since the last refresh.
+    func isFullscreenSpace(_ spaceID: UInt64) -> Bool {
+        display(containingSpace: spaceID).map { !$0.userSpaces.contains(spaceID) } ?? false
+    }
+
     /// The Space the display was on before its current one.
     func previousSpace(on display: Display) -> UInt64? {
         previousSpaceIDs[display.uuid]

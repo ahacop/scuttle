@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Quitting or disabling scuttle no longer hides a window on another window's full-screen Space. A window first seen in macOS full screen was "put back" there on quit even after it had left full screen, where it sat under the full-screen window and had no column when scuttle started again. A window in full screen is now left alone, and is put back once it is out.
 - Switching between a workspace and a window in macOS full screen slides across instead of cutting from one to the other in a single frame, with Cmd-Tab, the Dock and the `workspace` commands. The slide takes about `[animations] duration-ms`, and is off with animations off or Reduce Motion on. On macOS 27 and later.
 - Cmd-Tab away from an app in macOS full screen switches at once. It used to wait a quarter of a second first.
 

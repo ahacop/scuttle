@@ -14,7 +14,7 @@ import ScuttlePrivate
 extension Coordinator {
     /// Whether the Space is one of macOS's full-screen Spaces rather than a desktop.
     func isNativeFullscreenSpace(_ space: UInt64) -> Bool {
-        displays.displays.contains { $0.spaces.contains(space) && !$0.userSpaces.contains(space) }
+        displays.isFullscreenSpace(space)
     }
 
     /// How long a switch between two Spaces slides for, in seconds: `[animations] duration-ms` when either is a

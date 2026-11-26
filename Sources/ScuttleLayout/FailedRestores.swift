@@ -50,11 +50,17 @@ public struct FailedRestores: Equatable, Sendable {
 /// up by something that passes is kept: an app that did not answer in time, a display or Space move that did not
 /// go through. A window that answered with another frame (held by a minimum size) or could not be read back gets
 /// the same answer every time, and kept journaled it would be offered as "Restore N windows" at every launch.
+///
+/// Full-screen Spaces are never written to. A window in macOS full screen now is left there and kept, to go home
+/// once it is out. One journaled while it was in full screen has no place to go back to: moved there as an
+/// ordinary window, it would sit hidden on another window's full-screen Space.
 public enum RestoreProblem: Equatable, Sendable, CustomStringConvertible {
     case closed
     case movedByHand
     case displayGone
     case spaceGone
+    case inFullScreen
+    case journaledInFullScreen
     case spaceMoveFailed
     case didNotArrive
     case noAnswer(seconds: Int)
@@ -64,8 +70,8 @@ public enum RestoreProblem: Equatable, Sendable, CustomStringConvertible {
     /// Whether the window stays journaled for the next restore.
     public var retries: Bool {
         switch self {
-        case .displayGone, .spaceMoveFailed, .didNotArrive, .noAnswer: true
-        case .closed, .movedByHand, .spaceGone, .unreadable, .wrongFrame: false
+        case .displayGone, .spaceMoveFailed, .didNotArrive, .noAnswer, .inFullScreen: true
+        case .closed, .movedByHand, .spaceGone, .journaledInFullScreen, .unreadable, .wrongFrame: false
         }
     }
 
@@ -75,6 +81,8 @@ public enum RestoreProblem: Equatable, Sendable, CustomStringConvertible {
         case .movedByHand: "moved by hand since the last try, leaving it there"
         case .displayGone: "its display is gone"
         case .spaceGone: "its Space is gone"
+        case .inFullScreen: "in macOS full screen, left there"
+        case .journaledInFullScreen: "was in macOS full screen when first seen, leaving it where it is"
         case .spaceMoveFailed: "move to its Space failed"
         case .didNotArrive: "did not arrive on its Space"
         case .noAnswer(let seconds): "no answer within \(seconds) s"

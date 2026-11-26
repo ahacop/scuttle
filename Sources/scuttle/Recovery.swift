@@ -89,6 +89,15 @@ final class Recovery {
                 problems[entry.id] = .movedByHand
                 return false
             }
+            if displays.isFullscreenSpace(now.spaceID) {
+                problems[entry.id] = .inFullScreen
+                return false
+            }
+            // An entry from a journal written before `record` left such windows out.
+            if displays.isFullscreenSpace(entry.spaceID) {
+                problems[entry.id] = .journaledInFullScreen
+                return false
+            }
             guard displays.displays.contains(where: { $0.frame.intersects(entry.frame) }) else {
                 problems[entry.id] = .displayGone
                 return false
@@ -145,13 +154,17 @@ final class Recovery {
         save()
     }
 
-    /// Journals every normal window not journaled yet, and drops entries whose window is gone.
+    /// Journals every normal window not journaled yet, and drops entries whose window is gone. A window in macOS
+    /// full screen is journaled once it is back on a desktop: its frame and Space there are the full-screen Space's,
+    /// not a place to put it back to.
     private func record() {
         guard recording, let model else { return }
+        let displays = AppState.shared.displays
         let before = entries.count
         entries = entries.filter { model.windows[$0.key]?.identity == $0.value.identity }
         var changed = entries.count != before
-        for window in model.windows.values where window.isNormal && entries[window.id] == nil {
+        for window in model.windows.values where window.isNormal && entries[window.id] == nil
+            && !displays.isFullscreenSpace(window.spaceID) {
             entries[window.id] = Entry(id: window.id, pid: window.pid, bundleID: window.bundleID,
                                        firstSeen: window.identity.firstSeen, frame: window.frame, spaceID: window.spaceID)
             changed = true
