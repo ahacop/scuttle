@@ -99,6 +99,19 @@ static const double kMimiVelocity = 9999.0;         // high enough to skip the a
 // the update again; at 50 every single and back-to-back switch landed and updated, about 60-120 ms per swipe.
 // Measured on an Intel Mac with macOS 26.7.1.
 static const double kLegacyVelocity = 50.0;
+// A slide is a swipe paced as fingers on a trackpad pace one: its progress fed to the Dock a little at a time, so
+// the Dock draws the Spaces moving. Recorded on macOS 27.2 (scripts/anim, scenario-fullscreen.txt): a progress of 1
+// has the next Space 87% of the way in, and lifting there leaves the Dock a third of a second to ease in the rest;
+// 1.15 has it all the way in, and the Dock lands at once; at 1.3 it overshoots and springs back. The velocity on
+// lifting only has to head the same way: at 30 the Dock jumps the last stretch, at 2 it has nothing left to do.
+static const double kSlideReach = 1.12;
+static const double kSlideVelocity = 2.0;
+static const useconds_t kSlideStepMicroseconds = 8000;
+// Between two swipes of a slide across several Spaces. The first is ended at full velocity, so that the Dock lands
+// on its Space at once, as it does for a switch without a slide. A swipe begun before the Dock has done that is
+// dropped, and so is everything after it: begun at once, or ended slowly, the display stayed where it was. With 20
+// ms every switch across two and across four Spaces landed, and with 40.
+static const useconds_t kSlideLandingMicroseconds = 20000;
 static const CFTimeInterval kMimiStepDelay = 0.03;  // mimi kMimiSpaceGestureProcessingDelay
 
 static int32_t fixed_1616(double value)
@@ -224,7 +237,15 @@ static double augmented_sign(double sign)
 }
 
 // mimi mimiCreateAugmentedDockSwipeEvent. rawSign is the payload's, from augmented_sign.
+static CGEventRef mimi_create_event_at(int phase, double rawSign, double progress, double velocity);
+
 static CGEventRef mimi_create_event(int phase, double rawSign)
+{
+    return mimi_create_event_at(phase, rawSign, 1.0, kMimiVelocity);
+}
+
+// The same event part of the way through a swipe: `progress` of the way to the next Space.
+static CGEventRef mimi_create_event_at(int phase, double rawSign, double progress, double velocity)
 {
     CGEventRef event = CGEventCreate(NULL);
     if (!event) return NULL;
@@ -235,13 +256,13 @@ static CGEventRef mimi_create_event(int phase, double rawSign)
     CGEventSetIntegerValueField(event, kGesturePhase, phase);
     CGEventSetIntegerValueField(event, kGesturePhaseAlias, phase);
 
-    CGEventSetDoubleValueField(event, kGestureSwipeProgress, rawSign);
+    CGEventSetDoubleValueField(event, kGestureSwipeProgress, rawSign * progress);
     CGEventSetDoubleValueField(event, kGestureSwipePositionX, kMimiPositionX);
     CGEventSetDoubleValueField(event, kGestureZoomDeltaY, kMimiZoomDeltaY);
     CGEventSetDoubleValueField(event, kSourceUnixProcessIDAlias, (double)mach_absolute_time());
 
     if (phase == kPhaseEnded) {
-        CGEventSetDoubleValueField(event, kGestureSwipeVelocityX, rawSign * kMimiVelocity);
+        CGEventSetDoubleValueField(event, kGestureSwipeVelocityX, rawSign * velocity);
     }
 
     CGEventRef augmented = dock_swipe_augment(event);
@@ -296,6 +317,45 @@ static bool mimi_post_swipes(double sign, int count)
     return true;
 }
 
+static bool post_slide_event(int phase, double rawSign, double progress, double velocity)
+{
+    CGEventRef event = mimi_create_event_at(phase, rawSign, progress, velocity);
+    if (!event) return false;
+    post_dock_event(event);
+    CFRelease(event);
+    return true;
+}
+
+// `count` swipes, one per Space, paced over `seconds` in all with one ease across the lot, not counting the
+// landings in between: the Dock takes one Space per swipe, however far its progress runs. The first event is
+// posted before this returns, while the cursor is on the display; the rest follow from a background queue, so a
+// true return only says the slide began. If it then falls short, SpaceSwitcher sees the display on another Space
+// once the slide is over and finishes the switch without one.
+static bool mimi_post_slide(double sign, int count, CFTimeInterval seconds)
+{
+    double rawSign = augmented_sign(sign);
+    if (!post_slide_event(kPhaseBegan, rawSign, 0.0, 0.0)) return false;
+    int steps = MAX(2 * count, (int)(seconds * 1e6 / kSlideStepMicroseconds));
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, 0), ^{
+        int swipe = 0;
+        for (int k = 1; k <= steps; k++) {
+            usleep(kSlideStepMicroseconds);
+            double u = (double)k / steps;
+            double along = u * u * (3.0 - 2.0 * u) * count;  // in Spaces
+            // Every swipe passed is ended, and the next one begun, before this step's progress goes to it.
+            while (swipe < count - 1 && along >= swipe + 1) {
+                post_slide_event(kPhaseEnded, rawSign, kSlideReach, kMimiVelocity);
+                usleep(kSlideLandingMicroseconds);
+                swipe++;
+                post_slide_event(kPhaseBegan, rawSign, 0.0, 0.0);
+            }
+            post_slide_event(kPhaseChanged, rawSign, MIN(along - swipe, 1.0) * kSlideReach, 0.0);
+        }
+        post_slide_event(kPhaseEnded, rawSign, kSlideReach, kSlideVelocity);
+    });
+    return true;
+}
+
 static void pump(CFTimeInterval seconds)
 {
     CFRunLoopRunInMode(kCFRunLoopDefaultMode, seconds, false);
@@ -319,7 +379,7 @@ static bool cursor_is_on_display(CGDirectDisplayID displayID)
 // The Dock swipes the display under the cursor; nothing in the event or the IOHID payload names a
 // display. So, as mimi, yabai and bobrwm do, warp the cursor to the centre of the target display
 // first. Unlike them we put it back afterwards, which costs two extra delays on a cross-display switch.
-static bool mimi_post_movement(double sign, int count, CGDirectDisplayID displayID)
+static bool mimi_post_movement(double sign, int count, CGDirectDisplayID displayID, CFTimeInterval slideSeconds)
 {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -337,7 +397,8 @@ static bool mimi_post_movement(double sign, int count, CGDirectDisplayID display
         pump(kMimiStepDelay);  // mimi waits this long after its warp too
     }
 
-    bool posted = requires_augmentation() ? mimi_post_swipes(sign, count) : legacy_post_swipe(sign);
+    bool posted = !requires_augmentation() ? legacy_post_swipe(sign)
+        : slideSeconds > 0 ? mimi_post_slide(sign, count, slideSeconds) : mimi_post_swipes(sign, count);
 
     if (warp) {
         pump(kMimiStepDelay);  // let the swipes land before the cursor leaves the display
@@ -362,6 +423,13 @@ bool scuttle_can_batch_space_swipes(void) { return requires_augmentation(); }
 
 bool scuttle_switch_to_space_index(int fromIndex, int toIndex, CFStringRef displayUUID)
 {
+    return scuttle_slide_to_space_index(fromIndex, toIndex, displayUUID, 0.0);
+}
+
+bool scuttle_can_slide_spaces(void) { return requires_augmentation(); }
+
+bool scuttle_slide_to_space_index(int fromIndex, int toIndex, CFStringRef displayUUID, double seconds)
+{
     CGDirectDisplayID displayID = displayUUID ? display_id_for_uuid(displayUUID) : kCGNullDirectDisplay;
     if (displayID == kCGNullDirectDisplay) {
         fprintf(stderr, "switch: no display with UUID %s\n", displayUUID ? [(__bridge NSString *)displayUUID UTF8String] : "(null)");
@@ -372,7 +440,7 @@ bool scuttle_switch_to_space_index(int fromIndex, int toIndex, CFStringRef displ
         return false;
     }
     if (fromIndex == toIndex) return true;
-    return mimi_post_movement(toIndex > fromIndex ? 1.0 : -1.0, abs(toIndex - fromIndex), displayID);
+    return mimi_post_movement(toIndex > fromIndex ? 1.0 : -1.0, abs(toIndex - fromIndex), displayID, seconds);
 }
 
 // Real Dock swipes, read by the trackpad swipe tap the way iss (github.com/joshuarli/iss) reads them.

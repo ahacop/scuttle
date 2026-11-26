@@ -1,0 +1,27 @@
+# Switching between a tiled workspace and an app in macOS's native full screen by activating apps, as Cmd-Tab and
+# the Dock do. Needs FULLSCREEN=1: run.sh's window F in full screen, on a Space after the last workspace's; with WORKSPACE=3
+# as well, two Spaces lie between it and the test windows. Starts as scenario.txt does: three half-width columns
+# A B C, A focused. switch.py measures each `activate`.
+sleep 0.5
+# Something the recording can be matched to the trace by: the strip scrolls.
+focus right
+sleep 0.9
+focus right
+sleep 0.9
+focus left
+sleep 0.9
+focus left
+sleep 0.9
+# To the full-screen app and back to the tiled workspace, three times.
+activate F
+sleep 2.0
+activate A
+sleep 2.0
+activate F
+sleep 2.0
+activate B
+sleep 2.0
+activate F
+sleep 2.0
+activate A
+sleep 2.0

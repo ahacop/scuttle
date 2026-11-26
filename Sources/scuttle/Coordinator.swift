@@ -639,7 +639,7 @@ final class Coordinator {
     }
 
     /// Whether passes glide windows to their tiles.
-    private var animates: Bool {
+    var animates: Bool {
         config.animations.enabled && config.animations.durationMs > 0
             && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }

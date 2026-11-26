@@ -9,6 +9,7 @@ struct SpaceSwitcherTests {
         // Noncontiguous IDs include a full-screen Space between ordinary desktops.
         var spaces: [String: [UInt64]] = ["A": [1, 13, 99, 15, 16, 17], "B": [101, 113, 114]]
         var posts: [String] = []
+        var slides: [String] = []
         var settlements: [String] = []
         var targets: [UInt64] = []
         var duringPost: (() -> Void)?
@@ -22,6 +23,10 @@ struct SpaceSwitcherTests {
                                              let action = duringPost
                                              duringPost = nil
                                              action?()
+                                             return ok
+                                         },
+                                         slide: { [unowned self] from, to, uuid, seconds in
+                                             slides.append("\(uuid):\(from)->\(to) \(Int((seconds * 1000).rounded())) ms")
                                              return ok
                                          }, clock: { [unowned self] in now },
                                          pollAutomatically: false, batchMovement: batches,
@@ -279,6 +284,44 @@ struct SpaceSwitcherTests {
         #expect(!obsoleteArrival)
         #expect(w.settlements == ["A", "A"])
         #expect(!w.switcher.switching)
+    }
+
+    @Test func aSlideIsOneMovementToTheDestinationAndTakesLongerTheFurtherItGoes() {
+        let w = World(batches: true)
+        var landed = 0
+        _ = w.switcher.request(13, on: "A", slide: 0.2, landed: { landed += 1 })
+        #expect(w.slides == ["A:1->2 200 ms"])
+        w.observe(13)
+        #expect(landed == 1)
+        _ = w.switcher.request(17, on: "A", slide: 0.2)
+        #expect(w.slides.last == "A:2->6 350 ms", "a quarter as long again for each further Space")
+        w.observe(17)
+        #expect(w.posts.isEmpty, "nothing was posted without a slide")
+        #expect(!w.switcher.switching)
+    }
+
+    @Test func aSlideThatStopsShortIsFinishedWithoutOne() {
+        let w = World(batches: true)
+        var landed = 0
+        _ = w.switcher.request(15, on: "A", slide: 0.2, landed: { landed += 1 })
+        #expect(w.slides.count == 1)
+        w.now = 500_000_000
+        w.observe(13) // on its way: the slide and the time it has to land are not over
+        #expect(w.posts.isEmpty)
+        w.now = 1_200_000_000
+        w.switcher.poll()
+        #expect(w.posts == ["A:2->4"], "the rest of the way, from where the slide stopped")
+        #expect(w.slides.count == 1)
+        w.observe(15)
+        #expect(landed == 1)
+        #expect(!w.switcher.switching)
+    }
+
+    @Test func withoutBatchesASwitchAskedToSlideIsPostedAsAnyOther() {
+        let w = World()
+        _ = w.switcher.request(13, on: "A", slide: 0.2)
+        #expect(w.slides.isEmpty)
+        #expect(w.posts == ["A:1->2"])
     }
 
     @Test(arguments: [true, false]) func failedPostReleasesOwnershipWithoutArrival(batches: Bool) {

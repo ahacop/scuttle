@@ -41,14 +41,15 @@ import tomllib
 from pathlib import Path
 
 # The test windows' colours, as run.sh and scenario.txt give them: strong ones a wallpaper is unlikely to have.
-FILLS = {"A": "#d81b60", "B": "#00a651", "C": "#ff8f00", "D": "#6a1b9a"}
+# F is run.sh's window in macOS full screen (FULLSCREEN=1), which switch.py follows as its Space slides.
+FILLS = {"A": "#d81b60", "B": "#00a651", "C": "#ff8f00", "D": "#6a1b9a", "F": "#1565c0"}
 STRIPE = 0.65  # animtest's stripes are the fill under 35% black
 STEP = 6
 # How far a pixel may be from a window's colour and still be the window. The recording shows the fills some 40
 # from what animtest asks for (the display's colour profile, then the encoder), and darker still beside a stripe:
 # at 45 a window's edge read 12 points short on some frames and not others, which looked like the window moving.
 MATCH = 60
-VERSION = 2  # of the readings kept in pixels.json; older ones are read again
+VERSION = 3  # of the readings kept in pixels.json; older ones are read again
 FPS = 60
 
 

@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "anim"))
 import pixels  # noqa: E402
 from analyze import analyze  # noqa: E402
 from check import ABSOLUTE, LIMITS, check  # noqa: E402
+import switch  # noqa: E402
 
 FRAME = 1 / 60
 
@@ -246,6 +247,34 @@ class CheckTests(unittest.TestCase):
         base = {**self.base, "pborders": False, "pbord": 0, "pbhid": 90}
         failed = {r["measure"] for r in check(base, {**self.base, "pborders": True, "pbord": 30}) if r["failed"]}
         self.assertEqual(failed, set())
+
+
+class SwitchTests(unittest.TestCase):
+    """switch.py on made-up screens: F, dark, gives way to a light workspace from the left."""
+
+    def screens(self, shares):
+        """A grey frame and a reading for each share of the screen the workspace has taken."""
+        frames, readings = [], []
+        for share in shares:
+            edge = round(share * switch.W)
+            frames.append((bytes([220]) * edge + bytes([40]) * (switch.W - edge)) * switch.H)
+            readings.append(dict(w={"F": [share * 1000, 1000]} if share < 1 else {}))
+        return frames, dict(frames=readings, width=1000)
+
+    def test_a_cut_is_one_frame(self):
+        frames, readings = self.screens([0] * 20 + [1] * 100)
+        row = switch.measure(frames, 2, readings)
+        self.assertEqual((row["wait"], row["ms"], row["frames"], row["slide"]), (300, 17, 1, [0, 100]))
+
+    def test_a_slide_counts_across(self):
+        frames, readings = self.screens([0] * 5 + [k / 10 for k in range(1, 11)] + [1] * 100)
+        row = switch.measure(frames, 2, readings)
+        self.assertEqual((row["wait"], row["ms"], row["frames"]), (50, 167, 10))
+        self.assertEqual(row["slide"], [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+
+    def test_nothing_changing_is_no_switch(self):
+        frames, readings = self.screens([0] * 120)
+        self.assertIsNone(switch.measure(frames, 2, readings))
 
 
 if __name__ == "__main__":

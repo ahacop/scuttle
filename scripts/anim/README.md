@@ -25,6 +25,10 @@ which must be empty, and returns to the workspace it started on. Don't touch the
   questions asked of the recording, frame by frame as the display showed them (the `p` measures). `compare.py`
   summarizes several runs.
 - `sheet.py`: the frames of each command side by side in one picture, to look at.
+- `switch.py`: for a scenario's `activate` lines, where no window of the trace moves and the whole screen changes:
+  how long after the command the screen first changed, for how many frames, and where the full-screen window's
+  edge was on each of them. A cut is one frame, 0 to 100; a slide counts across evenly. Run by run.sh after
+  analyze.py; `switch-<n>-<label>.png` are its frames.
 - `table.py`: `ab.sh`'s runs side by side, a row per build under each condition, and with `--commands` per
   command: a change can help one kind of command and hurt another, which a run's totals hide.
 - `animcal.swift`, `cal.sh`, `cal.py`: calibration. See below.
@@ -65,11 +69,15 @@ nothing on screen shows as long as no other window is animating.
 column out of view, `resize width` in small steps and three in a row, `balance-sizes`, `fullscreen` on and off,
 `layout floating` and `tiling`, a window closing, and the mouse dragging a window's edge and dragging a window
 onto another column. `scenario-swap.txt` is the column swap alone, six times, for quick rounds on the command
-that stutters most. Give one as run.sh's second argument, or as `SCENARIO=scripts/anim/scenario-more.txt` to
+that stutters most. `scenario-fullscreen.txt` is the one thing here that isn't windows moving: switching between
+the tiled workspace and a window in macOS's native full screen by activating apps, as Cmd-Tab does. It needs
+`FULLSCREEN=1`, which has run.sh add a fourth window, F, in full screen; `WORKSPACE=<n>` puts the tiled test
+windows on that workspace instead of 5, which leaves the Spaces of the workspaces after it between them and F.
+`switch.py` measures it. Give one as run.sh's second argument, or as `SCENARIO=scripts/anim/scenario-more.txt` to
 ab.sh, bench.sh and check.sh. The drags move the real pointer and press its button.
 
 Every column is as tall as the display and holds one window, so there are no heights to test; macOS full screen
-is not a layout of scuttle's. Not covered: a second display, other refresh rates, and real apps.
+is not a layout of scuttle's, and only the switch to and from it is recorded. Not covered: a second display, other refresh rates, and real apps.
 
 ## Calibration
 

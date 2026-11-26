@@ -9,6 +9,8 @@
 //   ANIMTEST_MIN_WIDTH=<points>   refuses to be narrower; ANIMTEST_MIN_SHARE=<0-1> says it as a share of the screen
 //   ANIMTEST_GRID=<points>        only takes widths that are multiples of it, as a terminal does
 // and the draw delay makes every redraw slow, so a new size shows late and writes queue up behind it.
+// ANIMTEST_FULLSCREEN=1 puts the first window in macOS's native full screen once it is up. SIGUSR1 makes the app
+// activate itself, as Cmd-Tab or a Dock click would: how animbench's `activate` switches to it from another Space.
 import AppKit
 
 let args = CommandLine.arguments
@@ -79,4 +81,11 @@ for (n, label) in labels.enumerated() {
 }
 app.activate(ignoringOtherApps: true)
 signal(SIGTERM) { _ in exit(0) }
+signal(SIGUSR1, SIG_IGN)
+let activateSignal = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+activateSignal.setEventHandler { app.activate(ignoringOtherApps: true) }
+activateSignal.resume()
+if environment["ANIMTEST_FULLSCREEN"] != nil {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { windows[0].toggleFullScreen(nil) }
+}
 app.run()

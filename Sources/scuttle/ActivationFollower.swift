@@ -10,7 +10,9 @@ import ScuttlePrivate
 // - When the active app quits, hides or loses its last window on the current Space, macOS activates another
 //   app. An activation within `goneWindow` of the previous app going away is that one.
 // - Opening a document activates the app before its new window exists. An app with no window on the
-//   current Space gets `windowGrace` for one to appear there before it is followed.
+//   current Space gets `windowGrace` for one to appear there before it is followed. Not on a full-screen Space
+//   whose app is still there: no other app's window opens on it, and the wait showed as a quarter second of
+//   nothing after Cmd-Tab.
 
 private let ms: UInt64 = 1_000_000
 private let arrivalWindow = 300 * ms
@@ -111,6 +113,11 @@ private func activated(_ pid: pid_t, name: String, previous: pid_t) {
         return log("activate \(name): not followed, no focused display")
     }
     guard !windowSpaces(of: pid).contains(here) else { return log("activate \(name): stayed, it has a window here") }
+    // Leaving an app in full screen for another app: nothing to wait for. Its window still being here says the
+    // app didn't go away, which is what the wait would otherwise find out.
+    if AppState.shared.coordinator?.isNativeFullscreenSpace(here) == true, windowSpaces(of: previous).contains(here) {
+        return follow(pid, name: name)
+    }
     let activatedAt = uptime()
     let activation = activations
     DispatchQueue.main.asyncAfter(deadline: .now() + .nanoseconds(Int(windowGrace))) {

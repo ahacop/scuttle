@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Switching between a workspace and a window in macOS full screen slides across instead of cutting from one to the other in a single frame, with Cmd-Tab, the Dock and the `workspace` commands. The slide takes about `[animations] duration-ms`, and is off with animations off or Reduce Motion on. On macOS 27 and later.
+- Cmd-Tab away from an app in macOS full screen switches at once. It used to wait a quarter of a second first.
+
 ## 0.7
 
 - macOS full screen is left alone by default: a window put in it (with the green button or Control-Command-F) goes to a Space of its own, as it does without scuttle, and gets a column again when it leaves full screen. Until now such a window was put back on its workspace and shown with scuttle's `fullscreen`. Set `block-native-fullscreen = true` to keep that behaviour.

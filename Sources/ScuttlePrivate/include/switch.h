@@ -13,6 +13,15 @@ bool scuttle_can_batch_space_swipes(void);
 // again. If the cursor is elsewhere, warps to the display and pumps about 60 ms before restoring it.
 bool scuttle_switch_to_space_index(int fromIndex, int toIndex, CFStringRef displayUUID);
 
+// Whether a switch can be shown as a slide: from macOS 27. Before it, a legacy swipe is drawn by the Dock anyway.
+bool scuttle_can_slide_spaces(void);
+
+// The same movement drawn: the Dock slides the Spaces across over about `seconds`, however many of them are
+// crossed, instead of cutting to the destination. True once the slide has begun; the rest of it is
+// posted from a background queue, and may fall short of the destination, which only observing the display tells.
+// With `seconds` 0, or where slides can't be made, this is scuttle_switch_to_space_index.
+bool scuttle_slide_to_space_index(int fromIndex, int toIndex, CFStringRef displayUUID, double seconds);
+
 // Real Dock swipes, for the trackpad swipe tap (Swipe.swift).
 
 typedef NS_ENUM(int, ScuttleSwipePhase) {

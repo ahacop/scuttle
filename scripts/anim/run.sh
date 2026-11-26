@@ -11,6 +11,10 @@
 #   grid     the first window only takes widths in steps of 120 points, as a terminal does
 #   minimum  the first window refuses to be narrower than 40% of the screen
 #   shared   the three windows belong to one app, which takes their frames one after another
+# FULLSCREEN=1 adds a fourth window, F, in macOS's native full screen, for scenarios that switch to it and back with
+# `activate` (scenario-fullscreen.txt); switch.py measures those. macOS puts the full-screen Space after the last
+# workspace's. WORKSPACE is the workspace the test windows are put on, 5 by default: an earlier one, which must be
+# empty too, leaves Spaces between them and F.
 # RESIZE is `[animations] resize`: glide (default) or instant. CONFIG_SET adds settings, as config.py takes them.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -22,6 +26,7 @@ out="$(cd "$out" && pwd)"
 bin="${ANIM_BIN:-$out/bin}"
 mkdir -p "$bin"
 profile="${PROFILE:-ideal}"
+workspace="${WORKSPACE:-5}"
 [[ "$profile" == slow && "$delay" == 0 ]] && delay=25
 for tool in animtest animbench; do
   [[ "$bin/$tool" -nt "$here/$tool.swift" ]] || swiftc -O "$here/$tool.swift" -o "$bin/$tool"
@@ -45,7 +50,7 @@ orig="$(scuttle list-workspaces --focused)"
 pids=()
 cleanup() { kill "${pids[@]}" 2>/dev/null || true; scuttle workspace "$orig" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
-scuttle workspace 5 >/dev/null; sleep 0.8
+scuttle workspace "$workspace" >/dev/null; sleep 0.8
 if [[ "$profile" == shared ]]; then
   "$bin/animtest" A,B,C "#d81b60,#00a651,#ff8f00" "$out/draw-{}.log" "$delay" & pids+=($!)
   sleep 2.7
@@ -64,10 +69,18 @@ fi
 echo "$profile ${RESIZE:-glide}" > "$out/profile.txt"
 # New windows get up to a second to settle before they are tiled; wait until all three are.
 for _ in $(seq 50); do
-  [[ "$(scuttle list-windows --workspace 5 --format '%{app-name} %{window-layout}' | grep -c '^animtest tiling$')" == 3 ]] && break
+  [[ "$(scuttle list-windows --workspace "$workspace" --format '%{app-name} %{window-layout}' | grep -c '^animtest tiling$')" == 3 ]] && break
   sleep 0.2
 done
-scuttle list-windows --workspace 5 --format '%{app-name} %{window-layout}'
+scuttle list-windows --workspace "$workspace" --format '%{app-name} %{window-layout}'
+if [[ -n "${FULLSCREEN:-}" ]]; then
+  # It opens on the workspace, takes itself to a full-screen Space, and the display follows it there.
+  ANIMTEST_FULLSCREEN=1 "$bin/animtest" F "#1565c0" "$out/draw-F.log" & pids+=($!)
+  sleep 3
+  scuttle workspace "$workspace" >/dev/null
+  for _ in $(seq 25); do [[ "$(scuttle list-workspaces --focused)" == "$workspace" ]] && break; sleep 0.2; done
+  sleep 1.2
+fi
 scuttle focus left >/dev/null || true; scuttle focus left >/dev/null || true; sleep 0.8
 
 ffmpeg -hide_banner -loglevel error -y -f avfoundation -framerate 60 -pixel_format nv12 -capture_cursor 0 -i "$screen:none" -t "$seconds" \
@@ -78,3 +91,4 @@ ANIMTEST="$bin/animtest" "$bin/animbench" "$out" "$scenario"
 wait "$ff" || true
 cleanup; trap - EXIT
 python3 "$here/analyze.py" "$out"
+if grep -q '^activate' "$scenario"; then python3 "$here/switch.py" "$out"; fi

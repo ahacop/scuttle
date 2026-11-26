@@ -17,9 +17,11 @@ func stamp() -> String {
 /// Swipes the display to one of its Spaces, full-screen ones included. False if it is already there.
 /// Returns once the swipe is posted; `SpaceSwitcher` confirms it and coalesces rapid requests. `landed` runs
 /// once the display is on the Space, unless a newer request replaced this one first.
+/// A switch to or from one of macOS's full-screen Spaces slides (`Coordinator.spaceSlide`); any other cuts.
 @discardableResult
 func switchSpace(toSpaceID target: UInt64, on display: Display, landed: (() -> Void)? = nil) -> Bool {
-    SpaceSwitcher.shared.request(target, on: display.uuid, landed: landed)
+    let slide = AppState.shared.coordinator?.spaceSlide(from: display.currentSpaceID, to: target) ?? 0
+    return SpaceSwitcher.shared.request(target, on: display.uuid, slide: slide, landed: landed)
 }
 
 /// The Space the display is on, or is switching to while a switch is in flight.
@@ -34,6 +36,8 @@ final class SpaceSwitcher {
 
     private struct Request {
         let target: UInt64
+        /// Seconds the switch slides for; 0 cuts.
+        var slide: Double
         let landed: (() -> Void)?
         let startedAt: UInt64
     }
@@ -43,12 +47,15 @@ final class SpaceSwitcher {
         var posted: UInt64?
         var postedAt: UInt64 = 0
         var dockProcess: pid_t?
+        /// When the slide that was posted is over, wherever it left the display.
+        var slideOverAt: UInt64?
     }
 
     private let currentSpace: (String) -> UInt64
     private let dockProcess: () -> pid_t?
     private let spaceIDs: (String) -> [UInt64]
     private let swipe: (Int32, Int32, String) -> Bool
+    private let slide: ((Int32, Int32, String, Double) -> Bool)?
     private let clock: () -> UInt64
     private let pollAutomatically: Bool
     private let batchMovement: Bool
@@ -58,6 +65,11 @@ final class SpaceSwitcher {
     private var posting = false
     // Preserve the old two-second give-up budget, without treating it as native cancellation.
     private let requestTimeout: UInt64 = 2_000_000_000
+    // Each Space past the first that a slide crosses adds this share of its time, so that a long way is not a blur.
+    private let slideShareForEachFurtherSpace = 0.25
+    // How long after its paced time a slide may take to land before it is taken to have fallen short. The Dock
+    // lands a slide within a frame or two of its end; between the Spaces of a long one it is given 20 ms each.
+    private let slideSettle: UInt64 = 500_000_000
 
     /// Starts and retargets logical requests; intermediate native steps do not announce new targets.
     var onTarget: ((String, UInt64) -> Void)?
@@ -72,6 +84,10 @@ final class SpaceSwitcher {
              noteOwnSwitch()
              return scuttle_switch_to_space_index(from, to, uuid as CFString)
          },
+         slide: ((Int32, Int32, String, Double) -> Bool)? = !scuttle_can_slide_spaces() ? nil : { from, to, uuid, seconds in
+             noteOwnSwitch()
+             return scuttle_slide_to_space_index(from, to, uuid as CFString, seconds)
+         },
          clock: @escaping () -> UInt64 = uptime, pollAutomatically: Bool = true,
          batchMovement: Bool = scuttle_can_batch_space_swipes(),
          dockProcess: @escaping () -> pid_t? = {
@@ -81,6 +97,7 @@ final class SpaceSwitcher {
         self.dockProcess = dockProcess
         self.spaceIDs = spaceIDs
         self.swipe = swipe
+        self.slide = slide
         self.clock = clock
         self.pollAutomatically = pollAutomatically
         self.batchMovement = batchMovement
@@ -96,13 +113,14 @@ final class SpaceSwitcher {
     /// Includes unacknowledged native movement whose logical request has timed out.
     var switching: Bool { !flights.isEmpty }
 
-    func request(_ target: UInt64, on uuid: String, landed: (() -> Void)? = nil) -> Bool {
+    /// `slide`: the seconds to slide the Spaces across for, where slides can be made; 0 cuts to the Space.
+    func request(_ target: UInt64, on uuid: String, slide: Double = 0, landed: (() -> Void)? = nil) -> Bool {
         let previous = flights[uuid]?.request?.target
         if flights[uuid] == nil {
             guard currentSpace(uuid) != target else { return false }
             flights[uuid] = Flight()
         }
-        flights[uuid]!.request = Request(target: target, landed: landed, startedAt: clock())
+        flights[uuid]!.request = Request(target: target, slide: slide, landed: landed, startedAt: clock())
         if previous != target { onTarget?(uuid, target) }
         if !posting, flights[uuid]?.posted == nil { post(on: uuid) }
         startPolling()
@@ -120,12 +138,15 @@ final class SpaceSwitcher {
         // Augmented gestures retain their fast, final-only redraw. Legacy gestures acknowledge each
         // adjacent landing; neither form may replay or retarget its outstanding native movement.
         let to = batchMovement ? target : from + (target > from ? 1 : -1)
+        // A slide is one movement to the destination, as a batch is.
+        let seconds = slide != nil && batchMovement ? request.slide * (1 + slideShareForEachFurtherSpace * Double(abs(to - from) - 1)) : 0
         flight.posted = spaces[to]
         flight.postedAt = clock()
         flight.dockProcess = dockProcess()
+        flight.slideOverAt = seconds > 0 ? flight.postedAt + UInt64(seconds * 1e9) + slideSettle : nil
         flights[uuid] = flight
         posting = true
-        let ok = swipe(Int32(from + 1), Int32(to + 1), uuid)
+        let ok = seconds > 0 ? slide!(Int32(from + 1), Int32(to + 1), uuid, seconds) : swipe(Int32(from + 1), Int32(to + 1), uuid)
         posting = false
         if !ok { finish(uuid, "switch: posting the swipe to Space \(to + 1) failed") }
     }
@@ -147,6 +168,15 @@ final class SpaceSwitcher {
             }
             if let posted = flight.posted, currentSpace(uuid) == posted {
                 flight.posted = nil
+                flights[uuid] = flight
+            } else if let posted = flight.posted, let over = flight.slideOverAt, clock() > over {
+                // Unlike a batch, a slide is over at a known time: every event of it has been posted, and the Dock
+                // has settled wherever they took it. Short of the destination, nothing native is outstanding, so
+                // the rest of the way is posted anew, without a slide.
+                fputs("\(stamp()) switch: the slide to Space \(posted) on display \(uuid) stopped on Space \(currentSpace(uuid))\n", stderr)
+                flight.posted = nil
+                flight.slideOverAt = nil
+                flight.request?.slide = 0
                 flights[uuid] = flight
             }
             if flight.posted == nil {

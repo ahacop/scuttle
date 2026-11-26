@@ -58,6 +58,13 @@ column, right of the focused one, when it leaves full screen. Set
 put in macOS full screen is then put back in its column and shown with
 `fullscreen` instead.
 
+A switch between a workspace and a window in macOS full screen slides across,
+as it does without scuttle, whether it is made with Cmd-Tab, the Dock or a
+`workspace` command. The slide lasts about `[animations] duration-ms`, and
+longer when workspaces lie between the two: they pass by on the way. Switches
+between workspaces are still instant. On macOS 26 and earlier, the slide is the
+short one macOS draws for every switch.
+
 Window moves are animated over `[animations] duration-ms`. Each new size
 requires a redraw of the window's contents, and in many apps that redraw takes
 longer than one frame. So by default (`resize = 'instant'`), a window is given its new size at once and only

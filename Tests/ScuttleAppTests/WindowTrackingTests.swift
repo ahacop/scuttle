@@ -118,6 +118,14 @@ struct WindowTrackingTests {
         #expect(owner.workspaces[10]?.fullscreen == nil, "back as a column, not in scuttle's fullscreen")
     }
 
+    @Test func onlyASwitchToOrFromAFullScreenSpaceSlides() {
+        let (owner, _) = fixture()
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
+        #expect(owner.spaceSlide(from: 10, to: fullscreenSpace) == 0.2)
+        #expect(owner.spaceSlide(from: fullscreenSpace, to: 20) == 0.2)
+        #expect(owner.spaceSlide(from: 10, to: 20) == 0, "between workspaces it is a cut")
+    }
+
     @Test func windowBlockedFromNativeFullScreenKeepsItsTileAndComesBackFullscreen() {
         let (owner, original) = fixture(blockNativeFullscreen: true)
         // Already asked to leave a moment ago, so tracking it does not go to Accessibility again.

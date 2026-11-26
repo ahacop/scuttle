@@ -12,6 +12,9 @@
 //                                            edge is a column resize, the title bar onto another column a swap.
 //                                            The release is its own event, `drop <label>`, since what scuttle
 //                                            animates comes after it; before it the app follows the mouse itself.
+//   activate <label>                         has that window's app activate itself, as Cmd-Tab or a Dock click
+//                                            does, wherever its window is: on another workspace or in macOS full
+//                                            screen on a Space of its own
 import AppKit
 
 let args = CommandLine.arguments
@@ -144,6 +147,17 @@ for line in scenario {
             if !shared { kill(pid, SIGTERM) }
         }
         lock.withLock { events += "\(t),\(line),\(reply)\n" }
+        continue
+    }
+    if line.hasPrefix("activate ") {
+        let label = String(line.dropFirst(9))
+        // On any Space: a window in full screen, or on another workspace, is not on screen.
+        let info = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
+        let pid = info.first { ($0[kCGWindowOwnerName as String] as? String) == "animtest" && ($0[kCGWindowName as String] as? String) == "animtest \(label)" }
+            .flatMap { $0[kCGWindowOwnerPID as String] as? pid_t }
+        let t = CACurrentMediaTime()
+        if let pid { kill(pid, SIGUSR1) }
+        lock.withLock { events += "\(t),\(line),\(pid == nil ? "no such window" : "asked")\n" }
         continue
     }
     if line.hasPrefix("drag ") {
