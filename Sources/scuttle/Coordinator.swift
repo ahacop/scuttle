@@ -12,8 +12,8 @@ struct Placement {
 }
 
 // The serialized owner of layout state: one Workspace per Space, keyed by Space ID, fed by the window and
-// display models, applied through the frame applier. Every change marks the trees it touched dirty; `flush` applies the
-// dirty trees that are on screen. Main thread only.
+// display models, applied through the frame applier. Every change marks the workspaces it touched dirty; `flush` applies the
+// dirty workspaces that are on screen. Main thread only.
 final class Coordinator {
     let model: WindowModel
     var enabled = true {
@@ -47,14 +47,14 @@ final class Coordinator {
     private var frameRecovery: [WindowID: FrameRecovery] = [:]
     /// Windows waiting for their initial Accessibility state to settle. See WindowRules.swift.
     var settlements: [WindowID: ClassificationSettlement] = [:]
-    /// Newly shown windows at the exact frame of a tile of their app, held out of the trees for a moment in case
+    /// Newly shown windows at the exact frame of a tile of their app, held out of the workspaces for a moment in case
     /// they are a tab switch: by newcomer, the tile's window. See Tabs.swift.
     var heldTabs: [WindowID: WindowID] = [:]
     /// Newcomers held once and not confirmed as tabs. They are tiled like any window from then on.
     var notTabs: Set<WindowID> = []
     /// New windows not yet classified, and the display that had focus when they first showed. See Adoption.swift.
     var adoptTargets: [WindowID: String] = [:]
-    /// New windows on their way to the focused display, kept out of the trees until they arrive.
+    /// New windows on their way to the focused display, kept out of the workspaces until they arrive.
     var adopting: Set<WindowID> = []
     /// Windows scuttle asked to leave native full screen, with when it last asked. See NativeFullscreen.swift.
     var leavingFullscreen: [WindowID: Date] = [:]
@@ -78,11 +78,11 @@ final class Coordinator {
     /// The check that focuses another window after the focused one closed or was minimized. See `scheduleRefocus`.
     private var refocusCheck: DispatchWorkItem?
     private var refocus: FocusRepair?
-    /// Trees to place without gliding the next time they are applied: after displays come or go, apps have
+    /// Workspaces to place without gliding the next time they are applied: after displays come or go, apps have
     /// moved the windows of Spaces that were not on screen to frames of their own, and a glide from there
     /// would only show the mess.
     private var snap: Set<UInt64> = []
-    /// While set, `flush` leaves the trees for later. See `spacesShown`.
+    /// While set, `flush` leaves the workspaces for later. See `spacesShown`.
     private var holding = false
 
     init(displays: DisplayModel, config: Config, applier: FrameApplier = FrameApplier(),
@@ -111,7 +111,7 @@ final class Coordinator {
             let before = known
             known = displays.displays
             if Set(known.map(\.uuid)) != Set(before.map(\.uuid)) { snap.formUnion(workspaces.keys) }
-            // Switching Space is not worth re-reading every window and re-applying every tree.
+            // Switching Space is not worth re-reading every window and re-applying every workspace.
             if Self.onlySwitchedSpaces(from: before, to: known) { spacesShown(before: before) } else { reconcile() }
             sweepNativeFullscreen()
         }
@@ -205,8 +205,8 @@ final class Coordinator {
         flush()
     }
 
-    /// Keep tracking trees, but let macOS alone present their windows. Entry invalidates queued writes and
-    /// raises too; exit writes the final dirty trees once, without replaying their interrupted animations.
+    /// Keep tracking workspaces, but let macOS alone present their windows. Entry invalidates queued writes and
+    /// raises too; exit writes the final dirty workspaces once, without replaying their interrupted animations.
     private func overviewChanged() {
         applier.updateLayoutState(enabled: enabled, overview: MissionControl.shared.active)
         if MissionControl.shared.active {
@@ -236,9 +236,9 @@ final class Coordinator {
         }
     }
 
-    /// Re-reads every window and display, moves windows to the trees of the Spaces they are on now
-    /// (so a window dragged to another Space stays there), and re-applies every tree on screen. The model
-    /// publishes every window it re-reads, so `handle` tracks and forgets them. Empty trees of Spaces that
+    /// Re-reads every window and display, moves windows to the workspaces of the Spaces they are on now
+    /// (so a window dragged to another Space stays there), and re-applies every workspace on screen. The model
+    /// publishes every window it re-reads, so `handle` tracks and forgets them. Empty workspaces of Spaces that
     /// no longer exist are dropped.
     func reconcile() {
         configureWorkspaces()
@@ -258,15 +258,15 @@ final class Coordinator {
         }
     }
 
-    /// Brings the trees of the Spaces just switched to up to date, and nothing else. What can change unseen while a
+    /// Brings the workspaces of the Spaces just switched to up to date, and nothing else. What can change unseen while a
     /// Space is hidden is re-read: its windows the model missed or never classified (AX only reaches windows on a
-    /// Space on screen), windows the model places on another Space, and windows its tree holds that have left or
-    /// closed. A tree is written only when it changed while hidden, or when a window is not resting on its tile (an
+    /// Space on screen), windows the model places on another Space, and windows its workspace holds that have left or
+    /// closed. A workspace is written only when it changed while hidden, or when a window is not resting on its tile (an
     /// app moved it), and then at once: a glide on arrival would only show the mess.
     private func spacesShown(before: [Display]) {
         let wasShown = Set(before.map(\.currentSpaceID))
         let shown = displays.displays.map(\.currentSpaceID).filter { !wasShown.contains($0) }
-        // Each re-read publishes, and its event would flush: the trees wait until all are caught up, so each is
+        // Each re-read publishes, and its event would flush: the workspaces wait until all are caught up, so each is
         // written once, and without gliding.
         let wasHolding = holding
         holding = true
@@ -296,15 +296,15 @@ final class Coordinator {
         flush()
     }
 
-    /// Forgets every minimum size learned and re-applies every tree, so windows are asked for their tiles again.
+    /// Forgets every minimum size learned and re-applies every workspace, so windows are asked for their tiles again.
     func clearMinimumSizes() {
         applier.forgetMinimums()
         layouts.dirty.formUnion(workspaces.keys)
         flush()
     }
 
-    /// Bounds and gaps of every tree from the display its Space is on now, which can have moved, resized or become
-    /// main, or be another display, as when macOS moves a disconnected display's Spaces. A tree whose Space is on
+    /// Bounds and gaps of every workspace from the display its Space is on now, which can have moved, resized or become
+    /// main, or be another display, as when macOS moves a disconnected display's Spaces. A workspace whose Space is on
     /// no display is left as it is; one whose layout this changes is marked dirty.
     private func fitToDisplays() {
         for key in workspaces.keys {
@@ -331,15 +331,15 @@ final class Coordinator {
         return walls
     }
 
-    /// Carries a Space's tree to another Space, before its windows are moved there, so they arrive in the layout
-    /// they had. Kept when the other Space already has a tree with windows.
+    /// Carries a Space's workspace to another Space, before its windows are moved there, so they arrive in the layout
+    /// they had. Kept when the other Space already has a workspace with windows.
     func moveTree(from: UInt64, to: UInt64) {
         guard from != to, let display = displays.display(containingSpace: to), workspaces[to]?.windows.isEmpty != false,
-              var tree = workspaces.removeValue(forKey: from) else { return }
-        tree.bounds = area(of: display)
-        tree.gaps = gaps(on: display)
-        tree.walls = walls(of: display)
-        workspaces[to] = tree
+              var workspace = workspaces.removeValue(forKey: from) else { return }
+        workspace.bounds = area(of: display)
+        workspace.gaps = gaps(on: display)
+        workspace.walls = walls(of: display)
+        workspaces[to] = workspace
         for (id, placement) in placements where placement.space == from { placements[id]!.space = to }
     }
 
@@ -380,7 +380,7 @@ final class Coordinator {
                                on: displays.display(containingSpace: space).map(displays.monitor))
     }
 
-    /// Classifies a window the first time it is on screen, then keeps it in the tree of its current Space
+    /// Classifies a window the first time it is on screen, then keeps it in the workspace of its current Space
     /// while it is shown.
     func track(_ window: Window) {
         if placements[window.id] == nil {
@@ -399,7 +399,7 @@ final class Coordinator {
         // Blocked from native full screen, the window keeps its tile until scuttle has brought it back. Not
         // blocked, it gives its tile up below: a full-screen Space has no workspace.
         if holdOutOfNativeFullscreen(window) { return }
-        // Back from it: into its workspace's tree if the full-screen Space took it out, then scuttle's fullscreen.
+        // Back from it: into its workspace if the full-screen Space took it out, then scuttle's fullscreen.
         // Still on its way (not yet ordered in), it is looked at again on its next event.
         if leavingFullscreen[window.id] != nil, !isNativeFullscreenSpace(window.spaceID), window.isNormal {
             let key = key(of: window)
@@ -421,7 +421,7 @@ final class Coordinator {
         let new = window.isNormal ? key(of: window) : nil
         guard old != new, heldTabs[window.id] == nil else { return }
         if let old { edit(old) { $0.remove(window.id) } }
-        // A window coming from another Space's tree is moving, not switching tabs: tabs share a Space.
+        // A window coming from another Space's workspace is moving, not switching tabs: tabs share a Space.
         if let new, old == nil, holdAsTab(window, in: new) { return }
         if let new { edit(new) { $0.insert(window.id) } }
         placements[window.id]!.space = new
@@ -454,7 +454,7 @@ final class Coordinator {
     }
 
     /// Focuses a window, raising it and activating its app. For a moment after, focus events that still
-    /// report the previous window are ignored, so they do not pull the trees back to it.
+    /// report the previous window are ignored, so they do not pull the workspaces back to it.
     func focus(_ id: WindowID) {
         cancelRefocus()
         guard let window = model.windows[id] else { return }
@@ -462,7 +462,7 @@ final class Coordinator {
         focusWindow(pid: window.pid, id: id) { [applier] pid, id in applier.raiseForFocus(pid: pid, id: id) }
     }
 
-    /// Follows focus into the trees, so new windows land beside the focused one and accordions show it.
+    /// Follows focus into the workspaces, so new windows land beside the focused one.
     private func syncFocus() {
         let id = FocusRead.window()
         let deferring = focusing.map { $0.id != id && Date() < $0.until } ?? false
@@ -551,7 +551,7 @@ final class Coordinator {
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(150), execute: check)
     }
 
-    /// The tree of a user Space, numbered workspace or not, created on first use. Nil for full-screen Spaces.
+    /// The workspace of a user Space, numbered or not, created on first use. Nil for full-screen Spaces.
     private func key(of window: Window) -> UInt64? {
         guard let display = displays.display(containingSpace: window.spaceID),
               display.userSpaces.contains(window.spaceID) else { return nil }
@@ -569,7 +569,7 @@ final class Coordinator {
         return key
     }
 
-    /// Runs `change` on a tree and marks it dirty if its layout changed. Returns what `change` returned.
+    /// Runs `change` on a workspace and marks it dirty if its layout changed. Returns what `change` returned.
     @discardableResult
     func edit<T>(_ key: UInt64, _ change: (inout Workspace) -> T) -> T? {
         guard var workspace = workspaces[key] else { return nil }
@@ -584,7 +584,7 @@ final class Coordinator {
 
     func flush() {
         guard !holding else { return }
-        // A tree on a hidden Space waits for it to be shown; `spacesShown` writes it then.
+        // A workspace on a hidden Space waits for it to be shown; `spacesShown` writes it then.
         let keys = layouts.take(visible: Set(displays.displays.map(\.currentSpaceID)), existing: Set(workspaces.keys))
         guard enabled else { return }
         for key in keys { apply(key) }
@@ -595,9 +595,10 @@ final class Coordinator {
         displays.displays.contains { $0.currentSpaceID == space }
     }
 
-    /// Writes the tree's frames around the minimum sizes windows have shown, then lets the applier raise
-    /// overlapping windows (accordion, fullscreen) into the tree's stacking, with its focused window on top.
-    /// Nothing is activated: the tree follows macOS's focus (`syncFocus`) and commands that choose a window
+    /// Writes the workspace's frames around the minimum sizes windows have shown, then lets the applier raise
+    /// overlapping windows (a fullscreen window and the columns behind it) into the workspace's stacking, with its
+    /// focused window on top.
+    /// Nothing is activated: the workspace follows macOS's focus (`syncFocus`) and commands that choose a window
     /// focus it themselves, so a pass, which may have started before the latest focus change, must not.
     /// Minimum sizes found in a pass are laid out around all at once, when that moves anything.
     private func apply(_ key: UInt64) {
@@ -632,7 +633,7 @@ final class Coordinator {
         // Taken whether this pass glides or not, so a snap never outlives the pass it was meant for.
         let snapped = snap.remove(key) != nil
         guard animates, !snapped else { return write() }
-        // Stacking first, so the window coming to the front of an accordion slides in on top.
+        // Stacking first, so a window coming to the front slides in on top.
         applier.raiseIntoOrder(layout, pids: pids, front: front)
         let starts = Dictionary(uniqueKeysWithValues: layout.order.compactMap { id in model.windows[id].map { (id, $0.frame) } })
         animator.animate(key, from: starts, to: layout.frames, pids: pids, then: write)

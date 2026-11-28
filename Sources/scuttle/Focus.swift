@@ -69,7 +69,7 @@ func keyboardWindowID() -> UInt32? {
 /// Focuses a window on a Space that is on screen: AX raise, then activate its app. Never switches Spaces:
 /// the activation is scuttle's own, so the activation follower is told not to chase the app's frontmost
 /// window, which can still be one on another Space when the activation lands. This is the primitive for windows
-/// no tree models (e.g. `focusOnScreen` when the coordinator is not running); a window the coordinator models is
+/// no workspace models (e.g. `focusOnScreen` when the coordinator is not running); a window the coordinator models is
 /// focused through `Coordinator.focus(_:)`, which also arms the grace against stale focus reads.
 ///
 /// `raise` does the Accessibility part for a caller that already holds the window's element; it answers false when

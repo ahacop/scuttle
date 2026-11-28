@@ -140,7 +140,7 @@ by hovering over it. Click it to scroll it into view.
 
 | Key | Default | |
 |---|---|---|
-| `inner` | `8` | Points between windows. Or `{ horizontal = 8, vertical = 6 }`. |
+| `inner` | `8` | Points between columns. |
 | `outer` | `8` | Points between windows and the display edge. Or `{ top = 44, bottom = 8, left = 8, right = 8 }`, or `outer.top = 44`. |
 
 </div>
@@ -547,7 +547,7 @@ preset-column-widths = [0.33333, 0.5, 0.66667]   # the widths for switch-preset-
 
 
 [gaps]
-inner = 8                       # or { horizontal = 8, vertical = 8 }
+inner = 8                       # between columns
 outer = 8                       # or { top = 8, bottom = 8, left = 8, right = 8 }
 
 # Display patterns: main, secondary, or part of a name as listed by `scuttle list-displays`.

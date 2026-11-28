@@ -33,7 +33,7 @@ public enum Command: Equatable, Sendable {
     case listWindows(WindowQuery)
     case listWorkspaces(WorkspaceQuery)
     case listMonitors(MonitorQuery)
-    /// The coordinator's state as JSON: displays, trees with their expected frames, placements and windows.
+    /// The coordinator's state as JSON: displays, workspaces with their expected frames, placements and windows.
     case debugState
     /// Shell text run with `/bin/sh -c`, not waited for.
     case execAndForget(String)
@@ -49,7 +49,7 @@ public enum DisplayTarget: String, Equatable, Sendable {
     case prev, next
 }
 
-/// Where `focus` looks: the focused workspace's tree, or on across displays up to their outer frame.
+/// Where `focus` looks: the focused workspace, or on across displays up to their outer frame.
 public enum FocusBoundaries: String, Equatable, Sendable {
     case workspace
     case allMonitorsOuterFrame = "all-monitors-outer-frame"

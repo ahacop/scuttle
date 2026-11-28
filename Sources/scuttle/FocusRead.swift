@@ -1,7 +1,7 @@
 import AppKit
 import ScuttlePrivate
 
-/// The focused window as the window server has it, for the two that follow focus: the coordinator's trees and the
+/// The focused window as the window server has it, for the two that follow focus: the coordinator's workspaces and the
 /// borders. Each asks after the same event, and again 20 ms later for the front window to settle: four window-server
 /// queries of up to tens of milliseconds for one change of focus, on the main thread. A read is shared while no
 /// event that can move focus has arrived since and it is a few milliseconds old at most, so each pair is one query.

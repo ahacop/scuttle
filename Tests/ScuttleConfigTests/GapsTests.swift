@@ -7,14 +7,22 @@ struct GapsTests {
 
     @Test func `Numbers and tables`() throws {
         let gaps = try Config.parse("[gaps]\ninner = 6\nouter = 4\n").gaps
-        #expect(gaps.inner == Inner(6))
+        #expect(gaps.inner == 6)
         #expect(gaps.outer == Sides(4))
-        let split = try Config.parse("[gaps]\ninner = { horizontal = 8, vertical = 6 }\nouter = { top = 44, left = 2 }\n").gaps
-        #expect(split.inner == Inner(horizontal: 8, vertical: 6))
+        let split = try Config.parse("[gaps]\ninner = 6\nouter = { top = 44, left = 2 }\n").gaps
         #expect(split.outer == Sides(top: 44, bottom: 8, left: 2, right: 8), "sides left out keep the default")
-        let dotted = try Config.parse("[gaps]\ninner.vertical = 0\nouter.top = 44\n").gaps
-        #expect(dotted.inner == Inner(horizontal: 8, vertical: 0))
+        let dotted = try Config.parse("[gaps]\nouter.top = 44\n").gaps
         #expect(dotted.outer.top == 44)
+    }
+
+    @Test func `The gap once between stacked windows still loads, and warns`() throws {
+        // `inner` was `{ horizontal, vertical }` while a column could hold several windows.
+        let config = try Config.parse("[gaps]\ninner = { horizontal = 4, vertical = 6 }\n")
+        #expect(config.gaps.inner == 4)
+        #expect(config.warnings == [ConfigWarning(
+            path: "gaps.inner.vertical", "ignored: a column is one window, as tall as the display, so no gap is this one",
+            line: 2)])
+        #expect(try Config.parse("[gaps]\ninner.vertical = 0\n").gaps.inner == 8, "the gap between columns keeps its default")
     }
 
     @Test func `Display overrides`() throws {
@@ -31,8 +39,8 @@ struct GapsTests {
         gaps.inner = 6
         """)
         #expect(config.displays.count == 2)
-        #expect(config.gaps(for: dell) == Gaps(inner: Inner(12), outer: Sides(top: 44, bottom: 8, left: 8, right: 8)))
-        #expect(config.gaps(for: builtIn) == Gaps(inner: Inner(6), outer: Sides(top: 10, bottom: 8, left: 8, right: 8)))
+        #expect(config.gaps(for: dell) == Gaps(inner: 12, outer: Sides(top: 44, bottom: 8, left: 8, right: 8)))
+        #expect(config.gaps(for: builtIn) == Gaps(inner: 6, outer: Sides(top: 10, bottom: 8, left: 8, right: 8)))
         #expect(config.gaps(for: Monitor(name: "LG", isMain: false, count: 3)) == config.gaps, "no match, no change")
     }
 

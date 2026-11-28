@@ -1,7 +1,7 @@
 import AppKit
 import ScuttleConfig
 
-/// An AX snapshot, not placement: decorations may refresh this without running commands or touching trees.
+/// An AX snapshot, not placement: decorations may refresh this without running commands or touching workspaces.
 struct WindowFacts: Equatable {
     var title: String
     var kind: WindowKind?

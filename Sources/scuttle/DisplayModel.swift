@@ -54,7 +54,7 @@ struct Display: Equatable {
     /// Global CG coordinates, top-left origin.
     let frame: CGRect
     /// The frame minus menu bar and Dock, in the same coordinates. Part of the equality, so the Dock or menu bar
-    /// showing, hiding or moving is a change and the trees are fitted again.
+    /// showing, hiding or moving is a change and the workspaces are fitted again.
     let visibleArea: CGRect
     let isMain: Bool
     /// Every Space in Mission Control order, full-screen ones included. Swipes step over all of them.

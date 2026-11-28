@@ -6,9 +6,9 @@ import ScuttlePrivate
 // `focus` with AeroSpace's boundaries, and `focus-monitor`. Display geometry comes from the display model;
 // a display is entered at the window snapped to the edge focus comes in by.
 extension Dispatcher {
-    /// Focuses the neighbour in the focused window's tree. At the workspace edge, `all-monitors-outer-frame`
+    /// Focuses the neighbour in the focused window's workspace. At the workspace edge, `all-monitors-outer-frame`
     /// goes on to the display in that direction; at the last edge `action` decides. A floating window, which
-    /// has no tree, looks for the nearest window on screen instead.
+    /// has no workspace, looks for the nearest window on screen instead.
     static func focus(_ direction: Direction, boundaries: FocusBoundaries, action: BoundariesAction) -> Reply {
         AppState.shared.coordinator?.cancelRefocus()
         guard let coordinator = AppState.shared.coordinator,

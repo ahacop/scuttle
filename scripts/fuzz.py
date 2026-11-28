@@ -310,7 +310,7 @@ class Fuzzer:
         windows = {w["id"]: w for w in s["windows"]}
         placements = {p["id"]: p for p in s["placements"]}
         minimums = {int(k) for k in s["minimum-sizes"]}
-        for t in s["trees"]:
+        for t in s["layouts"]:
             for id in t["windows"]:
                 if id in owner: v[("c-two-trees", id)] = f"window {id} is in the trees of Spaces {owner[id]} and {t['space']}"
                 owner[id], w, expected = t["space"], windows.get(id), t["expected"][str(id)]
@@ -486,9 +486,9 @@ def summary(s):
     """The current Spaces, focus, trees by Space, and the live and expected frames of tiled windows on screen."""
     current = {d["current-space"] for d in s["displays"]}
     live = {w["id"]: w["live-frame"] for w in s["windows"]}
-    shown = [t for t in s["trees"] if t["space"] in current]
+    shown = [t for t in s["layouts"] if t["space"] in current]
     return {"current": [d["current-space"] for d in s["displays"]], "focused": s["focused"],
-            "trees": {t["space"]: (t["mode"], t["windows"], t["fullscreen"]) for t in s["trees"] if t["windows"]},
+            "trees": {t["space"]: (t["mode"], t["windows"], t["fullscreen"]) for t in s["layouts"] if t["windows"]},
             "frames": {i: live[i] for t in shown for i in t["windows"] if live.get(i)},
             "expected": {i: t["expected"][str(i)] for t in shown for i in t["windows"]}}
 

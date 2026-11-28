@@ -96,7 +96,7 @@ final class BorderManager {
                 borders[window.id] = nil
             } else if event.kind == .windowReorder {
                 // A border is ordered next to its target once, so a window raised later lands on top of every
-                // border below it: an app's activation, or the accordion raising its other windows, buries the
+                // border below it: an app's activation, or scuttle raising windows into order, buries the
                 // focused border under the windows raised after it. So any reorder places every border again.
                 pending.all = true
             } else if event.kind == .windowMove {

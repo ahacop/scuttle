@@ -66,7 +66,7 @@ extension Coordinator {
         }
     }
 
-    /// Called by `track` once a window scuttle brought out of full screen is back on a workspace's tree: shows it
+    /// Called by `track` once a window scuttle brought out of full screen is back on a workspace: shows it
     /// with scuttle's `fullscreen` there, as it asked for. A floating window, or one on an untiled workspace, is
     /// only let go.
     func finishLeavingNativeFullscreen(_ id: WindowID, in key: UInt64?) {

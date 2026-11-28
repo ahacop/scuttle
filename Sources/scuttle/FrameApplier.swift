@@ -178,7 +178,7 @@ final class FrameApplier {
     /// Raising a window of the frontmost app makes it that app's key window. So windows are raised only when
     /// that cannot move focus: the focused window is the layout's front one, or its app owns none of them.
     /// Otherwise the layout is older than the focus, say right after Cmd-` or while a pass that started before
-    /// a newer one finishes, and raising would take focus back. The next pass raises once the tree has caught up.
+    /// a newer one finishes, and raising would take focus back. The next pass raises once the workspace has caught up.
     private static func raisingKeepsFocus(_ ids: [WindowID], front: WindowID?, pids: [WindowID: pid_t]) -> Bool {
         let (focused, owner) = onMain { () -> (WindowID, pid_t) in
             let focused = scuttle_border_focused_window()

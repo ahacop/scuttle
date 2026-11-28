@@ -130,7 +130,7 @@ More switches, each back to how it was before, for comparing: `SCUTTLE_TRACK_DEL
 borders of moving windows are placed, as a share of it: 0.5, and 0 for the start of the frame),
 `SCUTTLE_BORDER_STRETCH=0` (a border is reshaped and redrawn for every new width of its window instead of having
 its runs stretched), `SCUTTLE_BORDER_RECOLOR=0` (a border that only changes colour is reshaped and placed again) and
-`SCUTTLE_FOCUS_SHARE=0` (the trees and the borders each ask the window server for the focused window).
+`SCUTTLE_FOCUS_SHARE=0` (the workspaces and the borders each ask the window server for the focused window).
 
 `APP_ENV` passes more to `open`, such as `APP_ENV="--env SCUTTLE_NO_BORDER_TRACKING=1"` to compare without border
 tracking.

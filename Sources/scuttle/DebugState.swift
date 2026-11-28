@@ -26,7 +26,7 @@ extension Coordinator {
                  "visible-area": debugFrame(d.visibleArea)] as [String: Any]
             },
             "workspaces": Dictionary(uniqueKeysWithValues: numbers.map { ("\($0.key)", $0.value) }),
-            "trees": workspaces.map { key, workspace in
+            "layouts": workspaces.map { key, workspace in
                 let layout = workspace.layout()
                 return [
                     "display": displays.display(containingSpace: key)?.uuid ?? "", "space": key,

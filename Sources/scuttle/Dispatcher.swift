@@ -60,17 +60,17 @@ enum Dispatcher {
         case .layout(let names):
             return layout(names, window: window)
         case .move(let direction):
-            return tree("move \(direction)") { $0.move(direction) }
+            return onWorkspace("move \(direction)") { $0.move(direction) }
         case .resize(let delta):
-            return tree("resize width \(delta)") { $0.resize(by: CGFloat(delta)) }
+            return onWorkspace("resize width \(delta)") { $0.resize(by: CGFloat(delta)) }
         case .fullscreen:
-            return tree("fullscreen") { $0.toggleFullscreen(); return true }
+            return onWorkspace("fullscreen") { $0.toggleFullscreen(); return true }
         case .switchPresetColumnWidth:
-            return tree("switch-preset-column-width") { $0.switchPresetColumnWidth() }
+            return onWorkspace("switch-preset-column-width") { $0.switchPresetColumnWidth() }
         case .maximizeColumn:
-            return tree("maximize-column") { $0.toggleMaximizedColumn() }
+            return onWorkspace("maximize-column") { $0.toggleMaximizedColumn() }
         case .balanceSizes:
-            return tree("balance-sizes") { $0.balanceSizes(); return true }
+            return onWorkspace("balance-sizes") { $0.balanceSizes(); return true }
         case .clearMinimumSizes:
             guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
             coordinator.clearMinimumSizes()
@@ -180,11 +180,11 @@ enum Dispatcher {
         return .ok("moved window \(wid) to workspace \(n)")
     }
 
-    // MARK: Layout tree
+    // MARK: Workspace changes
 
-    /// Runs a change on the focused window's tree; `change` returns false when there was nothing to do, which
+    /// Runs a change on the focused window's workspace; `change` returns false when there was nothing to do, which
     /// succeeds like `workspace N` on the workspace showing: the window is already where it was asked to go.
-    private static func tree(_ name: String, _ change: (inout Workspace) -> Bool) -> Reply {
+    private static func onWorkspace(_ name: String, _ change: (inout Workspace) -> Bool) -> Reply {
         guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
         switch coordinator.command(change) {
         case nil: return .error("\(name): the focused window is not tiled")
@@ -206,7 +206,7 @@ enum Dispatcher {
     // MARK: Windows
 
     /// Moves a window to the current Space of the next or previous display (wrapping around), into that
-    /// Space's tree. A floating window keeps its offset from the display's corner. Untested with two displays.
+    /// Space's workspace. A floating window keeps its offset from the display's corner. Untested with two displays.
     private static func moveWindowToDisplay(_ target: DisplayTarget, follow: Bool, window wid: WindowID) -> Reply {
         let model = AppState.shared.displays
         model.reconcile()
@@ -224,7 +224,7 @@ enum Dispatcher {
     }
 
     /// Moves a new window to the current Space of `display`, without telling the coordinator, which is holding it
-    /// out of the trees. Nil once moved, else the error.
+    /// out of the workspaces. Nil once moved, else the error.
     static func adopt(_ wid: WindowID, onto display: Display) -> Reply? {
         let from = AppState.shared.displays.display(ofWindow: wid)
         if let error = move(wid, to: display.currentSpaceID, arriving: "display \(display.id)") { return error }
@@ -251,7 +251,7 @@ enum Dispatcher {
         return nil
     }
 
-    /// A floating window moved to another display keeps its offset from the display's corner; the tree places a
+    /// A floating window moved to another display keeps its offset from the display's corner; the workspace places a
     /// tiled one.
     private static func keepOffset(of wid: WindowID, from: Display, to: Display) {
         guard from.uuid != to.uuid, AppState.shared.coordinator?.isFloating(wid) != false,

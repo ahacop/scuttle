@@ -2,7 +2,7 @@ import AppKit
 import ScuttleLayout
 
 // Glides windows to their tiles. Each window rides an ease from where it is to its tile, stepped on every frame
-// of the main display and written through the applier's per-app queues without readback. Once a tree's windows
+// of the main display and written through the applier's per-app queues without readback. Once a workspace's windows
 // have arrived, its pass finishes as an unanimated one would: the full write with readback, retry and raises.
 // A new pass mid-flight retargets the eases, keeping each window's speed, so windows curve to their new tiles
 // instead of restarting. An ease rather than a spring: a spring's tail spent a third of each animation creeping
@@ -32,7 +32,7 @@ final class Animator: NSObject {
     /// Guards everything below that both threads touch.
     private let lock = NSLock()
     private var entries: [WindowID: Entry] = [:]
-    /// By tree, the rest of its latest pass, run on the main thread once its windows have arrived.
+    /// By workspace, the rest of its latest pass, run on the main thread once its windows have arrived.
     private var finishes: [UInt64: () -> Void] = [:]
     /// The display link driving steps, on the animation thread's run loop; nil while nothing moves.
     private var link: CADisplayLink?
@@ -116,7 +116,7 @@ final class Animator: NSObject {
     /// The windows moving now.
     var animating: [WindowID] { lock.withLock { Array(entries.keys) } }
 
-    /// Move the tree's windows from `starts` to `targets`, then run `finish`. Windows already there, or with
+    /// Move the workspace's windows from `starts` to `targets`, then run `finish`. Windows already there, or with
     /// no start, are left to `finish`; with none left to move, it runs at once.
     func animate(_ key: UInt64, from starts: [WindowID: CGRect], to targets: [WindowID: CGRect],
                  pids: [WindowID: pid_t], then finish: @escaping () -> Void) {
@@ -294,7 +294,7 @@ final class Animator: NSObject {
         if idle { stopLink() }
     }
 
-    /// Takes the finishes of every tree none of whose windows is still moving. Under the lock.
+    /// Takes the finishes of every workspace none of whose windows is still moving. Under the lock.
     private func takeArrivedLocked() -> [() -> Void] {
         let moving = Set(entries.values.map(\.key))
         var ready: [() -> Void] = []

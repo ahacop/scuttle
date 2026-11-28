@@ -1,10 +1,10 @@
 import Foundation
 import ScuttleLayout
 
-// Native tabs: a newly shown window at the exact frame of a tile of its app is held out of the trees until
+// Native tabs: a newly shown window at the exact frame of a tile of its app is held out of the workspaces until
 // it turns out to be the next tab of that tile (the tile's window is ordered out) or a window of its own.
 extension Coordinator {
-    /// Holds a newly shown window out of the tree if it may be the next tab of a tile of its app, and has not been
+    /// Holds a newly shown window out of the workspace if it may be the next tab of a tile of its app, and has not been
     /// held before. `settleTab` tiles it after 250 ms if the tile's window is still there.
     func holdAsTab(_ window: Window, in key: UInt64) -> Bool {
         guard !notTabs.contains(window.id), let tab = tab(replacedBy: window, in: key) else { return false }
@@ -16,7 +16,7 @@ extension Coordinator {
     /// A tile a newly shown window may be taking over as the next tab of a native tab group: a window of the same
     /// app at exactly the tile's frame. AppKit shows a new tab by giving it the group's frame and ordering it in,
     /// then orders the previous tab out. But some apps (Ghostty, for one) open every new window at the previous
-    /// window's frame, so the newcomer is held out of the tree until the tile's window is ordered out or
+    /// window's frame, so the newcomer is held out of the workspace until the tile's window is ordered out or
     /// `settleTab` gives up on it.
     private func tab(replacedBy window: Window, in key: UInt64) -> WindowID? {
         workspaces[key]?.windows.first { id in

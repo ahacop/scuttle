@@ -2,7 +2,7 @@ import ScuttleCommands
 import ScuttleConfig
 import ScuttleLayout
 
-// What commands ask of the coordinator: tree commands on the focused window's Space, floating, and
+// What commands ask of the coordinator: workspace commands on the focused window's Space, floating, and
 // taking in a window scuttle moved to another Space.
 extension Coordinator {
     /// Settling windows are still floating on screen, unless a command has already requested tiling.
@@ -10,7 +10,7 @@ extension Coordinator {
         placements[id]?.floating ?? settlements[id].map { $0.floating ?? true }
     }
 
-    /// The tree of the display's current Space, if scuttle has one.
+    /// The workspace of the display's current Space, if scuttle has one.
     func workspace(on display: Display) -> Workspace? {
         workspaces[display.currentSpaceID]
     }
@@ -41,7 +41,7 @@ extension Coordinator {
         workspaces[space] == nil ? nil : "scrolling"
     }
 
-    /// Runs a command on the tree of a window (the focused one by default), focused in that tree, and applies
+    /// Runs a command on the workspace of a window (the focused one by default), focused in that workspace, and applies
     /// what changed. Nil if the window is not tiled.
     func command<T>(on id: WindowID? = nil, _ change: (inout Workspace) -> T) -> T? {
         let id = id ?? focusedWindow
@@ -70,9 +70,9 @@ extension Coordinator {
         return true
     }
 
-    /// Moves a window scuttle just moved to another Space into that Space's tree now, rather than on the next event.
+    /// Moves a window scuttle just moved to another Space into that Space's workspace now, rather than on the next event.
     /// `source` requests a focus handoff there. The caller captures it before moving, only for a focused window
-    /// it isn't following; remembered tree focus and tiled placement cannot tell us that for a floating window.
+    /// it isn't following; remembered workspace focus and tiled placement cannot tell us that for a floating window.
     func windowMoved(_ id: WindowID, refocusFrom source: UInt64? = nil) {
         guard model.windows[id] != nil else { return }
         // Re-reads its Space; the update it publishes reaches handle, which tracks the window and flushes.

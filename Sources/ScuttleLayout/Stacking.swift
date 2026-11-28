@@ -1,8 +1,8 @@
 import CoreGraphics
 
 extension Layout {
-    /// Windows to raise, back to front, so overlapping windows (accordion, fullscreen) stack as `order` says
-    /// wherever that shows. `current` is the on-screen order, front to back. Empty when it already agrees;
+    /// Windows to raise, back to front, so overlapping windows (a fullscreen window and the columns behind it)
+    /// stack as `order` says wherever that shows. `current` is the on-screen order, front to back. Empty when it already agrees;
     /// plain tiles never overlap.
     ///
     /// Each raise briefly puts that window on top, and makes it its app's key window, before the ones meant to
@@ -10,7 +10,7 @@ extension Layout {
     /// front, only the order of two windows whose overlap shows somewhere counts (where windows above both
     /// cover it, either may be on top). Once every foreground window is above its overlapping neighbours,
     /// nothing is raised just to fix which background window peeks out at an edge. Disjoint tiles can each be
-    /// foreground; in an accordion only its front window is. Switching accordion focus normally raises nothing.
+    /// foreground; of windows covering each other only the front one is.
     public func raises(current: [WindowID]) -> [WindowID] {
         guard hasOverlaps else { return [] }
         return raisesAmongOverlaps(current: current)

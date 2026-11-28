@@ -36,7 +36,7 @@ extension Config {
 
 
     [gaps]
-    inner = 8                       # or { horizontal = 8, vertical = 8 }
+    inner = 8                       # between columns
     outer = 8                       # or { top = 8, bottom = 8, left = 8, right = 8 }
 
     # Display patterns: main, secondary, or part of a name as listed by `scuttle list-displays`.

@@ -15,7 +15,7 @@ extension Coordinator {
     }
 
     /// Starts moving a just-classified new window to the display that had focus when it first showed, holding it
-    /// out of the trees meanwhile. False if it stays where the app put it.
+    /// out of the workspaces meanwhile. False if it stays where the app put it.
     func adopt(_ window: Window) -> Bool {
         guard let target = adoptTargets.removeValue(forKey: window.id),
               let display = displays.displays.first(where: { $0.uuid == target }),

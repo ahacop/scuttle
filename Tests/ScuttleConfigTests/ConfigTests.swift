@@ -300,13 +300,13 @@ struct ConfigTests {
     @Test func `Negative sizes load as written, with warnings`() throws {
         // Older scuttle loaded these values as written, so they still do; the warning suggests 0.
         let inner = try Config.parse("[gaps]\ninner = -4\n")
-        #expect(inner.gaps.inner == Inner(-4))
+        #expect(inner.gaps.inner == -4)
         #expect(inner.warnings == [ConfigWarning(path: "gaps.inner", "should be 0 or more; still read as -4", line: 2,
                                                   fix: ConfigFix(replace: "-4", with: "0"))])
 
-        let innerTable = try Config.parse("[gaps]\ninner = { horizontal = 8, vertical = -1 }\n")
-        #expect(innerTable.gaps.inner == Inner(horizontal: 8, vertical: -1))
-        #expect(innerTable.warnings == [ConfigWarning(path: "gaps.inner.vertical", "should be 0 or more; still read as -1",
+        let innerTable = try Config.parse("[gaps]\ninner = { horizontal = -1 }\n")
+        #expect(innerTable.gaps.inner == -1)
+        #expect(innerTable.warnings == [ConfigWarning(path: "gaps.inner.horizontal", "should be 0 or more; still read as -1",
                                                        line: 2, fix: ConfigFix(replace: "-1", with: "0"))])
 
         let outer = try Config.parse("[gaps]\nouter = -8\n")

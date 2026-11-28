@@ -11,7 +11,7 @@ struct PendingLayoutsTests {
         let lock = NSLock()
         let writes = FrameWrites()
         var pending = PendingLayouts()
-        var tree = workspace(2)
+        var strip = workspace(2)
         var frames: [WindowID: CGRect] = [:]
         var observed: [FrameJob] = []
         let scheduler = FrameScheduler(
@@ -21,7 +21,7 @@ struct PendingLayoutsTests {
                 guard let permit = writes.permit, writes.allows(permit) else { return }
                 lock.withLock { observed.append(job); frames[job.id] = job.frame }
             })
-        var animation = FrameAnimation(from: rect(0, 0, 50, 50), to: tree.layout().frames[1]!)
+        var animation = FrameAnimation(from: rect(0, 0, 50, 50), to: strip.layout().frames[1]!)
         _ = animation.step(Spring(response: 1, damping: 0.9), dt: 1.0 / 60, timeout: 4)
         scheduler.step([FrameJob(pid: 1, id: 1, frame: animation.frame)])
         let began = entered.wait(timeout: .now() + 2)
@@ -32,7 +32,7 @@ struct PendingLayoutsTests {
         scheduler.cancel()
         pending.pause([1])
         for width in [800, 1200, 900] {
-            tree.bounds = rect(0, 0, CGFloat(width), 600)
+            strip.bounds = rect(0, 0, CGFloat(width), 600)
             pending.dirty.insert(1)
             #expect(pending.take(visible: [1], existing: [1]).isEmpty)
         }
@@ -40,7 +40,7 @@ struct PendingLayoutsTests {
         #expect(pending.resume() == [1])
         writes.transition(to: .layout)
         #expect(pending.take(visible: [1], existing: [1]) == [1])
-        let layout = tree.layout()
+        let layout = strip.layout()
         let final = layout.order.map { FrameJob(pid: 1, id: $0, frame: layout.frames[$0]!) }
         scheduler.submit(final) { _ in done.signal() }
         release.signal()
@@ -75,7 +75,7 @@ struct PendingLayoutsTests {
         #expect(layouts.take(visible: [1], existing: [1, 2]) == [1])
     }
 
-    @Test func treesRemovedDuringOverviewDoNotReappearOnExit() {
+    @Test func workspacesRemovedDuringOverviewDoNotReappearOnExit() {
         var layouts = PendingLayouts()
         layouts.pause([1, 2])
         layouts.resume()

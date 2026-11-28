@@ -296,15 +296,15 @@
       "description": "Gaps in points. A side or axis left out keeps its default.",
       "properties": {
         "inner": {
-          "description": "Points between tiled windows: one value for both axes, or per axis.",
+          "description": "Points between columns.",
           "oneOf": [
             { "type": "integer", "minimum": 0 },
             {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "horizontal": { "type": "integer", "minimum": 0, "description": "Between side-by-side windows." },
-                "vertical": { "type": "integer", "minimum": 0, "description": "Between stacked windows." }
+                "horizontal": { "type": "integer", "minimum": 0, "description": "Between columns. The same as giving `inner` a number." },
+                "vertical": { "type": "integer", "minimum": 0, "deprecated": true, "description": "Ignored: a column is one window, as tall as the display." }
               }
             }
           ]

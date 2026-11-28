@@ -1,14 +1,6 @@
 // Gaps in points, the `[display.<pattern>]` tables that override them for one display, and the display
 // patterns those tables, `[workspace.N.display.<pattern>]` and `[workspace-to-display]` use.
 
-/// The gap between side-by-side windows (`horizontal`) and between stacked ones (`vertical`).
-public struct Inner: Equatable {
-    public var horizontal, vertical: Int
-
-    public init(_ both: Int) { (horizontal, vertical) = (both, both) }
-    public init(horizontal: Int, vertical: Int) { (self.horizontal, self.vertical) = (horizontal, vertical) }
-}
-
 /// The gaps between tiled windows and the screen edges.
 public struct Sides: Equatable {
     public var top, bottom, left, right: Int
@@ -20,17 +12,17 @@ public struct Sides: Equatable {
 }
 
 public struct Gaps: Equatable {
-    public var inner = Inner(8)
+    /// Between columns.
+    public var inner = 8
     public var outer = Sides(8)
 
     public init() {}
-    public init(inner: Inner, outer: Sides) { (self.inner, self.outer) = (inner, outer) }
+    public init(inner: Int, outer: Sides) { (self.inner, self.outer) = (inner, outer) }
 
     /// These gaps with the patch's values in place of the matching ones.
     public func applying(_ patch: GapsPatch) -> Gaps {
         var gaps = self
-        gaps.inner.horizontal = patch.horizontal ?? inner.horizontal
-        gaps.inner.vertical = patch.vertical ?? inner.vertical
+        gaps.inner = patch.inner ?? inner
         gaps.outer.top = patch.top ?? outer.top
         gaps.outer.bottom = patch.bottom ?? outer.bottom
         gaps.outer.left = patch.left ?? outer.left
@@ -39,21 +31,27 @@ public struct Gaps: Equatable {
     }
 }
 
-/// A `[gaps]` table as written: `inner = 8` or `inner = { horizontal = 8, vertical = 6 }`, `outer = 8` or
-/// `outer = { top = 44, left = 8 }`. A value left out is nil and keeps whatever it is applied to.
+/// A `[gaps]` table as written: `inner = 8`, `outer = 8` or `outer = { top = 44, left = 8 }`. A value left out
+/// is nil and keeps whatever it is applied to.
+///
+/// `inner` was once two gaps, `{ horizontal = 8, vertical = 6 }`, the second between windows stacked in a
+/// column. A column holds one window now, so that form still loads: `horizontal` is the gap and `vertical`
+/// warns that it does nothing.
 public struct GapsPatch: Equatable {
-    public var horizontal, vertical, top, bottom, left, right: Int?
+    public var inner, top, bottom, left, right: Int?
 
     public init() {}
 
     init(_ t: Table) throws {
         if t.isTable("inner") {
-            let inner = try t.table("inner")!
-            horizontal = try Self.points(inner, "horizontal")
-            vertical = try Self.points(inner, "vertical")
-            try inner.done()
-        } else if let both = try Self.points(t, "inner") {
-            (horizontal, vertical) = (both, both)
+            let table = try t.table("inner")!
+            inner = try Self.points(table, "horizontal")
+            if try table.int("vertical") != nil {
+                table.warn("vertical", "ignored: a column is one window, as tall as the display, so no gap is this one")
+            }
+            try table.done()
+        } else {
+            inner = try Self.points(t, "inner")
         }
         if t.isTable("outer") {
             let outer = try t.table("outer")!

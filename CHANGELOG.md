@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `[gaps] inner` is one number, the gap between columns. The table form `{ horizontal = 8, vertical = 6 }` still loads, with a warning that `vertical` does nothing: it was the gap between windows stacked in a column, and a column holds one window.
+- `debug-state` lists each workspace's columns under `layouts`. The key was `trees`.
 - A window that was minimized when scuttle started is tiled when it is restored. It could be floated for good: for a quarter of a second after it leaves the Dock, macOS still describes it as a dialog.
 - `maximize-column` and the other width commands work on a VMware Fusion window while its guest has the keyboard. VMware fixes the window's size then, and the command did nothing. scuttle now activates itself for a moment (about 20 ms), resizes the window and activates VMware again.
 - Minimum window sizes are no longer saved by app. A size one window once refused to go below was applied to every window of its app from then on, in every session: a VMware window held at nearly the display's width for a moment left every VMware window that wide, and `maximize-column` with nothing to do. A minimum is now one window's, until it closes or scuttle quits. The saved file is removed.
