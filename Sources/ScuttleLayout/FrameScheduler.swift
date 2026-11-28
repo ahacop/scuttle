@@ -17,18 +17,17 @@ public struct FrameJob: Equatable, Sendable {
 /// What a window ended up at after a write.
 public struct FrameResult: Equatable, Sendable {
     public var job: FrameJob
+    /// Where the window was asked to go: the job's frame grown to the window's recorded minimum size.
+    public var target: CGRect
     /// The frame read back, nil when the window could not be read.
     public var got: CGRect?
     /// False when the window was already in place and nothing was written.
     public var written = false
     /// True when the first write landed elsewhere and it was written once more.
     public var retried = false
-    /// True when the window read back at a size an animation step asked of it on the way: an app that resizes
-    /// lazily, still catching up, whose size says nothing about what it can take.
-    public var catchingUp = false
 
-    /// Landed within 2 pt of where it was asked to go on every edge.
-    public var matched: Bool { got.map { $0.isClose(to: job.frame, within: 2) } ?? false }
+    /// Landed within 2 pt of the target on every edge.
+    public var matched: Bool { got.map { $0.isClose(to: target, within: 2) } ?? false }
 }
 
 extension Sequence<FrameResult> {
@@ -37,8 +36,7 @@ extension Sequence<FrameResult> {
 }
 
 /// Schedules frame writes: one serial queue per process so a slow app only stalls itself,
-/// the newest frame per window wins, and a window that lands elsewhere is written at most twice. What a window
-/// that still lands elsewhere means is the caller's to say: the results carry where each one is.
+/// the newest frame per window wins, and a window that refuses its frame is written at most twice.
 /// Animation steps take a lighter path on the same queues: written once, not read back, and only moved
 /// when their size is the one last written. The actual reads and writes are injected, so this is testable
 /// without Accessibility.
@@ -58,6 +56,9 @@ public final class FrameScheduler: @unchecked Sendable {
 
     private let lock = NSLock()
     private var apps: [Int32: App] = [:]
+    private var minimums: [WindowID: CGSize] = [:]
+    /// The last refusal of each window: a minimum once a pass asking for another size sees the same one.
+    private var candidates: [WindowID: Refusal] = [:]
     /// Bumped by `cancel`; writes queued under an older generation are dropped.
     private var generation = 0
 
@@ -79,6 +80,10 @@ public final class FrameScheduler: @unchecked Sendable {
         self.resize = resize ?? write
         self.stepsWriteChanges = stepsWriteChanges
     }
+
+    /// Sizes windows refused to go below, the same for two different sizes asked. Only dimensions that were
+    /// refused are set.
+    public var minimumSizes: [WindowID: CGSize] { lock.withLock { minimums } }
 
     /// Queue frames. `completion` gets the results of every process queue these jobs went to,
     /// once each has written them (or newer frames for the same windows).
@@ -143,10 +148,12 @@ public final class FrameScheduler: @unchecked Sendable {
         app.queue.async { self.drain(app) }
     }
 
-    /// Forgets a window that is gone: what steps wrote to it. Window ids are reused, so a new window must not
-    /// inherit that.
+    /// Forgets a window that is gone: its minimum size, its last refusal, and what steps wrote.
+    /// Window ids are reused, so a new window must not inherit them.
     public func forget(_ id: WindowID) {
         lock.withLock {
+            minimums[id] = nil
+            candidates[id] = nil
             for app in apps.values { app.latest[id] = nil }
             // What steps wrote is the queue's alone, so it is cleared there, after anything already queued.
             for app in apps.values { app.queue.async { app.written[id] = nil; app.stepSizes[id] = nil } }
@@ -176,6 +183,11 @@ public final class FrameScheduler: @unchecked Sendable {
         if app.forgotten, apps[app.pid] === app, !app.scheduled, app.pending.isEmpty, app.steps.isEmpty, app.batches.isEmpty {
             apps[app.pid] = nil
         }
+    }
+
+    /// Forgets every minimum size and refusal, so windows are asked for their tiles again.
+    public func forgetMinimums() {
+        lock.withLock { minimums = [:]; candidates = [:] }
     }
 
     /// Drops every frame not written yet, including a second try already under way. Completions still run,
@@ -208,18 +220,18 @@ public final class FrameScheduler: @unchecked Sendable {
             app.written[job.id] = job.frame
             app.stepSizes[job.id, default: []].insert(job.frame.size)
         }
-        var results = run(jobs) { job in
+        let results = run(jobs, stepSizes: app.stepSizes) { job in
             self.lock.withLock { self.generation == generation && app.latest[job.id] == revisions[job.id] }
         }
-        for i in results.indices {
-            let id = results[i].job.id
-            if results[i].written { app.written[id] = nil }
-            if let got = results[i].got, !results[i].matched { results[i].catchingUp = app.stepSizes[id]?.contains(got.size) ?? false }
-            app.stepSizes[id] = nil
+        for result in results {
+            if result.written { app.written[result.job.id] = nil }
+            app.stepSizes[result.job.id] = nil
         }
         // A pass can still hold the windows of a process that quit: its queue goes once they are written.
         let quit = !alive(app.pid)
         lock.withLock {
+            // In place, or already where its minimum lets it be: whatever it refused before, it has caught up.
+            for result in results where result.matched || !result.written { candidates[result.job.id] = nil }
             if quit { app.forgotten = true }
             dropIfDone(app)
         }
@@ -240,13 +252,14 @@ public final class FrameScheduler: @unchecked Sendable {
     }
 
     /// Write, settle, read back; write the misses once more, settle, read back again. Writes only while `live`.
-    /// A window already in place is not written.
-    private func run(_ jobs: [FrameJob], live: (FrameJob) -> Bool) -> [FrameResult] {
+    /// A window already where its recorded minimum size lets it be is neither written nor retried. A window
+    /// still at a size an animation step asked for is catching up, not refusing, so it shows no minimum.
+    private func run(_ jobs: [FrameJob], stepSizes: [WindowID: Set<CGSize>], live: (FrameJob) -> Bool) -> [FrameResult] {
         var results = jobs.map { job in
-            let current = read(job)
-            let write = live(job) && !(current?.isClose(to: job.frame, within: 1) ?? false)
+            let current = read(job), target = reachable(job)
+            let write = live(job) && !(current?.isClose(to: target, within: 1) ?? false)
             if write { self.write(job) }
-            return FrameResult(job: job, got: current, written: write)
+            return FrameResult(job: job, target: target, got: current, written: write)
         }
         let written = results.indices.filter { results[$0].written }
         guard !written.isEmpty else { return results }
@@ -254,7 +267,7 @@ public final class FrameScheduler: @unchecked Sendable {
         for i in written { results[i].got = read(results[i].job) }
 
         // Only windows that answered and landed elsewhere; an unreadable (possibly hung) one is not worth a second try.
-        let misses = written.filter { i in results[i].got.map { !$0.isClose(to: results[i].job.frame, within: 2) } ?? false }
+        let misses = written.filter { i in results[i].got.map { !$0.isClose(to: results[i].target, within: 2) } ?? false }
         for i in misses {
             guard live(results[i].job) else { continue }
             write(results[i].job)
@@ -263,12 +276,66 @@ public final class FrameScheduler: @unchecked Sendable {
         let retried = misses.filter { results[$0].retried }
         guard !retried.isEmpty else { return results }
         wait()
-        for i in retried { results[i].got = read(results[i].job) }
+        for i in retried {
+            results[i].got = read(results[i].job)
+            guard live(results[i].job) else { continue }
+            recordMinimum(results[i], stepSizes: stepSizes[results[i].job.id] ?? [])
+        }
         return results
+    }
+
+    /// The job's frame grown to the window's recorded minimum size: as close as the window will come.
+    private func reachable(_ job: FrameJob) -> CGRect {
+        guard let minimum = minimumSizes[job.id] else { return job.frame }
+        return CGRect(origin: job.frame.origin, size: job.frame.size.grown(to: minimum))
     }
 
     private func wait() {
         if settle > 0 { Thread.sleep(forTimeInterval: settle) }
+    }
+
+    /// A window that came back larger than asked, where it was put, may have a minimum size in that dimension. It
+    /// counts once a pass asking for a different size gets the same size back. Asking the same size again proves
+    /// nothing: an app that snaps to a grid (Terminal's rows and columns) misses the same way every time, but a
+    /// smaller ask snaps smaller, while a real minimum comes back unchanged. An app still resizing to an earlier
+    /// size (Ghostty reflowing, an Electron app, or a size an animation step asked for) has caught up by the later
+    /// pass. A window somewhere else has left (native full screen, another Space) and says nothing about how small
+    /// it can be.
+    private func recordMinimum(_ result: FrameResult, stepSizes: Set<CGSize>) {
+        let id = result.job.id
+        guard let got = result.got else { return }
+        guard abs(got.minX - result.job.frame.minX) <= 2, abs(got.minY - result.job.frame.minY) <= 2,
+              !stepSizes.contains(got.size) else { return lock.withLock { candidates[id] = nil } }
+        let refusal = Refusal(asked: result.job.frame.size, got: got.size)
+        lock.withLock {
+            if let seen = candidates[id] {
+                let confirmed = refusal.confirms(seen)
+                if confirmed != .zero { minimums[id] = minimums[id]?.grown(to: confirmed) ?? confirmed }
+            }
+            candidates[id] = refusal.got == .zero ? nil : refusal
+        }
+    }
+
+    /// The size a window was asked for and the size it came back at, in the dimensions where it came back more
+    /// than 2 pt larger. Others are zero.
+    private struct Refusal {
+        var asked = CGSize.zero
+        var got = CGSize.zero
+
+        init(asked: CGSize, got: CGSize) {
+            if got.width > asked.width + 2 { self.asked.width = asked.width; self.got.width = got.width }
+            if got.height > asked.height + 2 { self.asked.height = asked.height; self.got.height = got.height }
+        }
+
+        /// The minimum this and an earlier refusal show: each dimension both refused, at sizes asked more than
+        /// 2 pt apart, coming back within 2 pt of each other.
+        func confirms(_ earlier: Refusal) -> CGSize {
+            func minimum(_ asked: CGFloat, _ got: CGFloat, _ askedBefore: CGFloat, _ gotBefore: CGFloat) -> CGFloat {
+                got > 0 && gotBefore > 0 && abs(got - gotBefore) <= 2 && abs(asked - askedBefore) > 2 ? max(got, gotBefore) : 0
+            }
+            return CGSize(width: minimum(asked.width, got.width, earlier.asked.width, earlier.got.width),
+                          height: minimum(asked.height, got.height, earlier.asked.height, earlier.got.height))
+        }
     }
 
     /// One process's queue and what is waiting on it. Guarded by the scheduler's lock.

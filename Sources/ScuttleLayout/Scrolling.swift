@@ -29,12 +29,8 @@ extension Workspace {
     func width(ofColumn index: Int) -> Double { columnWidths[columns[index]] ?? columnWidth }
 
     /// Give column `index` the width `share`, kept between the narrowest a column goes and the whole screen.
-    /// A width that is another than it had is asked of its window afresh, whatever the window answered the last
-    /// time it had this one: that may have been a passing state of it, or of where it stood.
     mutating func setWidth(ofColumn index: Int, _ share: Double) {
-        let share = min(max(share, Self.minimumColumnWidth), 1), id = columns[index]
-        if abs(share - width(ofColumn: index)) > 1e-9 { measured[id] = nil }
-        columnWidths[id] = share
+        columnWidths[columns[index]] = min(max(share, Self.minimumColumnWidth), 1)
     }
 
     /// Where the columns go: inside the outer gaps, and with more than one column also clear of the parked
@@ -49,23 +45,16 @@ extension Workspace {
         return CGRect(x: area.minX + left, y: area.minY, width: area.width - left - right, height: area.height)
     }
 
-    /// The half inner gaps that are part of column `index`: one on each side that has a neighbour, so neighbours
-    /// end up a whole gap apart.
-    func insets(ofColumn index: Int) -> CGFloat {
-        (index > 0 ? gaps.horizontal / 2 : 0) + (index < columns.count - 1 ? gaps.horizontal / 2 : 0)
-    }
-
-    /// How wide column `index`'s window is asked to be: its share of the strip, less its half gaps.
-    func intendedWidth(ofColumn index: Int, in area: CGRect) -> CGFloat {
-        (area.width * CGFloat(width(ofColumn: index))).rounded() - insets(ofColumn: index)
-    }
-
-    /// Each column's start and width in points along the strip, from its left edge, half gaps included. A column
-    /// is its share of the screen, or as wide as its window turned out to be when asked for that.
+    /// Each column's start and width in points along the strip, from its left edge. Half an inner gap is part
+    /// of a column on each side that has a neighbour, so neighbours end up a whole gap apart. Each column is its
+    /// share of the screen, grown to fit its window's minimum width.
     func columnSpans(in area: CGRect) -> [(start: CGFloat, width: CGFloat)] {
+        let count = columns.count, gap = gaps.horizontal
         var start: CGFloat = 0
         return columns.indices.map { i in
-            let width = (measure(of: columns[i])?.got ?? intendedWidth(ofColumn: i, in: area)) + insets(ofColumn: i)
+            let insets = (i > 0 ? gap / 2 : 0) + (i < count - 1 ? gap / 2 : 0)
+            let minimum = minimumSizes[columns[i]]?.width ?? 0
+            let width = max((area.width * CGFloat(width(ofColumn: i))).rounded(), minimum + insets)
             defer { start += width }
             return (start, width)
         }
@@ -129,14 +118,11 @@ extension Workspace {
     /// Grow (positive) or shrink the focused window's column by `delta` points. False when nothing visibly changed.
     mutating func resizeColumn(by delta: CGFloat) -> Bool {
         guard let focused, let column = columns.firstIndex(of: focused) else { return false }
-        let old = width(ofColumn: column), area = stripArea
+        let old = width(ofColumn: column)
         let (before, offset) = (tiledLayout(), scrollOffset)
-        // From the width the window has, where that is not the one it was asked for: a step is then one from what
-        // shows, and asking again for a width it already answered changes nothing.
-        let from = measure(of: focused) == nil ? old : Double(columnSpans(in: area)[column].width / area.width)
-        setWidth(ofColumn: column, from + Double(delta / area.width))
+        setWidth(ofColumn: column, old + Double(delta / stripArea.width))
         reveal(focused)
-        // A step that changes nothing is undone, so the width does not drift out of sight.
+        // A step the minimum sizes swallow whole is undone, so the width does not drift out of sight.
         guard tiledLayout() == before else { return true }
         setWidth(ofColumn: column, old)
         scrollOffset = offset

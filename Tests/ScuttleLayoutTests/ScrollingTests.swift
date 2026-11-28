@@ -121,10 +121,9 @@ struct ScrollingGeometryTests {
         #expect(ws.isInView(2))
     }
 
-    @Test func `A column grows to the width its window came back at`() {
+    @Test func `A column grows to its windows minimum width`() {
         var ws = strip(2)
-        ws.focus(1)
-        ws.measure(1, asked: ws.layout().frames[1]!.width, got: 700)
+        ws.minimumSizes[1] = CGSize(width: 700, height: 0)
         ws.focus(1)
         #expect(ws.layout().frames[1]!.width == 700)
         #expect(lefts(ws) == [-25, 675])

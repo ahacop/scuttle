@@ -53,7 +53,7 @@ extension Command {
         Doc(syntax: "balance-sizes",
             description: "Give every column on the workspace the default width."),
         Doc(syntax: "clear-minimum-sizes",
-            description: "Forget the widths windows came back at when asked for their column's, and ask each again."),
+            description: "Forget the minimum window sizes scuttle has learned since it started, and re-apply every layout."),
         Doc(syntax: "reload-config",
             description: "Reload ~/.config/scuttle/scuttle.toml. On an error the previous config stays."),
         Doc(syntax: "enable <on|off|toggle>",

@@ -309,7 +309,7 @@ class Fuzzer:
         numbered = {sp for d in s["displays"] for sp in d["workspaces"]}
         windows = {w["id"]: w for w in s["windows"]}
         placements = {p["id"]: p for p in s["placements"]}
-        minimums = {int(k) for k in s["measured-widths"]}
+        minimums = {int(k) for k in s["minimum-sizes"]}
         for t in s["trees"]:
             for id in t["windows"]:
                 if id in owner: v[("c-two-trees", id)] = f"window {id} is in the trees of Spaces {owner[id]} and {t['space']}"
@@ -335,11 +335,10 @@ class Fuzzer:
         if p and not p["floating"] and p["space"] and p["space"] not in current:
             v[("e-focus-hidden", s["focused"])] = f"focused window {s['focused']} is tiled on hidden Space {p['space']}"
         area = s["displays"][0]["visible-area"]
-        for id, (asked, got) in s["measured-widths"].items():
-            # A window asked for much less that stays nearly as wide as the display is a lagging readback that was
-            # never taken back, not a window that cannot shrink.
-            if got > 0.85 * area[2] and asked < 0.7 * area[2]:
-                v[("j-measured", int(id))] = f"window {id} asked for {asked} wide is kept at {got}, nearly the display ({area[2]})"
+        for id, size in s["minimum-sizes"].items():
+            # A window that cannot shrink below nearly the whole display is a lagging readback, not a minimum.
+            if size[0] > 0.85 * area[2] or size[1] > 0.85 * area[3]:
+                v[("j-minimum", int(id))] = f"window {id} has minimum size {size}, nearly the display ({area[2]}x{area[3]})"
         if s["dragging"]:
             v[("k-dragging", s["dragging"])] = f"scuttle still thinks window {s['dragging']} is being dragged"
         out = self.ask("list-workspaces", "--focused")

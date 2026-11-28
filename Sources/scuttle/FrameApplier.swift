@@ -26,9 +26,9 @@ final class FrameApplier {
 
     init(supportURL: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("scuttle")) {
-        // Minimum sizes were once saved by app and given to every window of it in every session. What a window
-        // answers is its own, and can be a passing state of it: VMware once held a window at 3774 points wide, and
-        // every VMware window was laid out that wide from then on. See Measured.swift for what is kept now.
+        // Minimum sizes were once saved by app and given to every window of it in every session. A minimum is one
+        // window's, and can be a passing state of it: VMware once held a window at 3774 points wide, and every
+        // VMware window was laid out that wide from then on, since nothing asks a window for less than its minimum.
         for name in ["minimum-sizes.json", "learned-minimum-sizes.json"] {
             try? FileManager.default.removeItem(at: supportURL.appendingPathComponent(name))
         }
@@ -76,6 +76,9 @@ final class FrameApplier {
     private static let enhancedUILock = NSLock()
     nonisolated(unsafe) private static var enhancedUIChecked: [pid_t: CFTimeInterval] = [:]
 
+    /// Sizes windows refused to shrink below, from readback.
+    var minimumSizes: [WindowID: CGSize] { scheduler.minimumSizes }
+
     /// Forgets a window that is gone: its element and what the scheduler learned about it.
     func forget(_ id: WindowID) {
         lock.withLock {
@@ -91,6 +94,9 @@ final class FrameApplier {
         lock.withLock { elements = elements.filter { $0.key.pid != pid } }
         scheduler.forget(pid: pid)
     }
+
+    /// Forgets every minimum size learned.
+    func forgetMinimums() { scheduler.forgetMinimums() }
 
     /// A completion holds the permit of its pass, so canceled readbacks cannot revive an old layout.
     var permit: Int? { writes.permit }

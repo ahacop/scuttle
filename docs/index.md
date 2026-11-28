@@ -135,12 +135,11 @@ defaults write com.apple.dock workspaces-auto-swoosh -bool true && killall Dock
   and later, there is one Space per workspace, and extra Spaces that still have
   windows are left alone.
 - Some apps have size limits, such as Safari's minimum width or Terminal's
-  character grid. A column is as wide as its window turns out to be: when a
-  window comes back wider or narrower than its column asked, its neighbors
-  move to where it ends, a moment after the first layout. The answer is kept
-  for that width only, and the window is asked again whenever its column's
-  width is changed. Ask Windows for Their Widths Again in the menu asks every
-  window again.
+  character grid. Columns are sized around these limits, but windows can still
+  overlap or leave gaps. A window's minimum size is recorded once it stays the
+  same size after two different resizes, so it may overlap its neighbor until
+  then. Recorded sizes last until the window closes or scuttle quits, and are
+  cleared with Clear Minimum Sizes in the menu.
 - A window on another Space can't be focused directly, so its Space is switched
   to first.
 
