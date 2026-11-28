@@ -18,10 +18,10 @@ extension Workspace {
     /// Narrowest a column can be resized to, as a share of the screen.
     static let minimumColumnWidth = 0.1
 
-    /// Put a window in a new column right of the focused one, at the default width.
+    /// Put a window in a new column at the end of the strip, at the default width. Not beside the focused column:
+    /// a window that opens then never pushes the columns in view apart, and is always found in the same place.
     mutating func insertColumn(_ id: WindowID) {
-        let index = focused.flatMap { columns.firstIndex(of: $0) }.map { $0 + 1 } ?? columns.count
-        columns.insert(id, at: index)
+        columns.append(id)
         columnWidths[id] = columnWidth
     }
 

@@ -35,7 +35,7 @@ config stays in use and the error is shown in the menu.
 | `follow-space-order` | `false` | If `true`, the workspaces are renumbered when Spaces are reordered in Mission Control. On each display, the leftmost Space has the lowest number, and windows stay where they are. If `false`, each workspace keeps its number, and its windows are moved back to that number's Space the next time workspaces are arranged: on a config reload, a display change, or when a Space is removed. |
 | `default-tiling` | `true` | If `false`, workspaces aren't tiled unless tiling is turned on in [`[workspace.<number>]`](#workspacenumber). |
 | `follow-app-activation` | `true` | Fast Space switching when you use Cmd-Tab or the Dock. The macOS setting "When switching to an application, switch to a Space with open windows" has to be off for this. To leave some apps out, use the [`[follow-app-activation]`](#follow-app-activation) table instead. |
-| `block-native-fullscreen` | `false` | If `false`, macOS full screen is left as it is: a window put in it (with the green button or Control-Command-F) is moved to a Space of its own, outside every workspace. Its column is closed, and it gets a new column, right of the focused one, when it leaves full screen. If `true`, the window is moved back to its column and shown with scuttle's `fullscreen` instead, so it stays on its workspace. |
+| `block-native-fullscreen` | `false` | If `false`, macOS full screen is left as it is: a window put in it (with the green button or Control-Command-F) is moved to a Space of its own, outside every workspace. Its column is closed, and it gets a new column, at the end of the strip, when it leaves full screen. If `true`, the window is moved back to its column and shown with scuttle's `fullscreen` instead, so it stays on its workspace. |
 | `float-windows-without-fullscreen` | `true` | Float windows that can't be made full screen, such as Finder's copy progress, About This Mac and Calculator. Terminals and editors with a hidden title bar are still tiled. A `layout tiling` rule takes priority. |
 | `fullscreen-width` | `1.0` | The width of a `fullscreen` window, as a share of the display width inside the outer gaps. The window is centered. From `0.1` to `1`. Can be overridden in [`[display.<pattern>]`](#displaypattern) and [`[workspace.<number>]`](#workspacenumber). |
 | `lone-window-width` | the `fullscreen-width` in effect | The width of a window that is alone on its workspace and whose column fills the display, for example at column width `1` or maximized. The window is centered. From `0.1` to `1`. A value in a workspace's own table takes priority over the most specific matching display table, which takes priority over the top level. |
@@ -111,7 +111,7 @@ fullscreen-width = 0.8
 ## `[scrolling]`
 
 Every tiled workspace is a strip of columns that can be wider than the display.
-A new window is placed in a new column to the right of the focused one, at
+A new window is placed in a new column at the end of the strip, at
 `column-width`. If all columns fit on the display, the first one starts at the
 left edge. When a column is
 focused, the strip is scrolled just enough to show all of it. The commands for

@@ -14,11 +14,11 @@ struct InsertTests {
         #expect(workspace(3, bounds: rect(0, 0, 500, 1000)).windows == [1, 2, 3])
     }
 
-    @Test func `New window goes after focused`() {
+    @Test func `New window goes at the end, whichever is focused`() {
         var ws = workspace(3, bounds: rect(0, 0, 3000, 500))
         ws.focus(1)
         ws.insert(4)
-        #expect(ws.windows == [1, 4, 2, 3])
+        #expect(ws.windows == [1, 2, 3, 4])
         #expect(ws.focused == 4)
     }
 

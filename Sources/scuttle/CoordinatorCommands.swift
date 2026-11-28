@@ -52,7 +52,7 @@ extension Coordinator {
         return result
     }
 
-    /// Floats a tiled window where it stands, or tiles a floating one beside the focused tile of its Space.
+    /// Floats a tiled window where it stands, or tiles a floating one in a new column at the end of its Space's strip.
     /// A window held as a possible tab is released, so it cannot take over a tile once floated.
     /// During initial classification, remember the choice until AX settles. False for an unmanaged window.
     @discardableResult

@@ -462,7 +462,7 @@ final class Coordinator {
         focusWindow(pid: window.pid, id: id) { [applier] pid, id in applier.raiseForFocus(pid: pid, id: id) }
     }
 
-    /// Follows focus into the workspaces, so new windows land beside the focused one.
+    /// Follows focus into the workspaces.
     private func syncFocus() {
         let id = FocusRead.window()
         let deferring = focusing.map { $0.id != id && Date() < $0.until } ?? false
