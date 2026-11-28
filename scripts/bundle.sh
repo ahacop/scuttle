@@ -20,6 +20,9 @@ if [[ "$CONFIG" == release ]]; then
 fi
 swift build "${BUILD_FLAGS[@]}"
 
+# Spotlight offers every scuttle.app it finds as an app to open. It skips folders named *.noindex and doesn't follow
+# links, so build/ is a link to one. A build/ that is already a folder is left as it is.
+[[ -e build ]] || { mkdir -p build.noindex && ln -s build.noindex build; }
 APP=build/scuttle.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"

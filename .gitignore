@@ -2,7 +2,9 @@
 .claude/*
 !.claude/skills
 .DS_Store
-build/
+# build is a link to build.noindex, which Spotlight skips (scripts/bundle.sh).
+build
+build.noindex/
 dist/
 # Copied from CHANGELOG.md when the manual is built.
 docs/_includes/changelog.md
