@@ -199,7 +199,7 @@ final class ScuttleApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(.separator())
 
-        menu.addItem(item("Clear Saved Minimum Sizes", "clear-minimum-sizes"))
+        menu.addItem(item("Clear Minimum Sizes", "clear-minimum-sizes"))
         let edit = NSMenuItem(title: "Edit Config…", action: #selector(editConfig(_:)), keyEquivalent: "")
         edit.target = self
         edit.toolTip = Config.userConfigURL.path

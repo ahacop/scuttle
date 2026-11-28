@@ -3,7 +3,7 @@ import Testing
 @testable import scuttle
 
 struct FrameApplierStorageTests {
-    @Test func minimumSizesUseOnlyTheInjectedDirectory() throws {
+    @Test func minimumSizesSavedByEarlierVersionsAreRemoved() throws {
         let support = FileManager.default.temporaryDirectory.appendingPathComponent("scuttle-pr59-storage-\(UUID())")
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: support) }
@@ -14,9 +14,7 @@ struct FrameApplierStorageTests {
 
         let applier = FrameApplier(supportURL: support)
         #expect(!FileManager.default.fileExists(atPath: legacy.path))
-        #expect(applier.minimumSize(of: 900_059, app: "com.example.editor") == CGSize(width: 200, height: 100))
-        applier.forgetMinimums()
-        #expect(applier.minimumSize(of: 900_059, app: "com.example.editor") == nil)
         #expect(!FileManager.default.fileExists(atPath: current.path))
+        #expect(applier.minimumSizes.isEmpty, "a size saved for an app is no window's")
     }
 }

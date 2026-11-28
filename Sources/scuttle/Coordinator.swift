@@ -655,8 +655,7 @@ final class Coordinator {
     var animatingWindows: [WindowID] { animator.animating }
 
     private func minimumSizes(in workspace: Workspace) -> [WindowID: CGSize] {
-        var sizes: [WindowID: CGSize] = [:]
-        for id in workspace.windows { sizes[id] = applier.minimumSize(of: id, app: model.windows[id]?.bundleID) }
-        return sizes
+        let learned = applier.minimumSizes
+        return Dictionary(uniqueKeysWithValues: workspace.windows.compactMap { id in learned[id].map { (id, $0) } })
     }
 }

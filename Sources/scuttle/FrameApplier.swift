@@ -19,21 +19,19 @@ final class FrameApplier {
     private var elements: [Key: AXUIElement] = [:]
     /// Windows written but not read back, already logged, so a window that stays unreadable is logged once.
     private var unreadable: Set<WindowID> = []
-    /// The largest minimum size any window of an app has shown, by bundle id. Kept across sessions in
-    /// Application Support, so the write-settle-retry chain that discovers a minimum runs once per app ever.
-    private var appMinimums: [String: CGSize] = [:]
     private let raiseQueue = DispatchQueue(label: "scuttle.frames.raise")
     /// A pass's raise waits for its slowest app, so a newer pass can raise first; the older one is then skipped.
     private let passes = LatestPasses()
     private let writes = FrameWrites()
-    private let minimumsURL: URL
 
     init(supportURL: URL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("scuttle")) {
-        minimumsURL = supportURL.appendingPathComponent("learned-minimum-sizes.json")
-        // Saved before minimums needed two different sizes asked: Terminal's grid could pass for one there.
-        try? FileManager.default.removeItem(at: supportURL.appendingPathComponent("minimum-sizes.json"))
-        appMinimums = loadMinimums()
+        // Minimum sizes were once saved by app and given to every window of it in every session. A minimum is one
+        // window's, and can be a passing state of it: VMware once held a window at 3774 points wide, and every
+        // VMware window was laid out that wide from then on, since nothing asks a window for less than its minimum.
+        for name in ["minimum-sizes.json", "learned-minimum-sizes.json"] {
+            try? FileManager.default.removeItem(at: supportURL.appendingPathComponent(name))
+        }
         scheduler = FrameScheduler(
             beforeBatch: { pid in Self.suppressEnhancedUI(pid) },
             read: { [unowned self] job in withElement(pid: job.pid, id: job.id, frame) ?? nil },
@@ -81,12 +79,6 @@ final class FrameApplier {
     /// Sizes windows refused to shrink below, from readback.
     var minimumSizes: [WindowID: CGSize] { scheduler.minimumSizes }
 
-    /// The size a window refused to shrink below or, if it has refused nothing yet, the largest any window of its
-    /// app has refused, so a new window of a known app is laid out right the first time.
-    func minimumSize(of id: WindowID, app: String?) -> CGSize? {
-        scheduler.minimumSizes[id] ?? app.flatMap { app in lock.withLock { appMinimums[app] } }
-    }
-
     /// Forgets a window that is gone: its element and what the scheduler learned about it.
     func forget(_ id: WindowID) {
         lock.withLock {
@@ -103,12 +95,8 @@ final class FrameApplier {
         scheduler.forget(pid: pid)
     }
 
-    /// Forgets every minimum size learned, this session's and the saved ones.
-    func forgetMinimums() {
-        scheduler.forgetMinimums()
-        lock.withLock { appMinimums = [:] }
-        try? FileManager.default.removeItem(at: minimumsURL)
-    }
+    /// Forgets every minimum size learned.
+    func forgetMinimums() { scheduler.forgetMinimums() }
 
     /// A completion holds the permit of its pass, so canceled readbacks cannot revive an old layout.
     var permit: Int? { writes.permit }
@@ -143,7 +131,6 @@ final class FrameApplier {
         }
         let pass = passes.begin(layout.order)
         scheduler.submit(jobs, progress: progress) { [unowned self] results in
-            rememberAppMinimums(results)
             logUnreadable(results)
             // A window that could not be read back is not raised: each lookup of it would block the raise queue
             // for a second.
@@ -176,23 +163,6 @@ final class FrameApplier {
         }
     }
 
-    /// Minimums are recorded after a retry; note each new one under its app.
-    private func rememberAppMinimums(_ results: [FrameResult]) {
-        let retried = results.filter(\.retried)
-        guard !retried.isEmpty else { return }
-        let minimums = scheduler.minimumSizes
-        var changed = false
-        for result in retried {
-            guard let minimum = minimums[result.job.id],
-                  let app = NSRunningApplication(processIdentifier: result.job.pid)?.bundleIdentifier else { continue }
-            lock.withLock {
-                let grown = appMinimums[app]?.grown(to: minimum) ?? minimum
-                if appMinimums[app] != grown { appMinimums[app] = grown; changed = true }
-            }
-        }
-        if changed { saveMinimums() }
-    }
-
     /// The scheduler gives up on a window it wrote but cannot read back, so say so, once per window until it answers.
     private func logUnreadable(_ results: [FrameResult]) {
         let fresh = lock.withLock {
@@ -202,19 +172,6 @@ final class FrameApplier {
         for result in fresh {
             print("\(stamp()) frames: wrote window \(result.job.id) of pid \(result.job.pid) but could not read it back, not retrying")
         }
-    }
-
-    private func loadMinimums() -> [String: CGSize] {
-        guard let data = try? Data(contentsOf: minimumsURL),
-              let raw = try? JSONDecoder().decode([String: [CGFloat]].self, from: data) else { return [:] }
-        return raw.compactMapValues { $0.count == 2 ? CGSize(width: $0[0], height: $0[1]) : nil }
-    }
-
-    private func saveMinimums() {
-        let raw = lock.withLock { appMinimums.mapValues { [$0.width, $0.height] } }
-        guard let data = try? JSONEncoder().encode(raw) else { return }
-        try? FileManager.default.createDirectory(at: minimumsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? data.write(to: minimumsURL, options: .atomic)
     }
 
     /// Raising a window of the frontmost app makes it that app's key window. So windows are raised only when

@@ -136,10 +136,10 @@ defaults write com.apple.dock workspaces-auto-swoosh -bool true && killall Dock
   windows are left alone.
 - Some apps have size limits, such as Safari's minimum width or Terminal's
   character grid. Columns are sized around these limits, but windows can still
-  overlap or leave gaps. An app's minimum size is recorded once one of its
-  windows stays the same size after two different resizes, so an app's first
-  window may overlap its neighbor until then. The recorded sizes are cleared
-  with Clear Saved Minimum Sizes in the menu.
+  overlap or leave gaps. A window's minimum size is recorded once it stays the
+  same size after two different resizes, so it may overlap its neighbor until
+  then. Recorded sizes last until the window closes or scuttle quits, and are
+  cleared with Clear Minimum Sizes in the menu.
 - A window on another Space can't be focused directly, so its Space is switched
   to first.
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Minimum window sizes are no longer saved by app. A size one window once refused to go below was applied to every window of its app from then on, in every session: a VMware window held at nearly the display's width for a moment left every VMware window that wide, and `maximize-column` with nothing to do. A minimum is now one window's, until it closes or scuttle quits. The saved file is removed.
 - Switching between a window in macOS full screen and a workspace that isn't next to its Space is instant again. In 0.8 it slid past every workspace in between. The switch still slides when the two are next to each other.
 
 ## 0.8
