@@ -68,6 +68,13 @@ int scuttle_window_corner_radius(uint32_t windowID);
 // CGRectNull if the window is gone.
 CGRect scuttle_window_frame(uint32_t windowID);
 
+// The smallest and largest frame each window's app has said the window takes (NSWindow's minSize and maxSize, or
+// its content sizes with the title bar added), as the window server holds them: [minimum width, minimum height,
+// maximum width, maximum height] by window id. Asks nothing of the apps. A window that has gone is left out; one
+// whose app set no limit has zeros for the minimum and a very large maximum. A size an app only refuses when
+// asked (a window delegate's, or a terminal's whole characters) is not here.
+NSDictionary<NSNumber *, NSArray<NSNumber *> *> *scuttle_window_size_limits(NSArray<NSNumber *> *windowIDs);
+
 // Every window on every Space, minimized included, filtered like scuttle_space_window_ids.
 NSArray<NSNumber *> *scuttle_all_window_ids(void);
 

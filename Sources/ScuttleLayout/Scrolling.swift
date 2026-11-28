@@ -47,14 +47,16 @@ extension Workspace {
 
     /// Each column's start and width in points along the strip, from its left edge. Half an inner gap is part
     /// of a column on each side that has a neighbour, so neighbours end up a whole gap apart. Each column is its
-    /// share of the screen, grown to fit its window's minimum width.
+    /// share of the screen, shrunk to its window's maximum width and grown to fit its minimum, which wins where
+    /// the two disagree.
     func columnSpans(in area: CGRect) -> [(start: CGFloat, width: CGFloat)] {
         let count = columns.count, gap = gaps.horizontal
         var start: CGFloat = 0
         return columns.indices.map { i in
             let insets = (i > 0 ? gap / 2 : 0) + (i < count - 1 ? gap / 2 : 0)
             let minimum = minimumSizes[columns[i]]?.width ?? 0
-            let width = max((area.width * CGFloat(width(ofColumn: i))).rounded(), minimum + insets)
+            let maximum = maximumSizes[columns[i]].flatMap { $0.width > 0 ? $0.width : nil } ?? .greatestFiniteMagnitude
+            let width = max(min((area.width * CGFloat(width(ofColumn: i))).rounded(), maximum + insets), minimum + insets)
             defer { start += width }
             return (start, width)
         }

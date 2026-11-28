@@ -130,6 +130,37 @@ struct ScrollingGeometryTests {
         #expect(lefts(ws) == [-25, 675])
     }
 
+    @Test func `A column shrinks to its windows maximum width, and its neighbour closes up`() {
+        var ws = strip(2)
+        let unlimited = lefts(ws)
+        ws.maximumSizes[1] = CGSize(width: 300, height: 5000)
+        #expect(ws.layout().frames[1]!.width == 300)
+        #expect(ws.layout().frames[2]!.minX - ws.layout().frames[1]!.maxX == 0, "strip(_:) has no gaps")
+        #expect(lefts(ws)[0] == unlimited[0])
+        ws.maximumSizes[1] = CGSize(width: 100_000, height: 100_000)
+        #expect(lefts(ws) == unlimited, "a limit nothing reaches changes nothing")
+    }
+
+    @Test func `A new column that turns out wider is shown whole`() {
+        var ws = strip(3)
+        ws.focus(1)
+        ws.insert(4)
+        ws.minimumSizes[4] = CGSize(width: 800, height: 0)
+        let edge = strip(4).layout().frames[4]!.maxX
+        #expect(ws.layout().frames[4]!.maxX > edge, "scrolled for the width it had")
+        ws.revealFocused()
+        #expect(ws.layout().frames[4]!.width == 800)
+        #expect(ws.layout().frames[4]!.maxX == edge, "where the last column ends")
+        #expect(ws.isInView(4))
+    }
+
+    @Test func `A minimum wider than the maximum wins`() {
+        var ws = strip(2)
+        ws.minimumSizes[1] = CGSize(width: 700, height: 0)
+        ws.maximumSizes[1] = CGSize(width: 300, height: 0)
+        #expect(ws.layout().frames[1]!.width == 700)
+    }
+
     @Test func `Closing the last column scrolls back`() {
         var ws = strip(3)
         ws.remove(3)

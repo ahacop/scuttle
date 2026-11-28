@@ -18,8 +18,10 @@ public struct Workspace: Equatable, Sendable {
     public var fullscreenWidth = 1.0
     /// A lone window's share, or nil to keep using the fullscreen width.
     public var loneWindowWidth: Double?
-    /// Sizes windows refused to go below. Columns grow to fit them.
+    /// The smallest each window goes: what its app says, or a size it refused to go below. Columns grow to fit them.
     public var minimumSizes: [WindowID: CGSize] = [:]
+    /// The largest each window goes, where its app says. Columns shrink to them.
+    public var maximumSizes: [WindowID: CGSize] = [:]
     /// The width of a new column, as a share of the width inside the outer gaps.
     public var columnWidth = 0.5
     /// The widths `switch-preset-column-width` steps through, as shares, narrowest first. niri's by default.
@@ -74,6 +76,7 @@ public struct Workspace: Equatable, Sendable {
         columns[index] = new
         if focused == old { focused = new }
         minimumSizes[old] = nil
+        maximumSizes[old] = nil
         columnWidths[new] = columnWidths.removeValue(forKey: old)
         maximizedFrom[new] = maximizedFrom.removeValue(forKey: old)
     }
@@ -84,6 +87,12 @@ public struct Workspace: Equatable, Sendable {
         if focused != id { isFullscreen = false }
         focused = id
         reveal(id)
+    }
+
+    /// Scrolls as little as shows the focused column whole again, after its width or a neighbour's changed for
+    /// another reason than a command: a window's size limits becoming known.
+    public mutating func revealFocused() {
+        if let focused { reveal(focused) }
     }
 
     /// Focus the neighbour in `direction`. At the edge, `wrapping` focuses the window at the opposite edge

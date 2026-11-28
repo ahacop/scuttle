@@ -159,6 +159,25 @@ int scuttle_window_corner_radius(uint32_t windowID)
     return radius;
 }
 
+extern void SLSWindowIteratorGetConstraints(CFTypeRef iterator, CGSize *minimum, CGSize *maximum, CGSize *tile);
+
+NSDictionary<NSNumber *, NSArray<NSNumber *> *> *scuttle_window_size_limits(NSArray<NSNumber *> *windowIDs)
+{
+    NSMutableDictionary *limits = [NSMutableDictionary dictionary];
+    if (windowIDs.count == 0) return limits;
+    CFTypeRef query = SLSWindowQueryWindows(scuttle_connection(), (__bridge CFArrayRef)windowIDs, (int)windowIDs.count);
+    if (!query) return limits;
+    CFTypeRef iterator = SLSWindowQueryResultCopyWindows(query);
+    while (iterator && SLSWindowIteratorAdvance(iterator)) {
+        CGSize minimum = CGSizeZero, maximum = CGSizeZero, tile = CGSizeZero;
+        SLSWindowIteratorGetConstraints(iterator, &minimum, &maximum, &tile);
+        limits[@(SLSWindowIteratorGetWindowID(iterator))] = @[@(minimum.width), @(minimum.height), @(maximum.width), @(maximum.height)];
+    }
+    if (iterator) CFRelease(iterator);
+    CFRelease(query);
+    return limits;
+}
+
 CGRect scuttle_window_frame(uint32_t windowID)
 {
     CGRect frame;

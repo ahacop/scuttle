@@ -283,7 +283,7 @@ final class Coordinator {
         fitToDisplays()
         for key in shown {
             guard var workspace = workspaces[key] else { continue }
-            workspace.minimumSizes = minimumSizes(in: workspace)
+            setSizeLimits(&workspace)
             let resting = workspace.layout().frames.allSatisfy { id, tile in
                 animator.isResting(id, at: scuttle_window_info(id).frame, for: tile)
             }
@@ -603,7 +603,7 @@ final class Coordinator {
     /// Minimum sizes found in a pass are laid out around all at once, when that moves anything.
     private func apply(_ key: UInt64) {
         guard var workspace = workspaces[key] else { return }
-        workspace.minimumSizes = minimumSizes(in: workspace)
+        setSizeLimits(&workspace)
         workspaces[key] = workspace
         // A window being dragged stays under the pointer: neither written back to its tile nor raised. With no
         // front, the applier raises nothing of its app, which would take focus from it.
@@ -625,7 +625,7 @@ final class Coordinator {
                         }
                     }
                     self.animator.noteLanded(results)
-                    self.edit(key) { $0.minimumSizes = self.minimumSizes(in: $0) }
+                    self.edit(key) { self.setSizeLimits(&$0) }
                     self.flush()
                 }
             }
@@ -655,8 +655,36 @@ final class Coordinator {
     /// The windows scuttle is gliding to their tiles right now.
     var animatingWindows: [WindowID] { animator.animating }
 
-    private func minimumSizes(in workspace: Workspace) -> [WindowID: CGSize] {
-        let learned = applier.minimumSizes
-        return Dictionary(uniqueKeysWithValues: workspace.windows.compactMap { id in learned[id].map { (id, $0) } })
+    /// Gives the workspace the sizes its windows go no smaller and no larger than: what each window's app has told
+    /// the window server, which is known before the window is ever resized, so its column is the right width the
+    /// first time. Most apps say. One that only refuses when asked is found out by the applier, from two sizes it
+    /// would not go below, and the larger of the two minimums counts.
+    private func setSizeLimits(_ workspace: inout Workspace) {
+        let declared = Self.declaredSizeLimits(of: workspace.windows), learned = applier.minimumSizes
+        var minimums: [WindowID: CGSize] = [:], maximums: [WindowID: CGSize] = [:]
+        for id in workspace.windows {
+            let said = declared[id], found = learned[id]
+            let minimum = CGSize(width: max(said?.minimum.width ?? 0, found?.width ?? 0),
+                                 height: max(said?.minimum.height ?? 0, found?.height ?? 0))
+            if minimum.width > 0 || minimum.height > 0 { minimums[id] = minimum }
+            if let maximum = said?.maximum, maximum.width > 0 { maximums[id] = maximum }
+        }
+        guard workspace.minimumSizes != minimums || workspace.maximumSizes != maximums else { return }
+        workspace.minimumSizes = minimums
+        workspace.maximumSizes = maximums
+        // The strip was scrolled to the focused column at the width it had before: a window just opened in the
+        // last column, wider than a column is, would have its right edge off the display.
+        workspace.revealFocused()
+    }
+
+    /// The size limits the window server holds for windows, in one question for them all. See
+    /// `scuttle_window_size_limits`.
+    static func declaredSizeLimits(of ids: [WindowID]) -> [WindowID: (minimum: CGSize, maximum: CGSize)] {
+        var limits: [WindowID: (minimum: CGSize, maximum: CGSize)] = [:]
+        for (id, values) in scuttle_window_size_limits(ids.map { NSNumber(value: $0) }) where values.count == 4 {
+            limits[id.uint32Value] = (CGSize(width: values[0].doubleValue, height: values[1].doubleValue),
+                                      CGSize(width: values[2].doubleValue, height: values[3].doubleValue))
+        }
+        return limits
     }
 }
