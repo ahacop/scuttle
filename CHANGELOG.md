@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9
 
 - A column is never narrower than its window's minimum size or wider than its maximum, from the first time the window is placed. scuttle reads both from macOS, which most apps tell their limits. Until now a minimum was only worked out after the window had refused two different sizes, and overlapped its neighbour until then; a maximum was not known at all, and left a gap. Apps that tell macOS nothing are still found out the old way. `debug-state` lists the limits under `size-limits`.
 - A new window opens in a new column at the end of the strip, which scrolls to show it. It used to open right of the focused column, in the middle of the others when that was not the last. The same goes for a window that leaves macOS full screen, is moved in from another workspace, or is tiled with `layout tiling`.
