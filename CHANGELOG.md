@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A window that was minimized when scuttle started is tiled when it is restored. It could be floated for good: for a quarter of a second after it leaves the Dock, macOS still describes it as a dialog.
 - `maximize-column` and the other width commands work on a VMware Fusion window while its guest has the keyboard. VMware fixes the window's size then, and the command did nothing. scuttle now activates itself for a moment (about 20 ms), resizes the window and activates VMware again.
 - A column is as wide as its window turns out to be. scuttle used to work out a window's minimum size from two refusals and lay columns out around it from then on; an app that was only slow, or held its size for a moment, could be taken for one that cannot shrink, and stayed wide until it closed. Now a window that comes back wider or narrower than asked, or snapped to a grid, has its neighbours placed where it ends, and is asked again whenever its column's width is changed. Windows with a maximum width and Terminal's character grid no longer leave a gap. The menu's Clear Minimum Sizes is now Ask Windows for Their Widths Again.
 - Minimum window sizes are no longer saved by app. A size one window once refused to go below was applied to every window of its app from then on, in every session: a VMware window held at nearly the display's width for a moment left every VMware window that wide, and `maximize-column` with nothing to do. A minimum is now one window's, until it closes or scuttle quits. The saved file is removed.

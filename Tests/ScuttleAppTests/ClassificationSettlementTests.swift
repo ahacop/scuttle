@@ -73,4 +73,13 @@ struct ClassificationSettlementTests {
         #expect(settlement?.floating == true)
         #expect(owner.settlements.isEmpty)
     }
+
+    @Test func aWindowStillComingOutOfTheDockIsNotClassifiedYet() {
+        // As Accessibility reports VMware's window for a quarter of a second after it is restored.
+        #expect(Coordinator.isUnsettled(subrole: "AXDialog", kind: .dialog, resizable: true, minimized: true))
+        #expect(!Coordinator.isUnsettled(subrole: "AXDialog", kind: .dialog, resizable: true, minimized: false))
+        #expect(!Coordinator.isUnsettled(subrole: "AXStandardWindow", kind: .normal, resizable: true, minimized: false))
+        #expect(Coordinator.isUnsettled(subrole: "AXStandardWindow", kind: .normal, resizable: false, minimized: false))
+        #expect(Coordinator.isUnsettled(subrole: nil, kind: .panel, resizable: true, minimized: false))
+    }
 }

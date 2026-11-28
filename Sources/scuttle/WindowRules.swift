@@ -25,10 +25,22 @@ extension Coordinator {
         AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &resizable)
         let title = axString(element, kAXTitleAttribute) ?? ""
         let identifier = axString(element, "AXIdentifier").flatMap { $0.isEmpty ? nil : $0 }
-        // Standard windows can briefly refuse resizing while opening. Known dialogs and panels need no wait.
-        if awaitClassification(window.id, unsettled: subrole == nil || (kind == .normal && !resizable.boolValue)) { return nil }
+        var minimized: CFTypeRef?
+        AXUIElementCopyAttributeValue(element, kAXMinimizedAttribute as CFString, &minimized)
+        let unsettled = Self.isUnsettled(subrole: subrole, kind: kind, resizable: resizable.boolValue,
+                                         minimized: (minimized as? NSNumber)?.boolValue ?? false)
+        if awaitClassification(window.id, unsettled: unsettled) { return nil }
         return classify(window, kind: kind, resizable: resizable.boolValue, title: title, identifier: identifier,
                         lacksFullscreen: lacksFullscreen(element, bundleID: window.bundleID))
+    }
+
+    /// Whether a window's Accessibility facts are not yet the ones to classify it by. Standard windows can
+    /// briefly refuse resizing while opening; known dialogs and panels need no wait. A window coming out of the
+    /// Dock is still called minimized for a quarter of a second after the window server shows it, and until
+    /// then Accessibility gives its subrole as a dialog's: a window minimized when scuttle started was floated
+    /// for good when it was read in that time.
+    static func isUnsettled(subrole: String?, kind: WindowKind, resizable: Bool, minimized: Bool) -> Bool {
+        subrole == nil || minimized || (kind == .normal && !resizable)
     }
 
     /// One deadline and one retry chain per window, shared by missing AX and incomplete AX facts.
