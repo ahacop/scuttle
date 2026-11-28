@@ -36,7 +36,7 @@ extension DisplayModel {
 
 extension ScuttleLayout.Gaps {
     init(_ gaps: ScuttleConfig.Gaps) {
-        self.init(horizontal: CGFloat(gaps.inner.horizontal), vertical: CGFloat(gaps.inner.vertical),
+        self.init(horizontal: CGFloat(gaps.inner.horizontal),
                   top: CGFloat(gaps.outer.top), bottom: CGFloat(gaps.outer.bottom),
                   left: CGFloat(gaps.outer.left), right: CGFloat(gaps.outer.right))
     }

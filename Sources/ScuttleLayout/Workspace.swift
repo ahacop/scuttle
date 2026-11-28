@@ -5,8 +5,8 @@ public struct Workspace: Equatable, Sendable {
     /// The Space's visible rect, top-left origin.
     public var bounds: CGRect
     public var gaps: Gaps
-    /// The strip: a horizontal container whose children are the columns, one window each, possibly none.
-    public internal(set) var root: Container
+    /// The strip: its columns left to right, one window each, possibly none.
+    public internal(set) var columns: [WindowID] = []
     /// The focused window, if any.
     public internal(set) var focused: WindowID?
     /// Whether the focused window is shown fullscreen over the strip. Focusing another window or any layout
@@ -38,14 +38,13 @@ public struct Workspace: Equatable, Sendable {
     public init(bounds: CGRect, gaps: Gaps = .zero) {
         self.bounds = bounds
         self.gaps = gaps
-        root = Container(.horizontal)
     }
 
     /// All windows, left to right.
-    public var windows: [WindowID] { Node.container(root).windows }
+    public var windows: [WindowID] { columns }
 
     /// Whether the window is tiled here.
-    public func contains(_ id: WindowID) -> Bool { root.path(of: id) != nil }
+    public func contains(_ id: WindowID) -> Bool { columns.contains(id) }
 
     /// Insert a window as a new column right of the focused one, and focus it.
     public mutating func insert(_ id: WindowID) {
@@ -54,24 +53,25 @@ public struct Workspace: Equatable, Sendable {
         focus(id)
     }
 
-    /// Remove a window and its column. If it was focused, focus moves to the most recently focused column left.
+    /// Remove a window and its column. If it was focused, focus moves to the column that takes its place: the one
+    /// that was on its right, or at the end of the strip the one on its left.
     public mutating func remove(_ id: WindowID) {
-        guard let path = root.path(of: id) else { return }
-        root.remove(at: path[0])
+        guard let index = columns.firstIndex(of: id) else { return }
+        columns.remove(at: index)
         columnWidths[id] = nil
         maximizedFrom[id] = nil
         if focused == id {
             isFullscreen = false
             focused = nil
-            if let next = root.mostRecentWindow ?? windows.first { focus(next) }
+            if !columns.isEmpty { focus(columns[min(index, columns.count - 1)]) }
         }
     }
 
     /// Put `new` in `old`'s place, keeping its size, focus and fullscreen: another tab of the same native tab group
     /// became the one shown. Does nothing if `old` is not here or `new` already is.
     public mutating func replace(_ old: WindowID, with new: WindowID) {
-        guard let path = root.path(of: old), !contains(new) else { return }
-        root.modify(at: Array(path.dropLast())) { $0.replace(at: path.last!, with: .window(new)) }
+        guard let index = columns.firstIndex(of: old), !contains(new) else { return }
+        columns[index] = new
         if focused == old { focused = new }
         minimumSizes[old] = nil
         columnWidths[new] = columnWidths.removeValue(forKey: old)
@@ -80,12 +80,9 @@ public struct Workspace: Equatable, Sendable {
 
     /// Focus a window and scroll its column into view. Ends fullscreen unless it is the fullscreen window.
     public mutating func focus(_ id: WindowID) {
-        guard let path = root.path(of: id) else { return }
+        guard contains(id) else { return }
         if focused != id { isFullscreen = false }
         focused = id
-        for depth in path.indices {
-            root.modify(at: Array(path.prefix(depth))) { $0.active = path[depth] }
-        }
         reveal(id)
     }
 
@@ -102,9 +99,7 @@ public struct Workspace: Equatable, Sendable {
 
     /// The window at the `side` edge: the first or last column, or for up and down the focused one.
     public func edgeWindow(_ side: Direction) -> WindowID? {
-        guard !root.children.isEmpty else { return nil }
-        let index = side.orientation == .vertical ? root.activeIndex : side.isForward ? root.children.count - 1 : 0
-        return root.children[index].windows.first
+        side.orientation == .vertical ? focused ?? columns.first : side.isForward ? columns.last : columns.first
     }
 
     /// Give every column the default width.
@@ -115,7 +110,7 @@ public struct Workspace: Equatable, Sendable {
         if let focused { reveal(focused) }
     }
 
-    /// Toggle fullscreen for the focused window. The tree is not changed.
+    /// Toggle fullscreen for the focused window. The strip is not changed.
     public mutating func toggleFullscreen() {
         if focused != nil { isFullscreen.toggle() }
     }

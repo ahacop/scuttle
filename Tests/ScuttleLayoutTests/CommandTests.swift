@@ -14,13 +14,13 @@ struct SwapAndMoveTests {
         var ws = workspace(3, bounds: rect(0, 0, 3000, 500))
         ws.focus(1)
         ws.move(.right)
-        #expect(shape(ws.root) == "h[2 1 3]")
+        #expect(ws.windows == [2, 1, 3])
     }
 
     @Test func `Move across axis leaves container`() {
         var ws = three()
         ws.move(.left)
-        #expect(shape(ws.root) == "h[1 3 2]")
+        #expect(ws.windows == [1, 3, 2])
     }
 
 }

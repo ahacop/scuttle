@@ -4,27 +4,22 @@ import Testing
 
 struct BalanceSizesTests {
 
-    @Test func `Keeps shape and focus`() {
+    @Test func `Keeps order and focus`() {
         var ws = workspace(4)
         ws.focus(2)
         ws.resize(by: 150)
-        let before = shape(ws.root)
         ws.balanceSizes()
-        #expect(shape(ws.root) == before)
+        #expect(ws.windows == [1, 2, 3, 4])
         #expect(ws.focused == 2)
     }
 
-    @Test func `Three siblings get a third each`() {
-        var ws = workspace(0)
-        for id: WindowID in 1...3 { ws.root.insert(.window(id), at: Int(id) - 1) }
+    @Test func `Every column gets the default width`() {
+        var ws = workspace(3)
         ws.focus(2)
         ws.resize(by: 300)
         ws.balanceSizes()
-        assertRatios(ws.root.ratios, [1.0 / 3, 1.0 / 3, 1.0 / 3])
+        #expect(Set(ws.layout().frames.values.map(\.width)).count == 1)
     }
-}
-
-struct InnerGapAxesTests {
 }
 
 struct WrapAroundTests {

@@ -1,6 +1,6 @@
 import CoreGraphics
 
-// The scrolling layout, after niri's: the root is a row of columns, one window each and as tall as the screen,
+// The scrolling layout, after niri's: a row of columns, one window each and as tall as the screen,
 // each as wide as its own share of the screen whatever the number of columns, so the row runs past the
 // screen edges and scrolls to keep the focused column in view. Columns that fit, a lone one too, start at the left
 // outer gap, as niri lays them out, and focusing a column scrolls just far enough to show it whole.
@@ -20,21 +20,17 @@ extension Workspace {
 
     /// Put a window in a new column right of the focused one, at the default width.
     mutating func insertColumn(_ id: WindowID) {
-        let index = focused.flatMap { root.path(of: $0) }.map { $0[0] + 1 } ?? root.children.count
-        root.insert(.window(id), at: index)
+        let index = focused.flatMap { columns.firstIndex(of: $0) }.map { $0 + 1 } ?? columns.count
+        columns.insert(id, at: index)
         columnWidths[id] = columnWidth
     }
 
-    /// The width of column `index` as a share: its windows all have it.
-    func width(ofColumn index: Int) -> Double {
-        root.children[index].windows.lazy.compactMap { columnWidths[$0] }.first ?? columnWidth
-    }
+    /// The width of column `index` as a share.
+    func width(ofColumn index: Int) -> Double { columnWidths[columns[index]] ?? columnWidth }
 
-    /// Give every window of column `index` the width `share`, kept between the narrowest a column goes and the
-    /// whole screen.
+    /// Give column `index` the width `share`, kept between the narrowest a column goes and the whole screen.
     mutating func setWidth(ofColumn index: Int, _ share: Double) {
-        let share = min(max(share, Self.minimumColumnWidth), 1)
-        for id in root.children[index].windows { columnWidths[id] = share }
+        columnWidths[columns[index]] = min(max(share, Self.minimumColumnWidth), 1)
     }
 
     /// Where the columns go: inside the outer gaps, and with more than one column also clear of the parked
@@ -42,7 +38,7 @@ extension Workspace {
     /// a whole one. Column widths are shares of its width.
     var stripArea: CGRect {
         let area = gaps.inset(bounds)
-        guard root.children.count > 1 else { return area }
+        guard columns.count > 1 else { return area }
         let clear = Self.peek + gaps.horizontal / 2
         let left = walls.contains(.left) ? 0 : max(clear - gaps.left, 0)
         let right = walls.contains(.right) ? 0 : max(clear - gaps.right, 0)
@@ -51,13 +47,13 @@ extension Workspace {
 
     /// Each column's start and width in points along the strip, from its left edge. Half an inner gap is part
     /// of a column on each side that has a neighbour, so neighbours end up a whole gap apart. Each column is its
-    /// share of the screen, grown to fit its windows' minimum widths.
+    /// share of the screen, grown to fit its window's minimum width.
     func columnSpans(in area: CGRect) -> [(start: CGFloat, width: CGFloat)] {
-        let count = root.children.count, gap = gaps.horizontal
+        let count = columns.count, gap = gaps.horizontal
         var start: CGFloat = 0
-        return root.children.indices.map { i in
+        return columns.indices.map { i in
             let insets = (i > 0 ? gap / 2 : 0) + (i < count - 1 ? gap / 2 : 0)
-            let minimum = root.children[i].minimumExtent(.horizontal, gap: gap, padding: 0, minimumSizes)
+            let minimum = minimumSizes[columns[i]]?.width ?? 0
             let width = max((area.width * CGFloat(width(ofColumn: i))).rounded(), minimum + insets)
             defer { start += width }
             return (start, width)
@@ -77,7 +73,7 @@ extension Workspace {
     /// Scroll as little as shows the window's column whole, as Hyprland's `fit` does. A column wider than the
     /// screen is centred.
     mutating func reveal(_ id: WindowID) {
-        guard let index = root.path(of: id)?.first else { return }
+        guard let index = columns.firstIndex(of: id) else { return }
         let area = stripArea, spans = columnSpans(in: area), column = spans[index]
         let current = offset(for: spans, in: area)
         scrollOffset = column.width > area.width
@@ -90,22 +86,15 @@ extension Workspace {
     func stripLayout() -> Layout {
         var result = Layout()
         let area = stripArea, spans = columnSpans(in: area), offset = offset(for: spans, in: area)
-        let gap = gaps.horizontal, last = root.children.count - 1
-        result.containerRects[[]] = gaps.inset(bounds)
-        for i in root.stackingOrder {
+        let gap = gaps.horizontal, last = columns.count - 1
+        let front = focused.flatMap { columns.firstIndex(of: $0) } ?? 0
+        for i in columns.indices.sorted(by: { (abs($0 - front), $0) < (abs($1 - front), $1) }) {
             let span = spans[i]
             let lead = i > 0 ? gap / 2 : 0, trail = i < last ? gap / 2 : 0
             let x = area.minX + span.start - offset
             let (a, b) = ((x + lead).rounded(), (x + span.width - trail).rounded())
-            let rect = CGRect(x: a, y: area.minY, width: b - a, height: area.height)
-            switch root.children[i] {
-            case .window(let id):
-                result.frames[id] = rect
-                result.order.append(id)
-            case .container(let c):
-                // A column is one window; a container here is not made by any command, but lays out as tiles.
-                c.layout(in: rect, gaps: gaps, padding: 0, minimums: minimumSizes, path: [i], into: &result)
-            }
+            result.frames[columns[i]] = CGRect(x: a, y: area.minY, width: b - a, height: area.height)
+            result.order.append(columns[i])
         }
         return result
     }
@@ -128,7 +117,7 @@ extension Workspace {
 
     /// Grow (positive) or shrink the focused window's column by `delta` points. False when nothing visibly changed.
     mutating func resizeColumn(by delta: CGFloat) -> Bool {
-        guard let focused, let column = root.path(of: focused)?.first else { return false }
+        guard let focused, let column = columns.firstIndex(of: focused) else { return false }
         let old = width(ofColumn: column)
         let (before, offset) = (tiledLayout(), scrollOffset)
         setWidth(ofColumn: column, old + Double(delta / stripArea.width))
@@ -145,7 +134,7 @@ extension Workspace {
     /// changed.
     @discardableResult
     public mutating func switchPresetColumnWidth() -> Bool {
-        guard let focused, let column = root.path(of: focused)?.first, let first = presetColumnWidths.first else {
+        guard let focused, let column = columns.firstIndex(of: focused), let first = presetColumnWidths.first else {
             return false
         }
         let current = width(ofColumn: column)
@@ -154,7 +143,7 @@ extension Workspace {
         let wasFullscreen = isFullscreen
         isFullscreen = false
         guard abs(next - current) > 1e-9 else { return wasFullscreen }
-        for id in root.children[column].windows { maximizedFrom[id] = nil }
+        maximizedFrom[focused] = nil
         setWidth(ofColumn: column, next)
         reveal(focused)
         return true
@@ -165,8 +154,7 @@ extension Workspace {
     /// maximizes. False when there is no column.
     @discardableResult
     public mutating func toggleMaximizedColumn() -> Bool {
-        guard let focused, let column = root.path(of: focused)?.first else { return false }
-        let windows = root.children[column].windows
+        guard let focused, let column = columns.firstIndex(of: focused) else { return false }
         let current = width(ofColumn: column)
         // From fullscreen, which hides the column's width, maximizing is what the window is asked for.
         if isFullscreen {
@@ -174,11 +162,10 @@ extension Workspace {
             if current >= 1 - 1e-9 { reveal(focused); return true }
         }
         if current >= 1 - 1e-9 {
-            let saved = maximizedFrom, restored = windows.lazy.compactMap { saved[$0] }.first ?? columnWidth
-            for id in windows { maximizedFrom[id] = nil }
+            let restored = maximizedFrom.removeValue(forKey: focused) ?? columnWidth
             setWidth(ofColumn: column, restored < 1 - 1e-9 ? restored : columnWidth)
         } else {
-            for id in windows { maximizedFrom[id] = current }
+            maximizedFrom[focused] = current
             setWidth(ofColumn: column, 1)
         }
         reveal(focused)

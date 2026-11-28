@@ -213,14 +213,14 @@ struct ColumnWidthTests {
 
     @Test func `Columns are one window each and move only sideways`() {
         var ws = strip(3)
-        #expect(shape(ws.root) == "h[1 2 3]")
+        #expect(ws.windows == [1, 2, 3])
         #expect(ws.move(.up) == false)
         #expect(ws.move(.down) == false)
         #expect(ws.move(.left) == true)
-        #expect(shape(ws.root) == "h[1 3 2]")
+        #expect(ws.windows == [1, 3, 2])
         #expect(ws.focused == 3)
         ws.remove(3)
-        #expect(shape(ws.root) == "h[1 2]")
+        #expect(ws.windows == [1, 2])
     }
 
     @Test func `Presets reveal the column they widen`() {

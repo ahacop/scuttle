@@ -38,11 +38,11 @@ struct FullscreenTests {
         #expect(layout.order.first == 2)
     }
 
-    @Test func `Fullscreen leaves tree and other frames alone`() {
+    @Test func `Fullscreen leaves the strip and other frames alone`() {
         var ws = workspace(3)
-        let root = ws.root, frames = ws.layout().frames
+        let columns = ws.windows, frames = ws.layout().frames
         ws.toggleFullscreen()
-        #expect(ws.root == root)
+        #expect(ws.windows == columns)
         #expect(ws.layout().frames[1] == frames[1])
         #expect(ws.layout().frames[2] == frames[2])
     }
