@@ -18,8 +18,8 @@ public struct Workspace: Equatable, Sendable {
     public var fullscreenWidth = 1.0
     /// A lone window's share, or nil to keep using the fullscreen width.
     public var loneWindowWidth: Double?
-    /// Sizes windows refused to go below. Columns grow to fit them.
-    public var minimumSizes: [WindowID: CGSize] = [:]
+    /// Windows that came back at another width than their column asked for. See Measured.swift.
+    var measured: [WindowID: Measure] = [:]
     /// The width of a new column, as a share of the width inside the outer gaps.
     public var columnWidth = 0.5
     /// The widths `switch-preset-column-width` steps through, as shares, narrowest first. niri's by default.
@@ -60,6 +60,7 @@ public struct Workspace: Equatable, Sendable {
         columns.remove(at: index)
         columnWidths[id] = nil
         maximizedFrom[id] = nil
+        measured[id] = nil
         if focused == id {
             isFullscreen = false
             focused = nil
@@ -73,7 +74,7 @@ public struct Workspace: Equatable, Sendable {
         guard let index = columns.firstIndex(of: old), !contains(new) else { return }
         columns[index] = new
         if focused == old { focused = new }
-        minimumSizes[old] = nil
+        measured[old] = nil
         columnWidths[new] = columnWidths.removeValue(forKey: old)
         maximizedFrom[new] = maximizedFrom.removeValue(forKey: old)
     }
@@ -105,7 +106,7 @@ public struct Workspace: Equatable, Sendable {
     /// Give every column the default width.
     public mutating func balanceSizes() {
         isFullscreen = false
-        for id in columnWidths.keys { columnWidths[id] = columnWidth }
+        for index in columns.indices { setWidth(ofColumn: index, columnWidth) }
         maximizedFrom = [:]
         if let focused { reveal(focused) }
     }

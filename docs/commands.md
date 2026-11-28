@@ -27,7 +27,7 @@ The same commands are used in key bindings, rules, hooks, the menu and
 | `layout <floating\|tiling>... [--window-id <id>]` | Float the window, or tile it in a new column. Use `layout floating tiling` to switch between the two. |
 | `fullscreen` | Show the focused window over the whole workspace, or turn that off. This is not macOS full screen. Its width is set by [`fullscreen-width`](configuration.md#top-level). |
 | `balance-sizes` | Set every column to `column-width`. |
-| `clear-minimum-sizes` | Clear the recorded minimum window sizes and lay out every workspace again. |
+| `clear-minimum-sizes` | Forget the widths windows came back at when asked for their column's, ask each again, and lay out every workspace again. |
 | `reload-config` | Reload the config file. |
 | `enable <on\|off\|toggle>` | Turn scuttle on or off. When it is off, windows are put back where they were before they were tiled, borders are removed, and key bindings are turned off, so turn it back on from the menu or with `scuttle enable on`. While it is off, new windows, rules, Spaces and workspaces are ignored. When it is turned back on, windows opened in the meantime are tiled on the workspaces they are on. |
 | `list-workspaces`, `list-windows`, `list-monitors`, `list-displays` | See [Scripting](#scripting). `list-displays` is the same as `list-monitors`. |

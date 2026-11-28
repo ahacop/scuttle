@@ -1,8 +1,8 @@
 import Darwin
 
 // Other tiling window managers. Two tilers move the same windows back and forth, and to the user that looks like
-// scuttle cannot tile: frames snap back, workspaces fall back to another layout, and the readback teaches scuttle
-// minimum sizes that are not real. Snapping tools (Rectangle, Magnet) only move windows when asked and are left out;
+// scuttle cannot tile: frames snap back, workspaces fall back to another layout, and the readback gives scuttle
+// widths that are not the windows' own. Snapping tools (Rectangle, Magnet) only move windows when asked and are left out;
 // float the window or disable scuttle before snapping it, since tiled frames are still recovered.
 
 /// By lowercased process name, the tiler's display name. Process names cover apps and plain daemons (yabai) alike.

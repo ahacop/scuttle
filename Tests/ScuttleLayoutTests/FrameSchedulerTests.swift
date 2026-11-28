@@ -230,127 +230,6 @@ struct FrameSchedulerTests {
         #expect(results.map(\.job.id) == [10, 20, 30])
     }
 
-    @Test func `Refused size is retried once and recorded as minimum when another size is refused the same`() {
-        let fake = FakeWindows(minWidths: [10: 574])
-        let scheduler = fake.scheduler()
-        let results = submitAndWait(scheduler, [job(1, 10, 0), job(1, 11, 100)])
-        #expect(results.map(\.matched) == [false, true])
-        #expect(results.map(\.retried) == [true, false])
-        #expect(results[0].got?.width == 574)
-        #expect(fake.writes(to: 10).count == 2)
-        #expect(scheduler.minimumSizes == [:], "one refusal could be an app still catching up")
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        #expect(scheduler.minimumSizes == [:], "the same size asked again proves nothing a grid snap would not")
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        #expect(scheduler.minimumSizes == [10: CGSize(width: 574, height: 0)])
-    }
-
-    @Test func `A window that snaps to a grid shows no minimum, one with a real minimum does`() {
-        // Like Terminal: rows and columns of 7x16, so it lands on the next whole cell above what it was asked.
-        var grid = CGRect.zero
-        let snapping = FrameScheduler(settle: 0, read: { _ in grid }, write: { job in
-            grid = CGRect(origin: job.frame.origin, size: CGSize(width: (job.frame.width / 7).rounded(.up) * 7,
-                                                                 height: (job.frame.height / 16).rounded(.up) * 16))
-        })
-        // Always 500x400 for anything smaller.
-        var fixed = CGRect.zero
-        let refusing = FrameScheduler(settle: 0, read: { _ in fixed }, write: { job in
-            fixed = CGRect(origin: job.frame.origin, size: job.frame.size.grown(to: CGSize(width: 500, height: 400)))
-        })
-        for size in [CGSize(width: 330, height: 1320), CGSize(width: 330, height: 1320), CGSize(width: 330, height: 657),
-                     CGSize(width: 163, height: 657), CGSize(width: 163, height: 325), CGSize(width: 100, height: 200)] {
-            let job = FrameJob(pid: 1, id: 10, frame: CGRect(origin: .zero, size: size))
-            #expect(submitAndWait(snapping, [job]).map(\.retried) == [true])
-            _ = submitAndWait(refusing, [job])
-        }
-        #expect(snapping.minimumSizes == [:])
-        #expect(refusing.minimumSizes == [10: CGSize(width: 500, height: 400)])
-    }
-
-    @Test func `An app that catches up shows no minimum`() {
-        var lagging = true
-        let scheduler = FrameScheduler(settle: 0, read: { job in
-            lagging ? CGRect(x: 0, y: 0, width: 2524, height: 100) : job.frame
-        }, write: { _ in })
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        lagging = false
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        lagging = true
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        #expect(scheduler.minimumSizes == [:], "landing where it was put forgets the earlier refusal")
-    }
-
-    @Test func `Two refusals in one pass complete once with both minimums`() {
-        let fake = FakeWindows(minWidths: [10: 574, 20: 115])
-        let scheduler = fake.scheduler()
-        var completions = 0
-        var minimums: [WindowID: CGSize] = [:]
-        _ = submitAndWait(scheduler, [job(1, 10, 0), job(2, 20, 100), job(2, 21, 200)])
-        let done = DispatchSemaphore(value: 0)
-        scheduler.submit([job(1, 10, 0, width: 50), job(2, 20, 100, width: 50), job(2, 21, 200)]) { _ in
-            completions += 1
-            minimums = scheduler.minimumSizes
-            done.signal()
-        }
-        #expect(done.wait(timeout: .now() + 2) == .success)
-        Thread.sleep(forTimeInterval: 0.05)
-        #expect(completions == 1)
-        #expect(minimums == [10: CGSize(width: 574, height: 0), 20: CGSize(width: 115, height: 0)])
-    }
-
-    @Test func `Recorded minimum is not written again`() {
-        let fake = FakeWindows(minWidths: [10: 574])
-        let scheduler = fake.scheduler()
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        let again = submitAndWait(scheduler, [job(1, 10, 0)])
-        #expect(fake.writes(to: 10).count == 4)
-        #expect(again.map(\.written) == [false])
-    }
-
-    @Test func `Move of a window at its minimum is written once without retry`() {
-        let fake = FakeWindows(minWidths: [10: 574])
-        let scheduler = fake.scheduler()
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        let moved = submitAndWait(scheduler, [job(1, 10, 50)])
-        #expect(fake.writes(to: 10).count == 5)
-        #expect(moved.map(\.retried) == [false])
-    }
-
-    @Test func `Minimums found in each dimension are kept`() {
-        var frame = CGRect.zero
-        let scheduler = FrameScheduler(settle: 0, read: { _ in frame }, write: { job in
-            frame = CGRect(origin: job.frame.origin, size: job.frame.size.grown(to: CGSize(width: 574, height: 300)))
-        })
-        for width in [100.0, 150] { _ = submitAndWait(scheduler, [FrameJob(pid: 1, id: 10, frame: CGRect(x: 0, y: 0, width: width, height: 400))]) }
-        for height in [100.0, 150] { _ = submitAndWait(scheduler, [FrameJob(pid: 1, id: 10, frame: CGRect(x: 0, y: 0, width: 600, height: height))]) }
-        #expect(scheduler.minimumSizes == [10: CGSize(width: 574, height: 300)])
-    }
-
-    @Test func `A window at its recorded minimum is matched without a write`() {
-        let fake = FakeWindows(minWidths: [10: 574])
-        let scheduler = fake.scheduler()
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        let again = submitAndWait(scheduler, [job(1, 10, 0)])
-        #expect(again.map(\.written) == [false])
-        #expect(again.map(\.matched) == [true], "as close as it will come is where it was asked to go")
-    }
-
-    @Test func `Forget clears a window's minimum and its last refusal`() {
-        let fake = FakeWindows(minWidths: [10: 574, 20: 115])
-        let scheduler = fake.scheduler()
-        _ = submitAndWait(scheduler, [job(1, 10, 0), job(1, 20, 100, width: 50)])
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        #expect(scheduler.minimumSizes[10] != nil)
-        scheduler.forget(10)
-        scheduler.forget(20)
-        #expect(scheduler.minimumSizes == [:])
-        _ = submitAndWait(scheduler, [job(1, 20, 100, width: 60)])
-        #expect(scheduler.minimumSizes == [:], "a new window with a reused id starts with no refusal")
-    }
-
     @Test func `Unreadable window is written once and reported unmatched`() {
         var writes = 0
         let scheduler = FrameScheduler(settle: 0, read: { _ in nil }, write: { _ in writes += 1 })
@@ -358,7 +237,6 @@ struct FrameSchedulerTests {
         #expect(results.map(\.matched) == [false])
         #expect(results.map(\.retried) == [false])
         #expect(writes == 1)
-        #expect(scheduler.minimumSizes == [:])
     }
 
     @Test func `Windows that could not be read back are the unreadable ones`() {
@@ -450,8 +328,21 @@ struct FrameSchedulerStepTests {
         #expect(calls == ["move 10 100", "move 10 100"])
     }
 
-    @Test func `A size an animation step asked for is not a minimum`() {
-        // The window is stuck at 300 wide, a size a step asked for: it is catching up, not refusing.
+    @Test func `A window that lands elsewhere is written once more and reported where it is`() {
+        let fake = FakeWindows(minWidths: [10: 574])
+        let scheduler = fake.scheduler()
+        let results = submitAndWait(scheduler, [job(1, 10, 0), job(1, 11, 100)])
+        #expect(results.map(\.matched) == [false, true])
+        #expect(results.map(\.retried) == [true, false])
+        #expect(results[0].got?.width == 574)
+        #expect(fake.writes(to: 10).count == 2)
+        #expect(!results[0].catchingUp)
+        // Nothing is remembered about it: asked again, it is written again.
+        _ = submitAndWait(scheduler, [job(1, 10, 0)])
+        #expect(fake.writes(to: 10).count == 4)
+    }
+
+    @Test func `A window still at a size an animation step asked for is catching up`() {
         let lagging = FakeWindows([10: CGRect(x: 0, y: 0, width: 300, height: 100)], minWidths: [10: 300])
         let scheduler = lagging.scheduler()
         var step = job(1, 10, 0)
@@ -459,40 +350,8 @@ struct FrameSchedulerStepTests {
         scheduler.step([step])
         let results = submitAndWait(scheduler, [job(1, 10, 0)])
         #expect(results[0].retried)
-        #expect(scheduler.minimumSizes[10] == nil)
-
-        // Stuck at a size nothing asked for is a minimum.
-        let refusing = FakeWindows([20: CGRect(x: 0, y: 0, width: 250, height: 100)], minWidths: [20: 250])
-        let other = refusing.scheduler()
-        var small = job(1, 20, 0)
-        small.frame.size.width = 300
-        other.step([small])
-        _ = submitAndWait(other, [job(1, 20, 0)])
-        _ = submitAndWait(other, [job(1, 20, 0, width: 200)])
-        #expect(other.minimumSizes[20]?.width == 250)
-    }
-
-    @Test func `A pass that finds the window in place forgets the sizes steps asked for`() {
-        // Stepped to 300 wide and already there when the pass arrives, so nothing is written.
-        let fake = FakeWindows(minWidths: [10: 300])
-        let scheduler = fake.scheduler()
-        var step = job(1, 10, 0)
-        step.frame.size.width = 300
-        scheduler.step([step])
-        #expect(submitAndWait(scheduler, [step]).map(\.written) == [false])
-
-        // Then it refuses 100 and 200 at 300: that is a minimum, as for a window never stepped.
-        _ = submitAndWait(scheduler, [job(1, 10, 0)])
-        #expect(scheduler.minimumSizes[10] == nil, "one refusal could be an app still catching up")
-        _ = submitAndWait(scheduler, [job(1, 10, 0, width: 200)])
-        #expect(scheduler.minimumSizes[10]?.width == 300)
-    }
-
-    @Test func `A window that left shows no minimum`() {
-        // Gone to native full screen while it was written: whole-display size, somewhere else.
-        let scheduler = FrameScheduler(settle: 0, read: { _ in CGRect(x: 0, y: 0, width: 1024, height: 768) }, write: { _ in })
-        let results = submitAndWait(scheduler, [job(1, 10, 50)])
-        #expect(results[0].retried)
-        #expect(scheduler.minimumSizes[10] == nil)
+        #expect(results[0].catchingUp)
+        // The next pass was not stepped to that size, so the same answer is the window's own.
+        #expect(!submitAndWait(scheduler, [job(1, 10, 0)])[0].catchingUp)
     }
 }

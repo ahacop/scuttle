@@ -12,9 +12,8 @@ struct FrameApplierStorageTests {
         try Data("{}".utf8).write(to: legacy)
         try Data(#"{"com.example.editor":[200,100]}"#.utf8).write(to: current)
 
-        let applier = FrameApplier(supportURL: support)
+        _ = FrameApplier(supportURL: support)
         #expect(!FileManager.default.fileExists(atPath: legacy.path))
         #expect(!FileManager.default.fileExists(atPath: current.path))
-        #expect(applier.minimumSizes.isEmpty, "a size saved for an app is no window's")
     }
 }

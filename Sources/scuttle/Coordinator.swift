@@ -228,7 +228,10 @@ final class Coordinator {
         // server is asked for the frame.
         let eligible = dragging == nil && !animator.isAnimating(id) && applying[key, default: 0] == 0
             && !CGEventSource.buttonState(.combinedSessionState, button: .left)
-        guard eligible, isVisible(key), let tile = workspaces[key]?.layout().frames[id] else { return }
+        guard eligible, isVisible(key) else { return }
+        // A window that changed its width by itself is no longer the width its column went by.
+        edit(key) { $0.observe(id, width: scuttle_window_info(id).frame.width) }
+        guard let tile = workspaces[key]?.layout().frames[id] else { return }
         let resting = animator.isResting(id, at: scuttle_window_info(id).frame, for: tile)
         if frameRecovery[id, default: FrameRecovery()].shouldReapply(tile: tile, resting: resting, eligible: eligible) {
             layouts.dirty.insert(key)
@@ -282,8 +285,7 @@ final class Coordinator {
         // switch, as well as with the Space shown.
         fitToDisplays()
         for key in shown {
-            guard var workspace = workspaces[key] else { continue }
-            workspace.minimumSizes = minimumSizes(in: workspace)
+            guard let workspace = workspaces[key] else { continue }
             let resting = workspace.layout().frames.allSatisfy { id, tile in
                 animator.isResting(id, at: scuttle_window_info(id).frame, for: tile)
             }
@@ -296,9 +298,10 @@ final class Coordinator {
         flush()
     }
 
-    /// Forgets every minimum size learned and re-applies every tree, so windows are asked for their tiles again.
+    /// Forgets the widths windows answered with and re-applies every tree, so each is asked for its column's
+    /// share again.
     func clearMinimumSizes() {
-        applier.forgetMinimums()
+        for key in workspaces.keys { workspaces[key]!.forgetMeasures() }
         layouts.dirty.formUnion(workspaces.keys)
         flush()
     }
@@ -595,15 +598,13 @@ final class Coordinator {
         displays.displays.contains { $0.currentSpaceID == space }
     }
 
-    /// Writes the tree's frames around the minimum sizes windows have shown, then lets the applier raise
+    /// Writes the tree's frames, takes the widths windows came back at as their columns', then lets the applier raise
     /// overlapping windows (accordion, fullscreen) into the tree's stacking, with its focused window on top.
     /// Nothing is activated: the tree follows macOS's focus (`syncFocus`) and commands that choose a window
     /// focus it themselves, so a pass, which may have started before the latest focus change, must not.
-    /// Minimum sizes found in a pass are laid out around all at once, when that moves anything.
+    /// The widths found in a pass are laid out around all at once, when that moves anything.
     private func apply(_ key: UInt64) {
-        guard var workspace = workspaces[key] else { return }
-        workspace.minimumSizes = minimumSizes(in: workspace)
-        workspaces[key] = workspace
+        guard let workspace = workspaces[key] else { return }
         // A window being dragged stays under the pointer: neither written back to its tile nor raised. With no
         // front, the applier raises nothing of its app, which would take focus from it.
         let layout = workspace.layout().excluding(dragging)
@@ -624,7 +625,27 @@ final class Coordinator {
                         }
                     }
                     self.animator.noteLanded(results)
-                    self.edit(key) { $0.minimumSizes = self.minimumSizes(in: $0) }
+                    self.edit(key) { workspace in
+                        // Only a window where it was put: one somewhere else has left (macOS full screen, another
+                        // Space), and its size there is not its column's.
+                        for result in results where !result.catchingUp {
+                            guard let got = result.got, abs(got.minX - result.job.frame.minX) <= 2,
+                                  abs(got.minY - result.job.frame.minY) <= 2 else { continue }
+                            workspace.measure(result.job.id, asked: result.job.frame.width, got: got.width)
+                        }
+                    }
+                    // A window still at a size a glide asked of it on the way may arrive by itself, and says so
+                    // when it does. One that stays there says nothing more, so it is asked once again, without a
+                    // glide: what it answers then is its own. VMware stops at the width that was on screen at
+                    // one step of a glide that slid it into view.
+                    if results.contains(where: \.catchingUp) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(300)) { [weak self] in
+                            guard let self, self.enabled, self.workspaces[key] != nil else { return }
+                            self.layouts.dirty.insert(key)
+                            self.snap.insert(key)
+                            self.flush()
+                        }
+                    }
                     self.flush()
                 }
             }
@@ -654,8 +675,4 @@ final class Coordinator {
     /// The windows scuttle is gliding to their tiles right now.
     var animatingWindows: [WindowID] { animator.animating }
 
-    private func minimumSizes(in workspace: Workspace) -> [WindowID: CGSize] {
-        let learned = applier.minimumSizes
-        return Dictionary(uniqueKeysWithValues: workspace.windows.compactMap { id in learned[id].map { (id, $0) } })
-    }
 }

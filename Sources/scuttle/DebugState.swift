@@ -43,7 +43,7 @@ extension Coordinator {
             },
             "animating": animatingWindows.sorted(),
             "dragging": dragging ?? 0,
-            "minimum-sizes": Dictionary(uniqueKeysWithValues: applier.minimumSizes.map { ("\($0.key)", [$0.value.width, $0.value.height]) }),
+            "measured-widths": Dictionary(uniqueKeysWithValues: workspaces.values.flatMap(\.measuredWidths).map { ("\($0.key)", [$0.value.asked, $0.value.got]) }),
             "windows": model.windows.values.sorted { $0.id < $1.id }.map { w in
                 let live = scuttle_window_info(w.id)
                 return [

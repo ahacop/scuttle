@@ -74,7 +74,7 @@ enum Dispatcher {
         case .clearMinimumSizes:
             guard let coordinator = AppState.shared.coordinator else { return .error("tiling is not running") }
             coordinator.clearMinimumSizes()
-            return .ok("cleared minimum sizes")
+            return .ok("asking windows for their widths again")
         case .reloadConfig:
             if let error = AppState.shared.loadConfig() { return .error("config: \(error)") }
             return .ok("reloaded \(Config.userConfigURL.path)")

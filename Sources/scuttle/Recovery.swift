@@ -46,7 +46,7 @@ final class Recovery {
 
     /// Carries over a crashed session's journal and follows the model, so once `resume()` turns journaling on,
     /// each frame is the one the model read before scuttle wrote any. Restores write through the coordinator's
-    /// applier, so the minimum sizes it learns have one owner.
+    /// applier, so every write to a window goes through one queue.
     func start(model: WindowModel, applier: FrameApplier) {
         self.model = model
         self.applier = applier
