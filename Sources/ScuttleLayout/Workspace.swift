@@ -48,7 +48,7 @@ public struct Workspace: Equatable, Sendable {
     /// Whether the window is tiled here.
     public func contains(_ id: WindowID) -> Bool { columns.contains(id) }
 
-    /// Insert a window as a new column at the end of the strip, and focus it, which scrolls it into view.
+    /// Insert a window as a new column right of the focused one, and focus it.
     public mutating func insert(_ id: WindowID) {
         guard !contains(id) else { return }
         insertColumn(id)

@@ -52,14 +52,13 @@ struct ScrollingGeometryTests {
         #expect(ws.layout().frames[2] == rect(475, 10, 480, 580))
     }
 
-    @Test func `A new column opens at the end of the strip and scrolls into view`() {
+    @Test func `A new column opens right of the focused one and scrolls into view`() {
         var ws = strip(3)
         #expect(lefts(ws) == [-475, 25, 525], "the last column reaches into the empty gutter")
         ws.focus(1)
         ws.insert(4)
-        #expect(ws.windows == [1, 2, 3, 4], "not beside the focused column")
-        #expect(ws.focused == 4)
-        #expect(lefts(ws) == [-975, -475, 25, 525], "scrolled from the first column to the last")
+        #expect(ws.windows == [1, 4, 2, 3])
+        #expect(lefts(ws) == [-25, 475, 975, 1475])
     }
 
     @Test func `Focusing scrolls as little as shows the column`() {
@@ -143,7 +142,7 @@ struct ScrollingGeometryTests {
 
     @Test func `A new column that turns out wider is shown whole`() {
         var ws = strip(3)
-        ws.focus(1)
+        ws.focus(3)
         ws.insert(4)
         ws.minimumSizes[4] = CGSize(width: 800, height: 0)
         let edge = strip(4).layout().frames[4]!.maxX

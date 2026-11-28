@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.9
+## Unreleased
 
 - A column is never narrower than its window's minimum size or wider than its maximum, from the first time the window is placed. scuttle reads both from macOS, which most apps tell their limits. Until now a minimum was only worked out after the window had refused two different sizes, and overlapped its neighbour until then; a maximum was not known at all, and left a gap. Apps that tell macOS nothing are still found out the old way. `debug-state` lists the limits under `size-limits`.
-- A new window opens in a new column at the end of the strip, which scrolls to show it. It used to open right of the focused column, in the middle of the others when that was not the last. The same goes for a window that leaves macOS full screen, is moved in from another workspace, or is tiled with `layout tiling`.
+- A new window wider than a column is shown whole. The strip was scrolled for the width a column has by default, before the window's minimum width was known, and the window's right edge was left off the display.
 - `[gaps] inner` is one number, the gap between columns. The table form `{ horizontal = 8, vertical = 6 }` still loads, with a warning that `vertical` does nothing: it was the gap between windows stacked in a column, and a column holds one window.
 - `debug-state` lists each workspace's columns under `layouts`. The key was `trees`.
 - A window that was minimized when scuttle started is tiled when it is restored. It could be floated for good: for a quarter of a second after it leaves the Dock, macOS still describes it as a dialog.

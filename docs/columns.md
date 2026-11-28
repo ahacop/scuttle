@@ -9,8 +9,8 @@ permalink: /columns/
 
 Every tiled workspace is a strip of columns that can be wider than the
 display, as in [niri](https://github.com/YaLTeR/niri). Each column contains one
-window and is as tall as the display. A new window is placed in a new column at
-the end of the strip, at `column-width`, and focused. When a column is focused, the
+window and is as tall as the display. A new window is placed in a new column to
+the right of the focused one, at `column-width`. When a column is focused, the
 strip is scrolled just enough to show all of it. If all columns fit on the
 display, the first one starts at the left edge, including a single column.
 
@@ -53,7 +53,7 @@ window.
 
 In macOS full screen, a window is moved to a Space of its own, outside every
 workspace. scuttle leaves it there: its column is closed, and it gets a new
-column, at the end of the strip, when it leaves full screen. Set
+column, right of the focused one, when it leaves full screen. Set
 `block-native-fullscreen = true` to keep windows on their workspaces: a window
 put in macOS full screen is then put back in its column and shown with
 `fullscreen` instead.
