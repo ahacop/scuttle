@@ -92,6 +92,7 @@ final class FrameApplier {
     /// Forgets a process that quit: its elements and its queue, so a new process given the same pid starts afresh.
     func forget(pid: pid_t) {
         lock.withLock { elements = elements.filter { $0.key.pid != pid } }
+        Self.locksSizeLock.withLock { Self.locksSizeByPid[pid] = nil }
         scheduler.forget(pid: pid)
     }
 
@@ -297,8 +298,7 @@ final class FrameApplier {
     /// Activates scuttle in place of such an app when its window needs another size and will not take one, and
     /// waits for the window to take sizes. True when the app is to be activated again after the write.
     private static func stepAside(from pid: pid_t, _ element: AXUIElement, toResizeTo size: CGSize) -> Bool {
-        guard let app = NSRunningApplication(processIdentifier: pid), let bundleID = app.bundleIdentifier,
-              locksSizeWhileActive.contains(bundleID), !sizeSettable(element) else { return false }
+        guard locksSize(pid), !sizeSettable(element) else { return false }
         var value: CFTypeRef?
         var current = CGSize.zero
         guard AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &value) == .success, let value,
@@ -310,10 +310,23 @@ final class FrameApplier {
         _ = scuttle_make_self_front()
         let start = CACurrentMediaTime()
         while !sizeSettable(element), CACurrentMediaTime() - start < unlockTimeout { usleep(5_000) }
-        print("\(stamp()) frames: \(app.localizedName ?? bundleID) locks its window's size while active; left it for "
+        let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "pid \(pid)"
+        print("\(stamp()) frames: \(name) locks its window's size while active; left it for "
             + "\(Int((CACurrentMediaTime() - start) * 1000)) ms to resize it" + (sizeSettable(element) ? "" : ", and it stayed locked"))
         return true
     }
+
+    /// Whether the process is one of `locksSizeWhileActive`, asked once per process: this is on the way of every
+    /// write, and a glide that resizes a window writes it on every frame.
+    private static func locksSize(_ pid: pid_t) -> Bool {
+        if let known = locksSizeLock.withLock({ locksSizeByPid[pid] }) { return known }
+        let locks = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier.map(locksSizeWhileActive.contains) ?? false
+        locksSizeLock.withLock { locksSizeByPid[pid] = locks }
+        return locks
+    }
+
+    private static let locksSizeLock = NSLock()
+    nonisolated(unsafe) private static var locksSizeByPid: [pid_t: Bool] = [:]
 
     private static func stepBack(to pid: pid_t) {
         onMain { _ = NSRunningApplication(processIdentifier: pid)?.activate() }
