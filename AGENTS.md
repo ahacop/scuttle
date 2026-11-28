@@ -24,8 +24,8 @@ Check claims about features against this list and the docs, not against other ti
 - Other things that move windows: a window opening or closing (neighbours make or fill room), `layout
   floating|tiling`, `move-window-to-workspace`, `move-window-to-display`, a display connecting or disconnecting.
   Changes to a workspace that isn't visible are applied without animation.
-- Switching workspaces is instant. A switch to or from a window in macOS native full screen slides, over about
-  `duration-ms`, passing any workspaces in between (macOS 27 and later).
+- Switching workspaces is instant. A switch between a window in macOS native full screen and the workspace next to
+  its Space slides, over about `duration-ms` (macOS 27 and later). To or from any other workspace it is instant too.
 - Animation: `[animations] duration-ms` (200) and `resize` (`'instant'` by default: sizes snap, positions glide;
   `'glide'`: sizes glide too, except changes of 16 points or less). Off with Reduce Motion.
 

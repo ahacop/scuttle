@@ -17,7 +17,8 @@ func stamp() -> String {
 /// Swipes the display to one of its Spaces, full-screen ones included. False if it is already there.
 /// Returns once the swipe is posted; `SpaceSwitcher` confirms it and coalesces rapid requests. `landed` runs
 /// once the display is on the Space, unless a newer request replaced this one first.
-/// A switch to or from one of macOS's full-screen Spaces slides (`Coordinator.spaceSlide`); any other cuts.
+/// A switch to or from one of macOS's full-screen Spaces slides (`Coordinator.spaceSlide`) when the two Spaces are
+/// next to each other; any other cuts.
 @discardableResult
 func switchSpace(toSpaceID target: UInt64, on display: Display, landed: (() -> Void)? = nil) -> Bool {
     let slide = AppState.shared.coordinator?.spaceSlide(from: display.currentSpaceID, to: target) ?? 0
@@ -65,8 +66,6 @@ final class SpaceSwitcher {
     private var posting = false
     // Preserve the old two-second give-up budget, without treating it as native cancellation.
     private let requestTimeout: UInt64 = 2_000_000_000
-    // Each Space past the first that a slide crosses adds this share of its time, so that a long way is not a blur.
-    private let slideShareForEachFurtherSpace = 0.25
     // How long after its paced time a slide may take to land before it is taken to have fallen short. The Dock
     // lands a slide within a frame or two of its end; between the Spaces of a long one it is given 20 ms each.
     private let slideSettle: UInt64 = 500_000_000
@@ -113,7 +112,8 @@ final class SpaceSwitcher {
     /// Includes unacknowledged native movement whose logical request has timed out.
     var switching: Bool { !flights.isEmpty }
 
-    /// `slide`: the seconds to slide the Spaces across for, where slides can be made; 0 cuts to the Space.
+    /// `slide`: the seconds to slide to the Space for, where slides can be made and it is the next one along; 0 cuts
+    /// to the Space.
     func request(_ target: UInt64, on uuid: String, slide: Double = 0, landed: (() -> Void)? = nil) -> Bool {
         let previous = flights[uuid]?.request?.target
         if flights[uuid] == nil {
@@ -138,8 +138,9 @@ final class SpaceSwitcher {
         // Augmented gestures retain their fast, final-only redraw. Legacy gestures acknowledge each
         // adjacent landing; neither form may replay or retarget its outstanding native movement.
         let to = batchMovement ? target : from + (target > from ? 1 : -1)
-        // A slide is one movement to the destination, as a batch is.
-        let seconds = slide != nil && batchMovement ? request.slide * (1 + slideShareForEachFurtherSpace * Double(abs(to - from) - 1)) : 0
+        // Only to the Space next door. The Dock draws every Space on the way, so a slide across several showed
+        // each workspace in between flying past; macOS's own switch shows only the two. Further away is a cut.
+        let seconds = slide != nil && batchMovement && abs(to - from) == 1 ? request.slide : 0
         flight.posted = spaces[to]
         flight.postedAt = clock()
         flight.dockProcess = dockProcess()

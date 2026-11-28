@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Switching between a window in macOS full screen and a workspace that isn't next to its Space is instant again. In 0.8 it slid past every workspace in between. The switch still slides when the two are next to each other.
+
 ## 0.8
 
 - Quitting or disabling scuttle no longer hides a window on another window's full-screen Space. A window first seen in macOS full screen was "put back" there on quit even after it had left full screen, where it sat under the full-screen window and had no column when scuttle started again. A window in full screen is now left alone, and is put back once it is out.

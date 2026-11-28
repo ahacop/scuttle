@@ -286,7 +286,7 @@ struct SpaceSwitcherTests {
         #expect(!w.switcher.switching)
     }
 
-    @Test func aSlideIsOneMovementToTheDestinationAndTakesLongerTheFurtherItGoes() {
+    @Test func onlyASwitchToTheNextSpaceSlides() {
         let w = World(batches: true)
         var landed = 0
         _ = w.switcher.request(13, on: "A", slide: 0.2, landed: { landed += 1 })
@@ -294,25 +294,25 @@ struct SpaceSwitcherTests {
         w.observe(13)
         #expect(landed == 1)
         _ = w.switcher.request(17, on: "A", slide: 0.2)
-        #expect(w.slides.last == "A:2->6 350 ms", "a quarter as long again for each further Space")
+        #expect(w.slides.count == 1, "the Spaces in between would all be drawn passing by")
+        #expect(w.posts == ["A:2->6"])
         w.observe(17)
-        #expect(w.posts.isEmpty, "nothing was posted without a slide")
         #expect(!w.switcher.switching)
     }
 
     @Test func aSlideThatStopsShortIsFinishedWithoutOne() {
         let w = World(batches: true)
         var landed = 0
-        _ = w.switcher.request(15, on: "A", slide: 0.2, landed: { landed += 1 })
+        _ = w.switcher.request(13, on: "A", slide: 0.2, landed: { landed += 1 })
         #expect(w.slides.count == 1)
         w.now = 500_000_000
-        w.observe(13) // on its way: the slide and the time it has to land are not over
+        w.switcher.poll() // the slide and the time it has to land are not over
         #expect(w.posts.isEmpty)
         w.now = 1_200_000_000
         w.switcher.poll()
-        #expect(w.posts == ["A:2->4"], "the rest of the way, from where the slide stopped")
+        #expect(w.posts == ["A:1->2"], "posted anew from where the slide stopped")
         #expect(w.slides.count == 1)
-        w.observe(15)
+        w.observe(13)
         #expect(landed == 1)
         #expect(!w.switcher.switching)
     }

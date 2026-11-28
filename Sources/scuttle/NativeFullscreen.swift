@@ -4,8 +4,8 @@ import ScuttlePrivate
 
 // A window that enters macOS's native full screen (the green button, Control-Command-F, View > Enter Full Screen)
 // lands on a full-screen Space of its own. By default that Space is left alone: `track` gives up the window's
-// column, as for any window that leaves its workspace, and gives it a new one when it comes back. Switching to
-// that Space or away from it slides, as macOS shows it; see `spaceSlide`.
+// column, as for any window that leaves its workspace, and gives it a new one when it comes back. Switching
+// between that Space and a workspace next to it slides, as macOS shows it; see `spaceSlide`.
 //
 // With `block-native-fullscreen = true`, windows are kept out of native full screen instead, so every window lives
 // on a scuttle workspace: scuttle asks the window to leave through Accessibility, keeps its column meanwhile, and
@@ -21,6 +21,7 @@ extension Coordinator {
     /// full-screen Space, and 0, a cut, between workspaces. A workspace switch is a cut because its windows are
     /// where they were left and nothing on screen says which way it lies. A full-screen Space has no such place
     /// among the workspaces, and a whole screen replaced in one frame, by a different app, reads as a glitch.
+    /// `SpaceSwitcher` only slides between Spaces next to each other, and cuts across any others.
     func spaceSlide(from: UInt64, to: UInt64) -> Double {
         guard animates, isNativeFullscreenSpace(from) || isNativeFullscreenSpace(to) else { return 0 }
         return Double(config.animations.durationMs) / 1000

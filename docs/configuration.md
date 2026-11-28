@@ -322,7 +322,7 @@ after a macOS update. It is off by default.
 
 | Key | Default | |
 |---|---|---|
-| `enabled` | `true` | Animate window moves instead of jumping, and slide to and from a window in macOS full screen instead of cutting. Always off while Reduce Motion is on in macOS. |
+| `enabled` | `true` | Animate window moves instead of jumping, and slide between a window in macOS full screen and the workspace next to it instead of cutting. Always off while Reduce Motion is on in macOS. |
 | `duration-ms` | `200` | About how long a move or a slide lasts, up to 1000. `0` turns animation off. |
 | `resize` | `'instant'` | `'instant'`: a window is given its new size at once and only its position is animated. This looks smooth with every app. `'glide'`: the size is animated too, which stutters in apps that can't redraw that fast. A size that changes by 16 points or less is still given at once. |
 
