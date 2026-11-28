@@ -37,7 +37,7 @@ final class FrameApplier {
             read: { [unowned self] job in withElement(pid: job.pid, id: job.id, frame) ?? nil },
             write: { [unowned self] job in
                 guard let permit = writes.permit else { return }
-                withElement(pid: job.pid, id: job.id) { write(job.frame, to: $0, permit: permit) }
+                withElement(pid: job.pid, id: job.id) { write(job.frame, to: $0, pid: job.pid, permit: permit) }
             },
             move: { [unowned self] job in
                 guard let permit = writes.permit else { return }
@@ -265,9 +265,12 @@ final class FrameApplier {
 
     // Size, position, size: the first size lets a window near the screen edge move, the second
     // fixes the size if the move clamped it. Stops at an invalid element, which takes no writes.
-    private func write(_ frame: CGRect, to element: AXUIElement, permit: Int) -> AXError {
+    private func write(_ frame: CGRect, to element: AXUIElement, pid: pid_t, permit: Int) -> AXError {
         var size = frame.size, origin = frame.origin
         let sizeValue = AXValueCreate(.cgSize, &size)!, originValue = AXValueCreate(.cgPoint, &origin)!
+        // An app that locks its window's size while it is active is left for a moment, written, and come back to.
+        let steppedAside = Self.stepAside(from: pid, element, toResizeTo: frame.size)
+        defer { if steppedAside { Self.stepBack(to: pid) } }
         for (attribute, value) in [(kAXSizeAttribute, sizeValue), (kAXPositionAttribute, originValue), (kAXSizeAttribute, sizeValue)] {
             guard writes.allows(permit) else { return .success }
             let start = CACurrentMediaTime()
@@ -276,6 +279,43 @@ final class FrameApplier {
             if error == .invalidUIElement { return error }
         }
         return .success
+    }
+
+    /// Apps whose windows take no size while the app is active. VMware Fusion makes its window fixed while its
+    /// guest has the keyboard: Accessibility then calls the size not settable, and macOS has no other way to
+    /// resize another app's window. The window takes a size again as soon as another app is active.
+    private static let locksSizeWhileActive: Set<String> = ["com.vmware.fusion"]
+    /// How long such an app is given to unlock its window once it is no longer active. It took VMware about 65 ms.
+    private static let unlockTimeout: CFTimeInterval = 0.4
+
+    /// Activates scuttle in place of such an app when its window needs another size and will not take one, and
+    /// waits for the window to take sizes. True when the app is to be activated again after the write.
+    private static func stepAside(from pid: pid_t, _ element: AXUIElement, toResizeTo size: CGSize) -> Bool {
+        guard let app = NSRunningApplication(processIdentifier: pid), let bundleID = app.bundleIdentifier,
+              locksSizeWhileActive.contains(bundleID), !sizeSettable(element) else { return false }
+        var value: CFTypeRef?
+        var current = CGSize.zero
+        guard AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &value) == .success, let value,
+              AXValueGetValue(value as! AXValue, .cgSize, &current),
+              abs(current.width - size.width) > 1 || abs(current.height - size.height) > 1,
+              onMain({ NSWorkspace.shared.frontmostApplication?.processIdentifier == pid }) else { return false }
+        // Not AppKit's activation: macOS declines that for an app the user is not interacting with, as when the
+        // write comes from a command sent to the socket or from scuttle starting, and the window stayed locked.
+        _ = scuttle_make_self_front()
+        let start = CACurrentMediaTime()
+        while !sizeSettable(element), CACurrentMediaTime() - start < unlockTimeout { usleep(5_000) }
+        print("\(stamp()) frames: \(app.localizedName ?? bundleID) locks its window's size while active; left it for "
+            + "\(Int((CACurrentMediaTime() - start) * 1000)) ms to resize it" + (sizeSettable(element) ? "" : ", and it stayed locked"))
+        return true
+    }
+
+    private static func stepBack(to pid: pid_t) {
+        onMain { _ = NSRunningApplication(processIdentifier: pid)?.activate() }
+    }
+
+    private static func sizeSettable(_ element: AXUIElement) -> Bool {
+        var settable: DarwinBoolean = false
+        return AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &settable) == .success && settable.boolValue
     }
 
     private func move(_ origin: CGPoint, to element: AXUIElement, permit: Int) -> AXError {

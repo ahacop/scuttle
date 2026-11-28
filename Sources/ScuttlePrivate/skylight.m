@@ -53,3 +53,16 @@ int scuttle_front_connection(void)
     if (SLSGetConnectionIDForPSN(scuttle_connection(), &psn, &cid) != kCGErrorSuccess) return 0;
     return cid;
 }
+
+// yabai window_manager_focus_window_with_raise: kCPSUserGenerated, as if the user had brought the process forward.
+static const uint32_t kCPSUserGenerated = 0x200;
+
+bool scuttle_make_self_front(void)
+{
+    ProcessSerialNumber psn = {0};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    if (GetCurrentProcess(&psn) != noErr) return false;
+#pragma clang diagnostic pop
+    return _SLPSSetFrontProcessWithOptions(&psn, 0, kCPSUserGenerated) == kCGErrorSuccess;
+}

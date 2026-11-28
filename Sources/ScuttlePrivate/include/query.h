@@ -42,4 +42,8 @@ uint64_t scuttle_window_space_id(uint32_t windowID);
 // Window IDs on a Space, filtered like yabai space_window_list.
 NSArray<NSNumber *> *scuttle_space_window_ids(uint64_t spaceID, bool includeMinimized);
 
+// Makes scuttle the front process, as a user's own switch to it would. AppKit's activation is a request macOS
+// declines for an app the user is not interacting with; this is not. False if the window server refused.
+bool scuttle_make_self_front(void);
+
 NS_ASSUME_NONNULL_END
